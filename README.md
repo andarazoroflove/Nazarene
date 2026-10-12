@@ -1,31 +1,28 @@
-# The Nazarene: Way of the Cross (Mission 1 Prototype)
+# The Nazarene: Way of the Cross
 
 A 2D arcade action platformer heavily inspired by the original 1987 Sega arcade mechanics of *Shinobi*, set in 1st-century Roman-occupied Judea.
 
 ---
 
-## 🎮 Arcade Mechanics Overview
+## 🎮 Arcade Mechanics & Campaign Overview
 
 - **Internal Resolution:** 320x224 (authentic Sega arcade resolution), rendered to an off-screen render texture with integer / aspect-ratio preserved scaling to 1280x896 (or fullscreen with `FLAG_VSYNC_HINT`).
-- **Dual-Plane Platforming:** The level features two primary platforming planes:
-  - **Lower Tier:** Roman paved stone streets, market stalls, and fortified barricades.
-  - **Upper Tier:** Elevated stone balconies, Roman aqueduct spans, and rooftop terraces.
+- **Tactical Jerusalem Mission Map:** Authentic *Shinobi*-style map tracking player progression across 3 distinct campaign areas, with pulsing mission targeting reticles and red Roman `[DEFEATED]` stamps.
+- **Three Unique Campaign Stages:**
+  - **Stage 1: Via Dolorosa & Roman Garrison** &mdash; Paved stone streets, aqueducts, Roman balconies, and 4 Loaves & Fishes baskets unlocking the Colosseum gate to fight **Centurion Brutus**.
+  - **Stage 2: The Inner Temple** &mdash; Vaulted cedar sanctuary, checkered marble floors, menorahs, and multi-tier mezzanines. Collect 4 Sacred Golden Censers while dodging pillar-crawling **Sicarii Shadow Assassins** to confront **Temple Commander Malchus**.
+  - **Stage 3: Golgotha Citadel & Fortress Antonia** &mdash; Atmospheric dusk cliffs, Roman standards, roaring iron braziers, and 4 Sacred Relics. Approaching the summit gate causes dark storm clouds to gather and thunder to crash as you face **Tribunal Praetor Longinus**.
+- **Dual-Plane & Multi-Tier Platforming:**
   - **Super-Leap (High Jump):** Holding **Up + Jump** executes a high-arc somersault leap enabling the Nazarene to ascend directly between tiers.
   - **Drop-Through:** Holding **Down + Jump** allows dropping down through one-way ledges to return to lower levels.
 - **Dynamic Combat System:**
   - **Ranged Spike Toss:** Throws high-velocity iron spikes/nails across the screen.
   - **Automatic Close-Range Melee:** When an enemy is within close proximity (< 24 pixels), attacking automatically triggers an immediate short-range staff strike or palm strike instead of firing a projectile.
-  - **Crouch Attacks:** Low nail throws can eliminate low targets and ducked archers.
+  - **Crouch Attacks & Dodging:** Low attacks eliminate ducked archers; crouching ducks underneath spinning Sicarii daggers.
+  - **Headshot Jump Challenge:** Bosses feature heavy body armor deflecting frontal shots; defeat them with jump headshots, rear flank attacks, or Divine Wrath.
+  - **"FINISH HIM!":** Reaching 1 HP pip on boss battles darkens the sky with apocalyptic lightning and a deep reverberating voice prompt.
   - **Divine Wrath (Ninjutsu Equivalent - 1 use per life):** Freezes the screen, calls down a celestial beam of holy light, manifests the radiant glowing **Lion of Judah**, unleashes a screen-wide white flash, plays a thunderous roar, and eliminates all visible regular enemies on screen (while inflicting heavy damage on the Stage Boss).
-- **Mission Objective (Streets of Jerusalem):**
-  - 4 **Loaves and Fishes** wicker basket pick-ups are hidden across both upper and lower tiers.
-  - All 4 baskets must be collected to raise the heavy Roman Iron Portcullis and gain entry to the Colosseum Arena at the far right.
-  - Each basket restored 1 pip of life and yields bonus score.
-- **Enemies:**
-  1. **Patrol Guard (Melee):** Legionary patrolling ledges; lunges forward with spear when player is close; defeated in 1 hit.
-  2. **Auxiliary Archer (Ranged):** Ducks behind sandbags/crates to avoid standard standing projectiles; rises periodically to fire horizontal arrows; defeated in 1 hit.
-  3. **Heavy Legionary:** Carries a large Roman Scutum shield that deflects frontal attacks with a metallic ping; vulnerable only from behind (by jumping over him) or while swinging his gladius; takes 2 hits.
-  4. **Stage 1 Boss - The Gladiator / Armored Centurion:** Wields a barbed Roman combat whip (flagrum). Cracks his whip horizontally at mid-height (forces crouching or high-jumping), slams overhead, stalks forward, and is vulnerable to head strikes or during his recovery cooldown.
+  - **Grand Finale & Ascension:** Defeating the Tribunal Praetor parts the storm clouds, reveals a vibrant 7-band celestial rainbow, sings angelic choirs, and ascends Jesus diagonally into the clouds.
 
 ---
 

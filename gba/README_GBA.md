@@ -21,6 +21,15 @@ An authentic bare-metal Game Boy Advance (ARM7TDMI) port of **The Nazarene: Way 
 
 ---
 
+## 💾 Flashcart Compatibility (SuperCard, EZ-Flash, EverDrive)
+
+For flashcarts like the **SuperCard SD / MiniSD / CF / Lite** that require standard 32Mbit (4MB) ROM alignment to load, convert, or patch without errors:
+- Use **`Nazarene-padded.gba`** (or **`Nazarene-padded.zip`**).
+- This build is padded to exactly 4MB (4,194,304 bytes) with `0xFF` filler and signed with valid Nintendo GBA header complement checksums.
+- Compatible with official SuperCard software, SCFW/SuperFW, and all hardware flashers.
+
+---
+
 ## 🕹 Features & Technical Architecture
 
 - **Custom Bare-Metal GBA Engine:** Written in C and ARM assembly, targeting the 16.78 MHz ARM7TDMI.
@@ -47,3 +56,4 @@ cd gba
 build_gba.bat
 ```
 This compiles the assembly startup code (`crt0.s`), C source code, links using `gba.ld`, converts to raw binary with `arm-none-eabi-objcopy`, and patches the official Nintendo GBA header using `gbafix`.
+

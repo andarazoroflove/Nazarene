@@ -217,3 +217,4 @@ void gba_audio_update(void) {
         }
     }
 }
+

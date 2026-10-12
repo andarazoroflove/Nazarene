@@ -691,3 +691,4 @@ void gba_game_draw(void) {
         }
     }
 }
+

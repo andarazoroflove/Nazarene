@@ -68,3 +68,4 @@ static inline void gba_wait_vblank(void) {
 }
 
 #endif // GBA_TYPES_H
+

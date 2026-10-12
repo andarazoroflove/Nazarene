@@ -47,3 +47,4 @@ SECTIONS {
         __ewram_end = .;
     } > ewram
 }
+

@@ -145,3 +145,4 @@ void gba_draw_nail(int x, int y, bool facingLeft);
 void gba_draw_arrow(int x, int y, bool facingLeft);
 
 #endif // GBA_GRAPHICS_H
+

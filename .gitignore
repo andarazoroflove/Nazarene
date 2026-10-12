@@ -21,6 +21,8 @@ CMakeCache.txt
 *.o
 *.elf
 *.map
+*-padded.gba
+padded_staging/
 
 # Editor and IDE files
 .vscode/

@@ -84,3 +84,4 @@ void gba_game_update(uint16_t keysDown, uint16_t keysPressed);
 void gba_game_draw(void);
 
 #endif // GBA_GAME_H
+

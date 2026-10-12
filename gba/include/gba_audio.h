@@ -33,3 +33,4 @@ void gba_audio_stop_bgm(void);
 void gba_audio_update(void);
 
 #endif // GBA_AUDIO_H
+

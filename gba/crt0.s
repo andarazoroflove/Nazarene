@@ -40,3 +40,4 @@ init_arm:
 
 hang:
     b       hang
+

@@ -15,6 +15,7 @@ CMakeCache.txt
 *.lib
 *.pdb
 *.ilk
+*.zip
 
 # GBA build outputs (except final release ROMs if needed, or intermediate build files)
 *.o

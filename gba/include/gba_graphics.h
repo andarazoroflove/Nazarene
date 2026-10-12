@@ -112,7 +112,20 @@ enum PaletteIndex {
     COL_HEART_BORDER,
     COL_BASKET_WICKER,
     COL_BASKET_BREAD,
-    COL_BASKET_FISH
+    COL_BASKET_FISH,
+
+    // Temple & Sicarii additions (117..127)
+    COL_TEMPLE_MARBLE,
+    COL_TEMPLE_SHADOW,
+    COL_TEMPLE_PURPLE,
+    COL_SICARII_COWL,
+    COL_SICARII_WRAP,
+    COL_SICARII_BLADE,
+    COL_MAP_PARCHMENT,
+    COL_MAP_BORDER,
+    COL_MAP_INK,
+    COL_MAP_WATER,
+    COL_MAP_DEFEATED
 };
 
 void gba_graphics_init(void);
@@ -131,16 +144,20 @@ void gba_draw_char(char c, int x, int y, uint8_t color);
 void gba_draw_string(const char* str, int x, int y, uint8_t color);
 void gba_draw_number(int num, int x, int y, uint8_t color);
 
-// Parallax Backgrounds
+// Screens & Parallax Backgrounds
 void gba_draw_parallax_background(int cameraX, int timer);
+void gba_draw_temple_background(int cameraX, int timer);
+void gba_draw_mission_map(int currentMission, bool m1Cleared, bool m2Cleared, bool m3Cleared, int timer);
 
 // Sprites
 void gba_draw_player(int x, int y, bool facingLeft, int state, int animFrame, bool hurt);
 void gba_draw_guard(int x, int y, bool facingLeft, bool attack, int animFrame, bool hurt);
 void gba_draw_archer(int x, int y, bool facingLeft, bool duck, bool fire, bool hurt);
 void gba_draw_heavy(int x, int y, bool facingLeft, bool attack, int animFrame, bool hurt);
+void gba_draw_sicarii(int x, int y, bool facingLeft, int state, int animFrame, bool hurt);
 void gba_draw_boss(int x, int y, bool facingLeft, int state, int animFrame, bool hurt);
 void gba_draw_basket(int x, int y);
+void gba_draw_censer(int x, int y);
 void gba_draw_nail(int x, int y, bool facingLeft);
 void gba_draw_arrow(int x, int y, bool facingLeft);
 

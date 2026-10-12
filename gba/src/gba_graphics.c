@@ -182,6 +182,19 @@ void gba_graphics_init(void) {
     MEM_PALETTE_BG[COL_BASKET_WICKER]    = RGB8(195, 140, 65);
     MEM_PALETTE_BG[COL_BASKET_BREAD]     = RGB8(230, 185, 115);
     MEM_PALETTE_BG[COL_BASKET_FISH]      = RGB8(120, 175, 215);
+
+    // Temple & Sicarii additions
+    MEM_PALETTE_BG[COL_TEMPLE_MARBLE]    = RGB8(240, 240, 248);
+    MEM_PALETTE_BG[COL_TEMPLE_SHADOW]    = RGB8(165, 170, 195);
+    MEM_PALETTE_BG[COL_TEMPLE_PURPLE]    = RGB8(95, 24, 98);
+    MEM_PALETTE_BG[COL_SICARII_COWL]     = RGB8(28, 24, 38);
+    MEM_PALETTE_BG[COL_SICARII_WRAP]     = RGB8(42, 48, 65);
+    MEM_PALETTE_BG[COL_SICARII_BLADE]    = RGB8(140, 210, 255);
+    MEM_PALETTE_BG[COL_MAP_PARCHMENT]    = RGB8(220, 196, 150);
+    MEM_PALETTE_BG[COL_MAP_BORDER]       = RGB8(140, 105, 65);
+    MEM_PALETTE_BG[COL_MAP_INK]          = RGB8(75, 48, 28);
+    MEM_PALETTE_BG[COL_MAP_WATER]        = RGB8(95, 130, 155);
+    MEM_PALETTE_BG[COL_MAP_DEFEATED]     = RGB8(215, 35, 45);
 }
 
 void gba_graphics_flip(void) {
@@ -919,4 +932,210 @@ void gba_draw_arrow(int x, int y, bool facingLeft) {
     gba_draw_line(x, y, x + 7, y, COL_WOOD_LIGHT);
     gba_set_pixel(x + 7, y, COL_STEEL_HI); // Tip
     gba_set_pixel(x, y, COL_CREST_HI);    // Feather
+}
+
+void gba_draw_censer(int x, int y) {
+    // Golden Sacred Censer hanging on chains
+    gba_draw_line(x + 3, y - 6, x + 5, y, COL_GOLD_MID);
+    gba_draw_line(x + 9, y - 6, x + 7, y, COL_GOLD_MID);
+    // Pierced spherical body
+    gba_draw_rect(x + 3, y + 1, 6, 6, COL_GOLD_BRIGHT);
+    gba_draw_rect_outline(x + 2, y, 8, 8, COL_BRONZE_DARK);
+    gba_set_pixel(x + 4, y + 3, COL_ASH_EMBER);
+    gba_set_pixel(x + 6, y + 3, COL_ASH_EMBER);
+    gba_set_pixel(x + 5, y + 5, COL_ASH_GOLD);
+    // Incense smoke trail
+    gba_set_pixel(x + 5, y - 2, COL_WHITE_SHADOW);
+    gba_set_pixel(x + 4, y - 4, COL_WHITE_DEEP);
+}
+
+void gba_draw_sicarii(int x, int y, bool facingLeft, int state, int animFrame, bool hurt) {
+    (void)facingLeft; (void)animFrame;
+    uint8_t cowlCol = hurt ? COL_BLOOD_RED : COL_SICARII_COWL;
+    uint8_t wrapCol = hurt ? COL_SKIN_HI : COL_SICARII_WRAP;
+
+    if (state == 0) { // WALL_CLING
+        // Clinging vertically to pillar/wall
+        gba_draw_rect(x + 4, y + 2, 7, 7, cowlCol);
+        gba_set_pixel(x + 8, y + 4, COL_RUBY_EYE);
+        gba_draw_rect(x + 2, y + 9, 8, 14, wrapCol);
+        gba_draw_rect(x + 10, y + 4, 3, 2, COL_SKIN_MID);
+        gba_draw_rect(x + 10, y + 18, 3, 2, COL_SKIN_MID);
+        gba_draw_line(x + 1, y + 6, x + 3, y + 16, COL_SICARII_BLADE);
+    } else if (state == 1) { // WALL_CRAWL
+        // Crawling down
+        int bob = (animFrame % 2 == 0) ? 0 : 2;
+        gba_draw_rect(x + 3, y + 4 + bob, 8, 6, cowlCol);
+        gba_set_pixel(x + 7, y + 6 + bob, COL_RUBY_EYE);
+        gba_draw_rect(x + 2, y + 10 + bob, 10, 10, wrapCol);
+        gba_draw_rect(x + 1, y + 2 + bob, 2, 4, COL_SKIN_MID);
+        gba_draw_rect(x + 11, y + 8 + bob, 2, 4, COL_SKIN_MID);
+    } else if (state == 2) { // HOP
+        // Acrobatic hop through air
+        gba_draw_rect(x + 3, y, 8, 7, cowlCol);
+        gba_set_pixel(x + 8, y + 3, COL_RUBY_EYE);
+        gba_draw_rect(x + 2, y + 7, 10, 8, wrapCol);
+        gba_draw_line(x + 12, y + 4, x + 15, y + 9, COL_SICARII_BLADE);
+        gba_draw_rect(x + 4, y + 15, 6, 5, wrapCol);
+    } else { // STAND / SLASH / THROW
+        // Upright standing/stalking
+        gba_draw_rect(x + 4, y + 1, 7, 7, cowlCol);
+        gba_set_pixel(x + 8, y + 3, COL_RUBY_EYE);
+        gba_draw_rect(x + 3, y + 8, 9, 11, wrapCol);
+        gba_draw_rect(x + 3, y + 19, 4, 7, COL_LEATHER_DARK);
+        gba_draw_rect(x + 8, y + 19, 4, 7, COL_LEATHER_DARK);
+        gba_draw_line(x + 12, y + 8, x + 15, y + 14, COL_SICARII_BLADE);
+        gba_draw_line(x + 1, y + 10, x - 2, y + 15, COL_SICARII_BLADE);
+    }
+}
+
+void gba_draw_temple_background(int cameraX, int timer) {
+    (void)timer;
+    // 1. Vaulted cedar sanctuary ceiling (Y=0..35)
+    for (int y = 0; y < 35; ++y) {
+        uint8_t c = (y < 12) ? COL_WOOD_DARK : (y < 24 ? COL_WOOD_MID : COL_WOOD_LIGHT);
+        gba_draw_rect(0, y, GBA_SCREEN_WIDTH, 1, c);
+    }
+    // Clerestory Windows with golden light
+    for (int wx = 15; wx < GBA_SCREEN_WIDTH; wx += 45) {
+        gba_draw_rect(wx, 12, 16, 16, COL_WINDOW_GOLD);
+        gba_draw_rect_outline(wx, 12, 16, 16, COL_BRONZE_DARK);
+        gba_draw_line(wx + 8, 12, wx + 8, 28, COL_BRONZE_DARK);
+    }
+
+    // 2. High Temple Colonnade & Velvet Draperies (Y=35..136)
+    gba_draw_rect(0, 35, GBA_SCREEN_WIDTH, 101, COL_STONE_DARK);
+
+    // Purple Velvet Valances along ceiling
+    for (int dx = 0; dx < GBA_SCREEN_WIDTH; dx += 30) {
+        gba_draw_rect(dx, 35, 30, 8, COL_TEMPLE_PURPLE);
+        gba_draw_rect(dx + 4, 43, 22, 4, COL_TEMPLE_PURPLE);
+        gba_draw_line(dx, 35, dx + 30, 35, COL_GOLD_BRIGHT);
+    }
+
+    // Parallax Marble Pillars
+    int colScroll = (cameraX >> 2) % 60;
+    for (int px = -colScroll; px < GBA_SCREEN_WIDTH + 20; px += 60) {
+        // Golden Corinthian Capital
+        gba_draw_rect(px - 2, 40, 14, 6, COL_GOLD_BRIGHT);
+        gba_draw_rect(px - 1, 46, 12, 3, COL_BRONZE_LIGHT);
+        // White Fluted Marble Shaft
+        gba_draw_rect(px, 49, 10, 87, COL_TEMPLE_MARBLE);
+        gba_draw_rect_outline(px, 49, 10, 87, COL_TEMPLE_SHADOW);
+        gba_draw_line(px + 3, 49, px + 3, 136, COL_WHITE_PURE);
+        // Base
+        gba_draw_rect(px - 2, 132, 14, 4, COL_TEMPLE_MARBLE);
+    }
+
+    // 3. Checkered Marble Temple Floor (Y=136..160)
+    for (int y = 136; y < GBA_SCREEN_HEIGHT; ++y) {
+        int row = (y - 136) / 8;
+        for (int x = 0; x < GBA_SCREEN_WIDTH; x += 16) {
+            int col = (x + ((cameraX >> 1) % 32)) / 16;
+            uint8_t floorCol = ((row + col) % 2 == 0) ? COL_TEMPLE_MARBLE : COL_STONE_SHADOW;
+            gba_draw_rect(x, y, 16, 1, floorCol);
+        }
+    }
+    gba_draw_line(0, 136, GBA_SCREEN_WIDTH, 136, COL_GOLD_BRIGHT);
+}
+
+void gba_draw_mission_map(int currentMission, bool m1Cleared, bool m2Cleared, bool m3Cleared, int timer) {
+    // 1. Antique Parchment Map of Jerusalem
+    gba_graphics_clear(COL_MAP_PARCHMENT);
+
+    // Decorative Dual-Line Border
+    gba_draw_rect_outline(4, 4, GBA_SCREEN_WIDTH - 8, GBA_SCREEN_HEIGHT - 8, COL_MAP_BORDER);
+    gba_draw_rect_outline(6, 6, GBA_SCREEN_WIDTH - 12, GBA_SCREEN_HEIGHT - 12, COL_MAP_INK);
+
+    // Title Header
+    gba_draw_rect(40, 8, 160, 16, COL_TEXT_DARK);
+    gba_draw_rect_outline(40, 8, 160, 16, COL_GOLD_BRIGHT);
+    gba_draw_string("JERUSALEM CAMPAIGN", 58, 12, COL_TEXT_GOLD);
+
+    // Water bodies: Kidron Brook & Pool of Siloam
+    for (int y = 28; y < 118; ++y) {
+        int kx = 155 + (y % 4);
+        gba_set_pixel(kx, y, COL_MAP_WATER);
+        gba_set_pixel(kx + 1, y, COL_MAP_WATER);
+    }
+    gba_draw_rect(130, 96, 18, 12, COL_MAP_WATER);
+    gba_draw_string("SILOAM", 125, 110, COL_MAP_INK);
+
+    // Jerusalem City Walls & Gates
+    gba_draw_rect_outline(65, 34, 105, 68, COL_MAP_INK);
+    gba_draw_rect_outline(67, 36, 101, 64, COL_MAP_BORDER);
+
+    // Red Dotted Campaign Route
+    for (int dx = 50; dx < 195; dx += 6) {
+        int dy = (dx < 120) ? (56 - (dx - 50) / 6) : (44 + (dx - 120) / 6);
+        gba_set_pixel(dx, dy, COL_BLOOD_RED);
+        gba_set_pixel(dx + 1, dy, COL_BLOOD_RED);
+    }
+
+    // -------------------------------------------------------------
+    // Mission Boxes
+    // -------------------------------------------------------------
+    // Area 1: OUTSKIRTS (x=16, y=42)
+    int a1_x = 16, a1_y = 42, aw = 64, ah = 30;
+    uint8_t a1_bg = m1Cleared ? COL_STONE_SHADOW : COL_MAP_PARCHMENT;
+    gba_draw_rect(a1_x, a1_y, aw, ah, a1_bg);
+    gba_draw_rect_outline(a1_x, a1_y, aw, ah, COL_MAP_BORDER);
+    gba_draw_string("MISSION 1", a1_x + 5, a1_y + 4, COL_MAP_INK);
+    gba_draw_string("OUTSKIRTS", a1_x + 5, a1_y + 14, COL_TEXT_DARK);
+    if (m1Cleared) {
+        gba_draw_rect(a1_x + 2, a1_y + 9, 60, 12, COL_TEXT_DARK);
+        gba_draw_string("DEFEATED", a1_x + 8, a1_y + 11, COL_MAP_DEFEATED);
+    }
+
+    // Area 2: TEMPLE (x=88, y=36)
+    int a2_x = 88, a2_y = 36;
+    uint8_t a2_bg = m2Cleared ? COL_STONE_SHADOW : COL_MAP_PARCHMENT;
+    gba_draw_rect(a2_x, a2_y, aw, ah, a2_bg);
+    gba_draw_rect_outline(a2_x, a2_y, aw, ah, COL_MAP_BORDER);
+    gba_draw_string("MISSION 2", a2_x + 5, a2_y + 4, COL_MAP_INK);
+    gba_draw_string("THE TEMPLE", a2_x + 3, a2_y + 14, COL_TEXT_DARK);
+    if (m2Cleared) {
+        gba_draw_rect(a2_x + 2, a2_y + 9, 60, 12, COL_TEXT_DARK);
+        gba_draw_string("DEFEATED", a2_x + 8, a2_y + 11, COL_MAP_DEFEATED);
+    }
+
+    // Area 3: GOLGOTHA (x=160, y=42)
+    int a3_x = 160, a3_y = 42;
+    uint8_t a3_bg = m3Cleared ? COL_STONE_SHADOW : COL_MAP_PARCHMENT;
+    gba_draw_rect(a3_x, a3_y, aw, ah, a3_bg);
+    gba_draw_rect_outline(a3_x, a3_y, aw, ah, COL_MAP_BORDER);
+    gba_draw_string("MISSION 3", a3_x + 5, a3_y + 4, COL_MAP_INK);
+    gba_draw_string("GOLGOTHA", a3_x + 8, a3_y + 14, COL_TEXT_DARK);
+    if (m3Cleared) {
+        gba_draw_rect(a3_x + 2, a3_y + 9, 60, 12, COL_TEXT_DARK);
+        gba_draw_string("DEFEATED", a3_x + 8, a3_y + 11, COL_MAP_DEFEATED);
+    }
+
+    // Blinking Tactical Reticle on Current Mission
+    if ((timer % 16) < 10) {
+        int rx = (currentMission == 1) ? a1_x : ((currentMission == 2) ? a2_x : a3_x);
+        int ry = (currentMission == 1) ? a1_y : ((currentMission == 2) ? a2_y : a3_y);
+        gba_draw_rect_outline(rx - 2, ry - 2, aw + 4, ah + 4, COL_BLOOD_RED);
+        gba_draw_rect_outline(rx - 3, ry - 3, aw + 6, ah + 6, COL_GOLD_BRIGHT);
+    }
+
+    // Bottom Tactical Briefing HUD
+    int bx = 12, by = 118, bw = GBA_SCREEN_WIDTH - 24, bh = 34;
+    gba_draw_rect(bx, by, bw, bh, COL_TEXT_DARK);
+    gba_draw_rect_outline(bx, by, bw, bh, COL_GOLD_BRIGHT);
+
+    if (currentMission == 1) {
+        gba_draw_string("MISSION 1: STREETS OF JERUSALEM", bx + 6, by + 4, COL_TEXT_GOLD);
+        gba_draw_string("TARGET: CENTURION BRUTUS", bx + 6, by + 14, COL_TEXT_RED);
+    } else if (currentMission == 2) {
+        gba_draw_string("MISSION 2: INSIDE THE TEMPLE", bx + 6, by + 4, COL_TEXT_GOLD);
+        gba_draw_string("TARGET: COMMANDER MALCHUS", bx + 6, by + 14, COL_TEXT_RED);
+    } else {
+        gba_draw_string("MISSION 3: GOLGOTHA CITADEL", bx + 6, by + 4, COL_TEXT_GOLD);
+        gba_draw_string("TARGET: HIGH CENTURION", bx + 6, by + 14, COL_TEXT_RED);
+    }
+
+    if ((timer % 24) < 16) {
+        gba_draw_string("PRESS START TO EMBARK", bx + 42, by + 24, COL_TEXT_WHITE);
+    }
 }

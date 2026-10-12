@@ -4,10 +4,12 @@
 #include <algorithm>
 
 Level::Level() {
-    Reset();
+    m_stageId = 1;
+    Reset(1);
 }
 
-void Level::Reset() {
+void Level::Reset(int stageId) {
+    m_stageId = stageId;
     m_basketsCollected = 0;
     m_arenaUnlocked = false;
     m_arenaLockedDown = false;
@@ -17,7 +19,11 @@ void Level::Reset() {
     m_crates.clear();
     m_baskets.clear();
 
-    BuildStreetsOfJerusalem();
+    if (m_stageId == 2) {
+        BuildInsideTheTemple();
+    } else {
+        BuildStreetsOfJerusalem();
+    }
 }
 
 void Level::BuildStreetsOfJerusalem() {
@@ -171,6 +177,161 @@ void Level::BuildStreetsOfJerusalem() {
     m_tilemap[10][147] = TILE_OIL_LAMP;
     AddColumn(154, 5, 12);
     m_tilemap[10][155] = TILE_OIL_LAMP;
+
+    // Arena back wall at end of level (Tile 159)
+    for (int ty = 0; ty <= 11; ++ty) {
+        m_tilemap[ty][159] = TILE_GATE_FRAME;
+    }
+}
+
+void Level::BuildInsideTheTemple() {
+    // 1. Initialize tilemap with air
+    for (int y = 0; y < LEVEL_TILES_Y; ++y) {
+        for (int x = 0; x < LEVEL_TILES_X; ++x) {
+            m_tilemap[y][x] = TILE_AIR;
+        }
+    }
+
+    // 2. Lay solid Ground Tier (Checkered Polished Marble Floor) at Y = 12 and 13 (Y_pixels: 192 and 208)
+    for (int x = 0; x < LEVEL_TILES_X; ++x) {
+        m_tilemap[12][x] = TILE_TEMPLE_FLOOR_CHECKER;
+        m_tilemap[13][x] = TILE_TEMPLE_FLOOR_SUB;
+    }
+
+    // Platform and geometry helpers
+    auto AddMezzanine = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_TEMPLE_BALCONY_1;
+        }
+    };
+
+    auto AddGallery = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_TEMPLE_BALCONY_2;
+        }
+    };
+
+    auto AddTempleColumn = [this](int tileX, int topTileY, int groundTileY) {
+        m_tilemap[topTileY][tileX] = TILE_TEMPLE_COLUMN_HEAD;
+        for (int ty = topTileY + 1; ty < groundTileY - 1; ++ty) {
+            m_tilemap[ty][tileX] = TILE_TEMPLE_COLUMN_MID;
+        }
+        m_tilemap[groundTileY - 1][tileX] = TILE_TEMPLE_COLUMN_BASE;
+    };
+
+    auto AddStepBlock = [this](int tileX, int tileY) {
+        m_tilemap[tileY][tileX] = TILE_WOOD_CRATE;
+        m_crates.push_back({ (float)tileX * TILE_SIZE, (float)tileY * TILE_SIZE, (float)TILE_SIZE, (float)TILE_SIZE });
+    };
+
+    // === SECTION 1: Temple Outer Portico (Tiles 0 - 32) ===
+    AddTempleColumn(4, 3, 12);
+    AddTempleColumn(12, 3, 12);
+    AddTempleColumn(20, 3, 12);
+    AddTempleColumn(28, 3, 12);
+    m_tilemap[11][6] = TILE_TEMPLE_MENORAH;
+    m_tilemap[11][14] = TILE_TEMPLE_ALTAR;
+    m_tilemap[11][22] = TILE_TEMPLE_INCENSE_BURNER;
+    m_tilemap[4][8] = TILE_TEMPLE_DRAPERY_PURPLE;
+    m_tilemap[4][16] = TILE_TEMPLE_DRAPERY_PURPLE;
+    m_tilemap[4][24] = TILE_TEMPLE_DRAPERY_PURPLE;
+
+    // Mezzanine balcony (Tier 1, Y=9, 144px)
+    AddMezzanine(14, 28, 9);
+    AddStepBlock(11, 11);
+
+    // Censer 1: On Mezzanine at tile 21
+    m_baskets.push_back({ { 21.0f * TILE_SIZE, 8.0f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // === SECTION 2: Multi-Tier Great Colonnade (Tiles 32 - 70) ===
+    // DUAL-LEVEL UPPER PLATFORMS: Tier 1 (Y=9, 144px) and Tier 2 (Y=6, 96px)
+    AddTempleColumn(36, 1, 12);
+    AddTempleColumn(46, 1, 12);
+    AddTempleColumn(56, 1, 12);
+    AddTempleColumn(66, 1, 12);
+
+    AddMezzanine(34, 64, 9);
+    AddGallery(40, 60, 6);
+
+    AddStepBlock(32, 11); // Step to Tier 1
+    AddStepBlock(39, 8);  // Step from Tier 1 to Tier 2
+
+    m_tilemap[11][38] = TILE_TEMPLE_ALTAR;
+    m_tilemap[11][48] = TILE_TEMPLE_MENORAH;
+    m_tilemap[11][58] = TILE_TEMPLE_INCENSE_BURNER;
+    m_tilemap[3][42] = TILE_TEMPLE_DRAPERY_PURPLE;
+    m_tilemap[3][50] = TILE_TEMPLE_DRAPERY_PURPLE;
+
+    // Censer 2: High Tier 2 Parapet at tile 50
+    m_baskets.push_back({ { 50.0f * TILE_SIZE, 5.0f * TILE_SIZE }, false, 0.0f, 2 });
+
+    // === SECTION 3: Court of the Priests (Tiles 70 - 105) ===
+    // Multi-tier upper platforms for dynamic jumping
+    AddTempleColumn(76, 1, 12);
+    AddTempleColumn(86, 1, 12);
+    AddTempleColumn(96, 1, 12);
+
+    AddMezzanine(74, 92, 9);
+    AddGallery(80, 102, 6);
+
+    AddStepBlock(73, 11);
+    AddStepBlock(79, 8);
+
+    m_tilemap[11][78] = TILE_TEMPLE_MENORAH;
+    m_tilemap[11][88] = TILE_TEMPLE_ALTAR;
+    m_tilemap[3][82] = TILE_TEMPLE_DRAPERY_PURPLE;
+    m_tilemap[3][92] = TILE_TEMPLE_DRAPERY_PURPLE;
+
+    // Censer 3: Ground level sacred alcove at tile 92
+    m_baskets.push_back({ { 92.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    // === SECTION 4: Porch of Solomon (Tiles 105 - 132) ===
+    AddTempleColumn(108, 1, 12);
+    AddTempleColumn(116, 1, 12);
+    AddTempleColumn(124, 1, 12);
+
+    AddMezzanine(110, 128, 9);
+    AddGallery(114, 126, 6);
+
+    AddStepBlock(109, 11);
+    AddStepBlock(113, 8);
+
+    m_tilemap[11][112] = TILE_TEMPLE_MENORAH;
+    m_tilemap[11][120] = TILE_TEMPLE_INCENSE_BURNER;
+    m_tilemap[3][118] = TILE_TEMPLE_DRAPERY_PURPLE;
+
+    // Censer 4: High Tier 2 at tile 121
+    m_baskets.push_back({ { 121.0f * TILE_SIZE, 5.0f * TILE_SIZE }, false, 0.0f, 2 });
+
+    // === SECTION 5: Sanctuary Gate / Golden Veil (Tiles 132 - 134) ===
+    int gateTileX = static_cast<int>(ARENA_GATE_X / TILE_SIZE);
+    for (int ty = 2; ty <= 11; ++ty) {
+        m_tilemap[ty][gateTileX] = TILE_GATE_FRAME;
+        m_tilemap[ty][gateTileX + 1] = TILE_GATE_BARS;
+        m_tilemap[ty][gateTileX + 2] = TILE_GATE_FRAME;
+    }
+    m_tilemap[11][gateTileX - 1] = TILE_TEMPLE_MENORAH;
+
+    // === SECTION 6: Holy of Holies Boss Arena (Tiles 135 - 160) ===
+    AddTempleColumn(138, 2, 12);
+    AddTempleColumn(146, 2, 12);
+    AddTempleColumn(154, 2, 12);
+    m_tilemap[11][141] = TILE_TEMPLE_MENORAH;
+    m_tilemap[11][149] = TILE_TEMPLE_ALTAR;
+    m_tilemap[11][157] = TILE_TEMPLE_MENORAH;
+    for (int cx = 136; cx < 159; cx += 2) {
+        m_tilemap[3][cx] = TILE_TEMPLE_DRAPERY_PURPLE;
+    }
 
     // Arena back wall at end of level (Tile 159)
     for (int ty = 0; ty <= 11; ++ty) {
@@ -380,11 +541,12 @@ void Level::Draw(float cameraX) {
         }
     }
 
-    // Draw Baskets
+    // Draw Baskets or Sacred Censers depending on stage
     for (const auto& b : m_baskets) {
         if (!b.collected) {
             float floatY = sinf(b.floatTimer * 4.0f) * 2.0f;
-            GraphicsManager::DrawSprite(SPR_BASKET_LOAVES_FISHES, b.position.x, b.position.y + floatY);
+            SpriteId pickupSpr = (m_stageId == 2) ? SPR_CENSER_GOLD : SPR_BASKET_LOAVES_FISHES;
+            GraphicsManager::DrawSprite(pickupSpr, b.position.x, b.position.y + floatY);
 
             // Shimmer gleam
             float gleam = 0.5f + 0.5f * sinf(b.floatTimer * 6.0f);

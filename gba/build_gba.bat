@@ -1,5 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
+cd /d "%~dp0"
 
 echo ======================================================================
 echo  Building: "The Nazarene: Way of the Cross" (Game Boy Advance Version)
@@ -12,7 +13,6 @@ if not exist "%TOOLDIR%\arm-none-eabi-gcc.exe" (
         set "TOOLDIR="
     ) else (
         echo [ERROR] arm-none-eabi-gcc not found!
-        pause
         exit /b 1
     )
 )
@@ -54,18 +54,24 @@ if exist "tools\gbafix.exe" (
     "gbafix.exe" Nazarene.gba -tNAZARENE -cANZE -m01
 )
 
+python -c "with open('Nazarene.gba','rb') as f: d=f.read(); open('Nazarene-padded.gba','wb').write(d + b'\xFF'*(4*1024*1024 - len(d)))"
+if exist "tools\gbafix.exe" (
+    "tools\gbafix.exe" Nazarene-padded.gba -tNAZARENE -cANZE -m01
+)
+
 copy /y Nazarene.gba "..\Nazarene.gba" >nul
+copy /y Nazarene-padded.gba "..\Nazarene-padded.gba" >nul
 
 echo.
 echo ======================================================================
 echo  GBA BUILD SUCCESSFUL!
 echo  Game Boy Advance ROM ready: Nazarene.gba
+echo  Padded SuperCard ROM ready: Nazarene-padded.gba (4MB)
 echo ======================================================================
 goto end
 
 :error
 echo [ERROR] GBA compilation failed!
-pause
 exit /b 1
 
 :end

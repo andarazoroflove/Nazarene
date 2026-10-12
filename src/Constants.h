@@ -17,9 +17,13 @@ constexpr int LEVEL_PIXEL_WIDTH = LEVEL_TILES_X * TILE_SIZE;
 constexpr int LEVEL_PIXEL_HEIGHT = LEVEL_TILES_Y * TILE_SIZE;
 
 // Platform Tiers (Y coordinates)
-constexpr float GROUND_Y = 192.0f;          // Lower street level (paved Roman road)
+constexpr float GROUND_Y = 192.0f;          // Lower street level (paved Roman road / Temple floor)
 constexpr float UPPER_TIER_Y = 112.0f;      // Elevated tier (balconies, aqueduct, roofs)
 constexpr float INTERMEDIATE_TIER_Y = 152.0f; // Mid-level crates and awnings
+
+// Board #2 Multi-Tier Temple Platform Heights (Two levels to jump up from!)
+constexpr float TEMPLE_TIER_1_Y = 144.0f;   // Level 1: Temple portico / mezzanine (Y = 9 tiles)
+constexpr float TEMPLE_TIER_2_Y = 96.0f;    // Level 2: High temple gallery / parapet (Y = 6 tiles)
 
 // Arena Bounds (Boss area at far right)
 constexpr float ARENA_GATE_X = 2120.0f;
@@ -62,4 +66,14 @@ inline const Color COLOR_BRONZE_DARK      = Color{ 120,  80,  30, 255 };
 inline const Color COLOR_IRON             = Color{ 145, 155, 168, 255 };
 inline const Color COLOR_STEEL_BRIGHT     = Color{ 215, 225, 238, 255 };
 inline const Color COLOR_HUD_BG           = Color{  18,  16,  24, 230 };
+
+// Temple Sanctuary Colors
+inline const Color COLOR_TEMPLE_MARBLE    = Color{ 246, 244, 238, 255 };
+inline const Color COLOR_TEMPLE_SHADOW    = Color{ 175, 170, 162, 255 };
+inline const Color COLOR_TEMPLE_GOLD      = Color{ 255, 215,  55, 255 };
+inline const Color COLOR_TEMPLE_PURPLE    = Color{  95,  25, 115, 255 };
+inline const Color COLOR_TEMPLE_CEDAR     = Color{ 120,  75,  40, 255 };
+inline const Color COLOR_SICARII_DARK     = Color{  28,  32,  48, 255 };
+inline const Color COLOR_SICARII_BLUE     = Color{  48,  65,  98, 255 };
+inline const Color COLOR_SICARII_BLADE    = Color{ 230, 240, 255, 255 };
 

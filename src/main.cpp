@@ -12,6 +12,7 @@
 
 enum class GameState {
     TITLE,
+    MISSION_MAP,
     GAMEPLAY,
     GAMEOVER,
     VICTORY
@@ -20,7 +21,7 @@ enum class GameState {
 int main() {
     // 1. Initialize Raylib Window
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
-    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "The Nazarene: Way of the Cross (Mission 1)");
+    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "The Nazarene: Way of the Cross");
     SetExitKey(KEY_NULL);
     SetWindowMinSize(VIRTUAL_WIDTH * 2, VIRTUAL_HEIGHT * 2);
     SetTargetFPS(TARGET_FPS);
@@ -46,6 +47,12 @@ int main() {
     float coinNoticeTimer = 0.0f;
     float continueCountdown = 9.9f;
 
+    int currentMission = 1;
+    bool mission1Cleared = false;
+    bool mission2Cleared = false;
+    bool mission3Cleared = false;
+    float missionMapTimer = 0.0f;
+
     float gateNoticeTimer = 0.0f;
     float victoryTimer = 0.0f;
     float gameOverTimer = 0.0f;
@@ -63,10 +70,11 @@ int main() {
     float divineBeamIntensity = 0.0f;
     float celestialFadeAlpha = 0.0f;
 
-    auto ResetGame = [&](bool fullReset) {
-        level.Reset();
-        player.Reset(fullReset);
-        enemyManager.Reset();
+    auto StartMission = [&](int mission) {
+        currentMission = mission;
+        level.Reset(mission);
+        player.Reset(mission == 1);
+        enemyManager.Reset(mission);
         camera.target.x = 0.0f;
         gateNoticeTimer = 0.0f;
         victoryTimer = 0.0f;
@@ -83,6 +91,16 @@ int main() {
         cloudsPartAmount = 0.0f;
         divineBeamIntensity = 0.0f;
         celestialFadeAlpha = 0.0f;
+    };
+
+    auto ResetGame = [&](bool fullReset) {
+        if (fullReset) {
+            currentMission = 1;
+            mission1Cleared = false;
+            mission2Cleared = false;
+            mission3Cleared = false;
+        }
+        StartMission(currentMission);
     };
 
     // 5. Main Game Loop
@@ -114,13 +132,28 @@ int main() {
                 if (input.startPressed) {
                     if (credits > 0) {
                         credits--;
-                        AudioManager::PlaySfx(SFX_VICTORY);
-                        ResetGame(true);
-                        gameState = GameState::GAMEPLAY;
+                        AudioManager::PlaySfx(SFX_COIN_INSERT);
+                        currentMission = 1;
+                        mission1Cleared = false;
+                        mission2Cleared = false;
+                        mission3Cleared = false;
+                        gameState = GameState::MISSION_MAP;
+                        missionMapTimer = 0.0f;
                     } else {
                         coinNoticeTimer = 2.5f;
                         AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
                     }
+                }
+                break;
+            }
+
+            case GameState::MISSION_MAP: {
+                missionMapTimer += dt;
+                // Allow pressing Start, Jump, Attack to immediately embark, or auto-start after 4.2 seconds
+                if (missionMapTimer >= 0.5f && (input.startPressed || input.jumpPressed || input.attackPressed || missionMapTimer >= 4.2f)) {
+                    StartMission(currentMission);
+                    gameState = GameState::GAMEPLAY;
+                    AudioManager::PlaySfx(SFX_VICTORY);
                 }
                 break;
             }
@@ -227,8 +260,21 @@ int main() {
                         }
 
                         if (ascensionSequenceTimer >= 6.8f || celestialFadeAlpha >= 1.0f) {
-                            gameState = GameState::VICTORY;
-                            victoryTimer = 0.0f;
+                            if (currentMission == 1) {
+                                mission1Cleared = true;
+                                currentMission = 2;
+                                gameState = GameState::MISSION_MAP;
+                                missionMapTimer = 0.0f;
+                            } else if (currentMission == 2) {
+                                mission2Cleared = true;
+                                currentMission = 3;
+                                gameState = GameState::MISSION_MAP;
+                                missionMapTimer = 0.0f;
+                            } else {
+                                mission3Cleared = true;
+                                gameState = GameState::VICTORY;
+                                victoryTimer = 0.0f;
+                            }
                         }
                     }
                 }
@@ -386,12 +432,15 @@ int main() {
             snprintf(credStr, sizeof(credStr), "CREDIT %02d", credits);
             int csw = MeasureText(credStr, 10);
             DrawText(credStr, VIRTUAL_WIDTH - csw - 8, VIRTUAL_HEIGHT - 16, 10, COLOR_ROMAN_GOLD);
+        } else if (gameState == GameState::MISSION_MAP) {
+            // Authentic Shinobi Arcade Jerusalem Mission Map Screen
+            GraphicsManager::DrawMissionMap(currentMission, mission1Cleared, mission2Cleared, mission3Cleared, static_cast<float>(GetTime()));
         } else {
             // Gameplay / Victory / Gameover In-World Rendering
-            // 1. Parallax Sky & Midground
-            GraphicsManager::DrawParallaxBackground(camera.target.x, static_cast<float>(GetTime()));
+            // 1. Parallax Sky & Midground (Supports Stage 1 Streets & Stage 2 Temple)
+            GraphicsManager::DrawParallaxBackground(camera.target.x, static_cast<float>(GetTime()), level.GetStage());
 
-            // 1b. Apocalyptic Storm Clouds (rolling in when Brutus is at 1 HP pip)
+            // 1b. Apocalyptic Storm Clouds (rolling in when Boss is at 1 HP pip)
             if (cloudCoverage > 0.0f) {
                 GraphicsManager::DrawStormClouds(cloudCoverage, GetTime(), lightningFlashTimer > 0.0f);
             }
@@ -460,8 +509,12 @@ int main() {
                 DrawRectangleLines(218, 5, 10, 10, Color{ 80, 75, 70, 255 });
             }
 
-            // Loaves and Fishes Baskets (X/4)
-            GraphicsManager::DrawSprite(SPR_ICON_BASKET, 246.0f, 2.0f);
+            // Loaves and Fishes Baskets (X/4) / Sacred Censers in Stage 2
+            if (level.GetStage() == 2) {
+                GraphicsManager::DrawSprite(SPR_CENSER_GOLD, 244.0f, 2.0f);
+            } else {
+                GraphicsManager::DrawSprite(SPR_ICON_BASKET, 246.0f, 2.0f);
+            }
             char basketText[16];
             snprintf(basketText, sizeof(basketText), "%d/%d", level.GetBasketsCollectedCount(), level.GetTotalBasketsCount());
             DrawText(basketText, 268, 5, 10, level.AreAllBasketsCollected() ? Color{ 80, 255, 120, 255 } : COLOR_ROMAN_GOLD);
@@ -471,14 +524,15 @@ int main() {
             snprintf(livesText, sizeof(livesText), "x%d", player.GetLives());
             DrawText(livesText, 298, 5, 10, COLOR_ROBE_WHITE);
 
-            // 5. Boss Health Bar: Named "BRUTUS" (Bottom Screen when inside Arena)
+            // 5. Boss Health Bar (Bottom Screen when inside Arena)
             if (level.IsArenaLockedDown()) {
                 Enemy* b = enemyManager.GetBoss();
                 if (b && !b->IsWitheredDead()) {
                     DrawRectangle(50, VIRTUAL_HEIGHT - 18, VIRTUAL_WIDTH - 100, 14, COLOR_HUD_BG);
                     DrawRectangleLines(50, VIRTUAL_HEIGHT - 18, VIRTUAL_WIDTH - 100, 14, COLOR_ROMAN_CRIMSON);
 
-                    DrawText("BRUTUS", 56, VIRTUAL_HEIGHT - 16, 10, COLOR_ROMAN_GOLD);
+                    const char* bossName = (level.GetStage() == 2) ? "MALCHUS" : (level.GetStage() == 3 ? "CENTURION" : "BRUTUS");
+                    DrawText(bossName, 56, VIRTUAL_HEIGHT - 16, 10, COLOR_ROMAN_GOLD);
 
                     int maxBossPips = b->GetMaxHp();
                     int curBossPips = b->GetHp();
@@ -502,14 +556,14 @@ int main() {
 
             // 6. In-game Alerts & Exit Arrow
             if (gateNoticeTimer > 0.0f && !level.IsArenaUnlocked()) {
-                const char* msg = "COLLECT ALL 4 BASKETS TO UNLOCK GATE!";
+                const char* msg = (level.GetStage() == 2) ? "COLLECT ALL 4 SACRED CENSERS TO UNLOCK VEIL!" : "COLLECT ALL 4 BASKETS TO UNLOCK GATE!";
                 int mw = MeasureText(msg, 10);
                 DrawRectangle((VIRTUAL_WIDTH - mw) / 2 - 6, 40, mw + 12, 16, Color{ 20, 15, 25, 230 });
                 DrawRectangleLines((VIRTUAL_WIDTH - mw) / 2 - 6, 40, mw + 12, 16, COLOR_ROMAN_CRIMSON);
                 DrawText(msg, (VIRTUAL_WIDTH - mw) / 2, 44, 10, COLOR_ROMAN_GOLD);
             }
 
-            // Phase 1 Walk-Off Arrow: Prompts Jesus to follow Brutus into the arena as Brutus exits screen 1!
+            // Phase 1 Walk-Off Arrow: Prompts Jesus to follow Boss into arena as Boss exits screen 1!
             Enemy* b = enemyManager.GetBoss();
             bool showPhase1Follow = (b && (b->GetBossWhipState() == BossWhipState::PHASE1_WALK_OFF || b->HasPhase1WalkedOff()) && !level.IsArenaLockedDown());
             if (showPhase1Follow) {
@@ -605,18 +659,18 @@ int main() {
             // 8. Victory Screen
             if (gameState == GameState::VICTORY) {
                 DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 12, 22, 16, 230 });
-                const char* vicTitle = "MISSION 1 COMPLETE!";
+                const char* vicTitle = "CAMPAIGN VICTORY!";
                 int vw = MeasureText(vicTitle, 20);
                 DrawText(vicTitle, (VIRTUAL_WIDTH - vw) / 2, 45, 20, COLOR_ROMAN_GOLD);
 
-                const char* vicSub1 = "BRUTUS HAS WITHERED INTO THE DUST!";
+                const char* vicSub1 = "ALL MISSIONS COMPLETED - JERUSALEM FREED!";
                 DrawText(vicSub1, (VIRTUAL_WIDTH - MeasureText(vicSub1, 10)) / 2, 75, 10, COLOR_ROBE_WHITE);
 
-                const char* vicSub2 = "THE NAZARENE HAST ASCENDED INTO HEAVEN";
+                const char* vicSub2 = "THE NAZARENE HAST ASCENDED INTO GLORY";
                 DrawText(vicSub2, (VIRTUAL_WIDTH - MeasureText(vicSub2, 10)) / 2, 95, 10, COLOR_GOLD_BRIGHT);
 
                 char vicScore[48];
-                snprintf(vicScore, sizeof(vicScore), "VICTORY SCORE: %06d", player.GetScore() + 10000);
+                snprintf(vicScore, sizeof(vicScore), "FINAL SCORE: %06d", player.GetScore() + 30000);
                 DrawText(vicScore, (VIRTUAL_WIDTH - MeasureText(vicScore, 10)) / 2, 125, 10, COLOR_ROMAN_GOLD);
 
                 const char* contPrompt = "RETURNING TO MAIN SCREEN...";

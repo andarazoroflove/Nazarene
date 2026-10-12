@@ -6,12 +6,18 @@ static int s_credits = 2;
 static int s_title_timer = 0;
 static int s_camera_x = 0;
 
+static int s_mission = 1;
+static bool s_m1_cleared = false;
+static bool s_m2_cleared = false;
+static bool s_m3_cleared = false;
+static int s_map_timer = 0;
+
 static GbaPlayer s_player;
 static GbaNail s_nails[4];
-static GbaEnemy s_enemies[12];
+static GbaEnemy s_enemies[14];
 static int s_enemy_count = 0;
 static GbaBasket s_baskets[4];
-static GbaPlatform s_platforms[16];
+static GbaPlatform s_platforms[18];
 static int s_platform_count = 0;
 
 static int s_continue_timer = 0;
@@ -46,45 +52,86 @@ static void reset_level(bool resetLives) {
 
     for (int i = 0; i < 4; ++i) s_nails[i].active = false;
 
-    // Place 4 Loaves and Fishes Wicker Baskets
-    s_baskets[0] = (GbaBasket){ 340, GBA_GROUND_Y - 14, false };
-    s_baskets[1] = (GbaBasket){ 680, GBA_UPPER_Y - 14, false };
-    s_baskets[2] = (GbaBasket){ 1120, GBA_UPPER_Y - 14, false };
-    s_baskets[3] = (GbaBasket){ 1540, GBA_GROUND_Y - 14, false };
+    s_platform_count = 0;
+    s_enemy_count = 0;
     s_gate_open = false;
 
-    // Setup Platforms
-    s_platform_count = 0;
-    // Upper Balconies & Aqueducts
-    s_platforms[s_platform_count++] = (GbaPlatform){ 220, GBA_UPPER_Y, 200, 8, true };
-    s_platforms[s_platform_count++] = (GbaPlatform){ 540, GBA_UPPER_Y, 240, 8, true };
-    s_platforms[s_platform_count++] = (GbaPlatform){ 980, GBA_UPPER_Y, 260, 8, true };
-    s_platforms[s_platform_count++] = (GbaPlatform){ 1380, GBA_UPPER_Y, 220, 8, true };
-    // Crates
-    s_platforms[s_platform_count++] = (GbaPlatform){ 450, GBA_CRATE_Y, 40, 28, false };
-    s_platforms[s_platform_count++] = (GbaPlatform){ 880, GBA_CRATE_Y, 48, 28, false };
-    s_platforms[s_platform_count++] = (GbaPlatform){ 1280, GBA_CRATE_Y, 40, 28, false };
+    if (s_mission == 2) {
+        // ==============================================================
+        // GBA STAGE 2: INSIDE THE TEMPLE OF JERUSALEM
+        // Two-level platforms (Tier 1 at 100, Tier 2 at 64), Censers, Sicarii
+        // ==============================================================
+        // Place 4 Sacred Censers
+        s_baskets[0] = (GbaBasket){ 320, 100 - 14, false };
+        s_baskets[1] = (GbaBasket){ 660, 64 - 14, false };
+        s_baskets[2] = (GbaBasket){ 1100, 64 - 14, false };
+        s_baskets[3] = (GbaBasket){ 1500, 100 - 14, false };
 
-    // Setup Enemies across the Jerusalem stage
-    s_enemy_count = 0;
-    // Patrol Guards
-    s_enemies[s_enemy_count++] = (GbaEnemy){ 280, GBA_GROUND_Y - 26, 0, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
-    s_enemies[s_enemy_count++] = (GbaEnemy){ 620, GBA_UPPER_Y - 26, 0, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
-    s_enemies[s_enemy_count++] = (GbaEnemy){ 1040, GBA_UPPER_Y - 26, 0, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
-    s_enemies[s_enemy_count++] = (GbaEnemy){ 1420, GBA_GROUND_Y - 26, 0, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        // Two-Level Platform Layout (Tier 1 Y=100, Tier 2 Y=64)
+        s_platforms[s_platform_count++] = (GbaPlatform){ 200, 100, 180, 6, true };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 260, 64, 140, 6, true };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 520, 100, 200, 6, true };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 580, 64, 160, 6, true };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 940, 100, 220, 6, true };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 1020, 64, 160, 6, true };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 1360, 100, 200, 6, true };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 1420, 64, 150, 6, true };
 
-    // Syrian Auxiliary Archers
-    s_enemies[s_enemy_count++] = (GbaEnemy){ 480, GBA_GROUND_Y - 26, 1, 1, 1, true, true, 0, 0, 0, false, true, 0, 0, 0 };
-    s_enemies[s_enemy_count++] = (GbaEnemy){ 720, GBA_UPPER_Y - 26, 1, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
-    s_enemies[s_enemy_count++] = (GbaEnemy){ 1200, GBA_UPPER_Y - 26, 1, 1, 1, true, true, 0, 0, 0, false, true, 0, 0, 0 };
-    s_enemies[s_enemy_count++] = (GbaEnemy){ 1620, GBA_GROUND_Y - 26, 1, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        // Step blocks
+        s_platforms[s_platform_count++] = (GbaPlatform){ 420, GBA_CRATE_Y, 36, 28, false };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 860, GBA_CRATE_Y, 36, 28, false };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 1260, GBA_CRATE_Y, 36, 28, false };
 
-    // Heavy Legionaries with Scutum Shield
-    s_enemies[s_enemy_count++] = (GbaEnemy){ 820, GBA_GROUND_Y - 26, 2, 2, 2, true, true, 0, 0, 0, false, false, 0, 0, 0 };
-    s_enemies[s_enemy_count++] = (GbaEnemy){ 1340, GBA_GROUND_Y - 26, 2, 2, 2, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        // Enemies: Sicarii Assassins (type=4), Guards, Archers, Malchus (type=3)
+        // 1. Sicarii Assassin on Entrance Wall (Clinging, type=4)
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 260, 36, 4, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        // 2. Heavy Temple Guard
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 360, GBA_GROUND_Y - 26, 2, 2, 2, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        // 3. High Tier Archer (at Y=64)
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 620, 64 - 26, 1, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        // 4. Sicarii on Column
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 700, 40, 4, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        // 5. Tier 1 Guard
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 980, 100 - 26, 0, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        // 6. Heavy Guard
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 1180, GBA_GROUND_Y - 26, 2, 2, 2, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        // 7. High Sicarii Assassin
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 1380, 36, 4, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        // 8. Tier 1 Archer
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 1460, 100 - 26, 1, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        // 9. Stage 2 Boss: Commander Malchus
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 1980, GBA_GROUND_Y - 42, 3, 12, 12, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+    } else {
+        // Stage 1 (or 3): Jerusalem Outskirts / Streets
+        s_baskets[0] = (GbaBasket){ 340, GBA_GROUND_Y - 14, false };
+        s_baskets[1] = (GbaBasket){ 680, GBA_UPPER_Y - 14, false };
+        s_baskets[2] = (GbaBasket){ 1120, GBA_UPPER_Y - 14, false };
+        s_baskets[3] = (GbaBasket){ 1540, GBA_GROUND_Y - 14, false };
 
-    // Stage 1 Boss: Centurion Gladiator Brutus
-    s_enemies[s_enemy_count++] = (GbaEnemy){ 1980, GBA_GROUND_Y - 42, 3, 10, 10, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 220, GBA_UPPER_Y, 200, 8, true };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 540, GBA_UPPER_Y, 240, 8, true };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 980, GBA_UPPER_Y, 260, 8, true };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 1380, GBA_UPPER_Y, 220, 8, true };
+
+        s_platforms[s_platform_count++] = (GbaPlatform){ 450, GBA_CRATE_Y, 40, 28, false };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 880, GBA_CRATE_Y, 48, 28, false };
+        s_platforms[s_platform_count++] = (GbaPlatform){ 1280, GBA_CRATE_Y, 40, 28, false };
+
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 280, GBA_GROUND_Y - 26, 0, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 620, GBA_UPPER_Y - 26, 0, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 1040, GBA_UPPER_Y - 26, 0, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 1420, GBA_GROUND_Y - 26, 0, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 480, GBA_GROUND_Y - 26, 1, 1, 1, true, true, 0, 0, 0, false, true, 0, 0, 0 };
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 720, GBA_UPPER_Y - 26, 1, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 1200, GBA_UPPER_Y - 26, 1, 1, 1, true, true, 0, 0, 0, false, true, 0, 0, 0 };
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 1620, GBA_GROUND_Y - 26, 1, 1, 1, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 820, GBA_GROUND_Y - 26, 2, 2, 2, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 1340, GBA_GROUND_Y - 26, 2, 2, 2, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+
+        s_enemies[s_enemy_count++] = (GbaEnemy){ 1980, GBA_GROUND_Y - 42, 3, 10, 10, true, true, 0, 0, 0, false, false, 0, 0, 0 };
+    }
 
     s_camera_x = 0;
     gba_audio_play_bgm(BGM_STAGE);
@@ -149,9 +196,24 @@ void gba_game_update(uint16_t keysDown, uint16_t keysPressed) {
         if ((keysPressed & KEY_START) || (keysPressed & KEY_A)) {
             if (s_credits > 0) {
                 s_credits--;
-                s_state = GAME_STATE_PLAYING;
-                reset_level(true);
+                s_mission = 1;
+                s_m1_cleared = false;
+                s_m2_cleared = false;
+                s_m3_cleared = false;
+                s_state = GAME_STATE_MISSION_MAP;
+                s_map_timer = 0;
+                gba_audio_play_sfx(SFX_COIN);
             }
+        }
+        return;
+    }
+
+    if (s_state == GAME_STATE_MISSION_MAP) {
+        s_map_timer++;
+        if (s_map_timer > 30 && ((keysPressed & (KEY_START | KEY_A | KEY_B)) || s_map_timer >= 240)) {
+            reset_level(s_mission == 1);
+            s_state = GAME_STATE_PLAYING;
+            gba_audio_play_sfx(SFX_COIN);
         }
         return;
     }
@@ -194,7 +256,20 @@ void gba_game_update(uint16_t keysDown, uint16_t keysPressed) {
             s_player.y -= 1; // Ascend smoothly to heaven
         }
         if (s_player.stateTimer > 180) {
-            s_state = GAME_STATE_TITLE;
+            if (s_mission == 1) {
+                s_m1_cleared = true;
+                s_mission = 2;
+                s_state = GAME_STATE_MISSION_MAP;
+                s_map_timer = 0;
+            } else if (s_mission == 2) {
+                s_m2_cleared = true;
+                s_mission = 3;
+                s_state = GAME_STATE_MISSION_MAP;
+                s_map_timer = 0;
+            } else {
+                s_m3_cleared = true;
+                s_state = GAME_STATE_TITLE;
+            }
         }
         return;
     }
@@ -510,6 +585,41 @@ void gba_game_update(uint16_t keysDown, uint16_t keysPressed) {
             } else {
                 e->attackTimer = 0;
             }
+        } else if (e->type == 4) {
+            // Sicarii Shadow Assassin (Shinobi-style wall-clinging ninja Judean)
+            if (e->bossState == 0) { // WALL_CLING
+                if (distToPlayer < 75) {
+                    e->bossState = 1; // Crawl down column
+                }
+            } else if (e->bossState == 1) { // WALL_CRAWL
+                e->y += 2;
+                e->animTimer++;
+                if (e->animTimer >= 6) {
+                    e->animTimer = 0;
+                    e->animFrame = (e->animFrame + 1) % 2;
+                }
+                int landY = (s_mission == 2 && e->x < 1200) ? (100 - 26) : (GBA_GROUND_Y - 26);
+                if (e->y >= landY) {
+                    e->y = landY;
+                    e->bossState = 2; // HOP
+                }
+            } else if (e->bossState == 2) { // HOP
+                if (e->x > s_player.x) { e->x -= 2; e->facingLeft = true; }
+                else { e->x += 2; e->facingLeft = false; }
+                e->attackTimer++;
+                if (e->attackTimer >= 20) {
+                    e->bossState = 3; // STAND & STALK
+                    e->attackTimer = 0;
+                }
+            } else { // STAND & STALK
+                if (e->x > s_player.x + 30) { e->x -= 1; e->facingLeft = true; }
+                else if (e->x < s_player.x - 30) { e->x += 1; e->facingLeft = false; }
+                if (distToPlayer < 24 && s_player.invulnTimer <= 0) {
+                    s_player.hp--;
+                    s_player.invulnTimer = 40;
+                    gba_audio_play_sfx(SFX_PLAYER_HURT);
+                }
+            }
         }
     }
 
@@ -538,12 +648,17 @@ void gba_game_draw(void) {
             gba_draw_string("PRESS START", 84, 82, COL_TEXT_GOLD);
         }
 
-        gba_draw_string("MISSION 1: JERUSALEM", 56, 104, COL_TEXT_WHITE);
+        gba_draw_string("CAMPAIGN: JERUSALEM", 56, 104, COL_TEXT_WHITE);
 
         // Credits display
         gba_draw_string("CREDIT", 8, 144, COL_TEXT_GOLD);
         gba_draw_number(s_credits, 52, 144, COL_TEXT_GOLD);
         gba_draw_string("SELECT: ADD COIN", 120, 144, COL_TEXT_WHITE);
+        return;
+    }
+
+    if (s_state == GAME_STATE_MISSION_MAP) {
+        gba_draw_mission_map(s_mission, s_m1_cleared, s_m2_cleared, s_m3_cleared, s_map_timer);
         return;
     }
 
@@ -568,8 +683,12 @@ void gba_game_draw(void) {
     // GAMEPLAY RENDERING
     // -----------------------------------------------------------------------
 
-    // 1. Parallax Backgrounds (Sunset, Migdal David, Villas, Road)
-    gba_draw_parallax_background(s_camera_x, s_player.stateTimer);
+    // 1. Parallax Backgrounds (Streets or Temple Sanctuary)
+    if (s_mission == 2) {
+        gba_draw_temple_background(s_camera_x, s_player.stateTimer);
+    } else {
+        gba_draw_parallax_background(s_camera_x, s_player.stateTimer);
+    }
 
     // 2. Platforms & Crates
     for (int i = 0; i < s_platform_count; ++i) {
@@ -577,35 +696,41 @@ void gba_game_draw(void) {
         int sx = p->x - s_camera_x;
         if (sx + p->w < 0 || sx >= GBA_SCREEN_WIDTH) continue;
         if (p->isOneWay) {
-            // Stone Balcony ledge
-            gba_draw_rect(sx, p->y, p->w, 4, COL_STONE_LIGHT);
-            gba_draw_rect(sx, p->y + 4, p->w, 4, COL_STONE_DARK);
+            // Stone / Marble Balcony ledge
+            uint8_t topCol = (s_mission == 2) ? COL_TEMPLE_MARBLE : COL_STONE_LIGHT;
+            uint8_t botCol = (s_mission == 2) ? COL_TEMPLE_SHADOW : COL_STONE_DARK;
+            gba_draw_rect(sx, p->y, p->w, 4, topCol);
+            gba_draw_rect(sx, p->y + 4, p->w, 4, botCol);
         } else {
-            // Wooden Crate
+            // Wooden Crate / Step block
             gba_draw_rect(sx, p->y, p->w, p->h, COL_CRATE_MID);
             gba_draw_rect_outline(sx, p->y, p->w, p->h, COL_CRATE_DARK);
             gba_draw_line(sx, p->y, sx + p->w, p->y + p->h, COL_CRATE_LIGHT);
         }
     }
 
-    // 3. Portcullis Arena Gate
+    // 3. Portcullis Arena Gate / Sanctuary Veil
     int gateSX = GBA_ARENA_GATE_X - s_camera_x;
     if (gateSX >= -20 && gateSX <= GBA_SCREEN_WIDTH + 20) {
         int gateY = s_gate_open ? (GBA_GROUND_Y - 50) : (GBA_GROUND_Y - 26);
         for (int gy = gateY; gy <= GBA_GROUND_Y; gy += 4) {
-            gba_draw_line(gateSX, gy, gateSX + 14, gy, COL_IRON_GATE);
+            gba_draw_line(gateSX, gy, gateSX + 14, gy, (s_mission == 2) ? COL_GOLD_BRIGHT : COL_IRON_GATE);
         }
         for (int gx = gateSX; gx <= gateSX + 14; gx += 3) {
-            gba_draw_line(gx, gateY, gx, GBA_GROUND_Y, COL_IRON_GATE);
+            gba_draw_line(gx, gateY, gx, GBA_GROUND_Y, (s_mission == 2) ? COL_GOLD_BRIGHT : COL_IRON_GATE);
         }
     }
 
-    // 4. Baskets
+    // 4. Baskets / Sacred Censers
     for (int i = 0; i < 4; ++i) {
         if (s_baskets[i].collected) continue;
         int sx = s_baskets[i].x - s_camera_x;
         if (sx >= -16 && sx <= GBA_SCREEN_WIDTH) {
-            gba_draw_basket(sx, s_baskets[i].y);
+            if (s_mission == 2) {
+                gba_draw_censer(sx, s_baskets[i].y);
+            } else {
+                gba_draw_basket(sx, s_baskets[i].y);
+            }
         }
     }
 
@@ -625,6 +750,8 @@ void gba_game_draw(void) {
             gba_draw_heavy(sx, e->y, e->facingLeft, false, e->animFrame, hurt);
         } else if (e->type == 3) {
             gba_draw_boss(sx, e->y, e->facingLeft, e->bossState, e->animFrame, hurt);
+        } else if (e->type == 4) {
+            gba_draw_sicarii(sx, e->y, e->facingLeft, e->bossState, e->animFrame, hurt);
         }
     }
 
@@ -641,7 +768,7 @@ void gba_game_draw(void) {
         gba_draw_nail(nsx, s_nails[i].y, s_nails[i].vx < 0);
     }
 
-    // 8. HUD DISPLAY (Life, Score, Baskets, Boss Health)
+    // 8. HUD DISPLAY (Life, Score, Baskets/Censers, Boss Health)
     // Score
     gba_draw_string("1UP", 8, 4, COL_TEXT_GOLD);
     gba_draw_number(s_player.score, 32, 4, COL_TEXT_WHITE);
@@ -664,10 +791,11 @@ void gba_game_draw(void) {
         }
     }
 
-    // Baskets collected
+    // Baskets / Censers collected
     int bCount = 0;
     for (int i = 0; i < 4; ++i) if (s_baskets[i].collected) bCount++;
-    gba_draw_string("BASKETS", 150, 4, COL_TEXT_GOLD);
+    const char* objLabel = (s_mission == 2) ? "CENSERS" : "BASKETS";
+    gba_draw_string(objLabel, 150, 4, COL_TEXT_GOLD);
     gba_draw_number(bCount, 200, 4, (bCount >= 4) ? COL_TEXT_GOLD : COL_TEXT_WHITE);
     gba_draw_string("/4", 208, 4, COL_TEXT_WHITE);
 
@@ -680,7 +808,8 @@ void gba_game_draw(void) {
     if (s_player.x >= GBA_ARENA_MIN_X) {
         for (int i = 0; i < s_enemy_count; ++i) {
             if (s_enemies[i].type == 3 && s_enemies[i].active) {
-                gba_draw_string("BRUTUS", 84, 148, COL_TEXT_RED);
+                const char* bossName = (s_mission == 2) ? "MALCHUS" : "BRUTUS";
+                gba_draw_string(bossName, 80, 148, COL_TEXT_RED);
                 int hp = s_enemies[i].hp;
                 for (int b = 0; b < 10; ++b) {
                     uint8_t col = (b < hp) ? COL_HEART_RED : COL_TEXT_DARK;

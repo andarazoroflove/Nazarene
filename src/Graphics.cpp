@@ -11,6 +11,9 @@ Texture2D GraphicsManager::s_bgSkyDistant = {};
 Texture2D GraphicsManager::s_bgTempleOfDavid = {};
 Texture2D GraphicsManager::s_bgMidJerusalemVillas = {};
 Texture2D GraphicsManager::s_bgNearStreetscape = {};
+Texture2D GraphicsManager::s_bgTempleSanctuary = {};
+Texture2D GraphicsManager::s_bgTempleColonnade = {};
+Texture2D GraphicsManager::s_texMissionMap = {};
 Texture2D GraphicsManager::s_texTitleSplash = {};
 bool GraphicsManager::s_initialized = false;
 bool GraphicsManager::s_hasExternalTextures = false;
@@ -107,6 +110,28 @@ namespace PixelArt {
             if (y < 0 || y >= h) continue;
             int dxMax = static_cast<int>(sqrtf(static_cast<float>(r * r - dy * dy)));
             HLine(p, w, h, cx - dxMax, cx + dxMax, y, c);
+        }
+    }
+
+    inline void OutlineCircle(Color* p, int w, int h, int cx, int cy, int r, Color c) {
+        int x = 0, y = r;
+        int d = 3 - 2 * r;
+        auto drawPoints = [&](int px, int py) {
+            Set(p, w, h, cx + px, cy + py, c);
+            Set(p, w, h, cx - px, cy + py, c);
+            Set(p, w, h, cx + px, cy - py, c);
+            Set(p, w, h, cx - px, cy - py, c);
+            Set(p, w, h, cx + py, cy + px, c);
+            Set(p, w, h, cx - py, cy + px, c);
+            Set(p, w, h, cx + py, cy - px, c);
+            Set(p, w, h, cx - py, cy - px, c);
+        };
+        drawPoints(x, y);
+        while (y >= x) {
+            x++;
+            if (d > 0) { y--; d = d + 4 * (x - y) + 10; }
+            else { d = d + 4 * x + 6; }
+            drawPoints(x, y);
         }
     }
 
@@ -1617,6 +1642,368 @@ void GraphicsManager::GenerateAllProceduralSprites() {
     HLine(wrathIco.data(), WRI_W, WRI_H, 5, 6, 8, Color{ 60, 20, 10, 255 });
     s_sprites[SPR_ICON_WRATH] = CreateTextureFromPixels(WRI_W, WRI_H, wrathIco.data());
     s_sprites[SPR_ICON_BASKET] = s_sprites[SPR_BASKET_LOAVES_FISHES];
+
+    // =========================================================================
+    // SICARII SHADOW ASSASSIN (Judean Zealot Dagger-Man / Shinobi Wall-Crawler)
+    // =========================================================================
+    constexpr int SIC_W = 24, SIC_H = 32;
+    std::vector<Color> sic(SIC_W * SIC_H);
+
+    auto PaintSicarii = [&](Color* p, int action) {
+        // action: 0=Cling, 1=Crawl0, 2=Crawl1, 3=Hop, 4=Stand, 5=Slash, 6=Throw, 7=Hurt
+        for (int i = 0; i < SIC_W * SIC_H; ++i) p[i] = BLANK;
+
+        Color cowlHi     = Color{ 48,  56,  80, 255 };
+        Color cowlMid    = COLOR_SICARII_DARK;          // 28, 32, 48
+        Color cowlDark   = Color{ 16,  18,  28, 255 };
+        Color wrapHi     = Color{ 70,  92, 138, 255 };
+        Color wrapMid    = COLOR_SICARII_BLUE;          // 48, 65, 98
+        Color wrapDark   = Color{ 30,  40,  62, 255 };
+        Color skinHi     = Color{ 220, 168, 122, 255 };
+        Color skinMid    = Color{ 180, 128,  88, 255 };
+        Color skinDark   = Color{ 130,  85,  52, 255 };
+        (void)skinDark;
+        Color eyeAmber   = Color{ 255, 215,  55, 255 }; // Fierce piercing gaze in hood shadow
+        Color leatherMid = Color{ 110,  68,  34, 255 };
+        Color leatherHi  = Color{ 165, 110,  55, 255 };
+        Color bladeEdge  = COLOR_SICARII_BLADE;         // 230, 240, 255
+        Color bronzeGleam= Color{ 245, 195,  70, 255 };
+
+        if (action == 0) {
+            // --- 0: WALL CLING (Clinging flat vertically to column/wall) ---
+            FillRect(p, SIC_W, SIC_H, 4, 8, 9, 14, cowlMid);
+            HLine(p, SIC_W, SIC_H, 4, 12, 8, cowlDark);
+            VLine(p, SIC_W, SIC_H, 4, 8, 21, cowlDark);
+            FillCircle(p, SIC_W, SIC_H, 8, 5, 4, cowlMid);
+            FillCircle(p, SIC_W, SIC_H, 8, 5, 3, cowlDark);
+            FillRect(p, SIC_W, SIC_H, 9, 4, 4, 4, Color{ 10, 12, 18, 255 });
+            Set(p, SIC_W, SIC_H, 10, 5, eyeAmber);
+            Set(p, SIC_W, SIC_H, 11, 5, Color{ 255, 255, 255, 240 });
+            FillRect(p, SIC_W, SIC_H, 2, 2, 4, 3, skinMid);
+            HLine(p, SIC_W, SIC_H, 2, 5, 2, skinHi);
+            VLine(p, SIC_W, SIC_H, 2, 1, 4, leatherMid);
+            FillRect(p, SIC_W, SIC_H, 11, 10, 3, 4, skinMid);
+            HLine(p, SIC_W, SIC_H, 13, 19, 14, bladeEdge);
+            Set(p, SIC_W, SIC_H, 19, 13, bladeEdge);
+            Set(p, SIC_W, SIC_H, 12, 14, bronzeGleam);
+            FillRect(p, SIC_W, SIC_H, 3, 22, 6, 4, wrapMid);
+            FillRect(p, SIC_W, SIC_H, 2, 25, 4, 3, skinMid);
+            HLine(p, SIC_W, SIC_H, 1, 4, 28, leatherMid);
+            VLine(p, SIC_W, SIC_H, 13, 15, 25, cowlMid);
+            VLine(p, SIC_W, SIC_H, 14, 18, 27, cowlDark);
+        }
+        else if (action == 1 || action == 2) {
+            // --- 1 & 2: WALL CRAWL (Sliding down vertical column) ---
+            int phase = (action == 1) ? 0 : 1;
+            FillRect(p, SIC_W, SIC_H, 5, 9, 8, 12, cowlMid);
+            OutlineRect(p, SIC_W, SIC_H, 5, 9, 8, 12, cowlDark);
+            FillCircle(p, SIC_W, SIC_H, 9, 5, 4, cowlMid);
+            FillRect(p, SIC_W, SIC_H, 8, 5, 4, 3, Color{ 10, 12, 18, 255 });
+            Set(p, SIC_W, SIC_H, 9, 6, eyeAmber);
+            if (phase == 0) {
+                FillRect(p, SIC_W, SIC_H, 3, 1, 3, 6, skinMid);
+                Set(p, SIC_W, SIC_H, 2, 1, leatherMid);
+                FillRect(p, SIC_W, SIC_H, 12, 16, 4, 7, skinMid);
+                Set(p, SIC_W, SIC_H, 15, 23, leatherMid);
+                FillRect(p, SIC_W, SIC_H, 4, 21, 6, 5, wrapMid);
+                FillRect(p, SIC_W, SIC_H, 2, 26, 4, 3, skinMid);
+                Line(p, SIC_W, SIC_H, 13, 10, 18, 16, bladeEdge);
+            } else {
+                FillRect(p, SIC_W, SIC_H, 12, 2, 3, 6, skinMid);
+                Set(p, SIC_W, SIC_H, 14, 2, leatherMid);
+                FillRect(p, SIC_W, SIC_H, 3, 16, 4, 7, skinMid);
+                Set(p, SIC_W, SIC_H, 2, 23, leatherMid);
+                FillRect(p, SIC_W, SIC_H, 6, 21, 6, 5, wrapMid);
+                FillRect(p, SIC_W, SIC_H, 5, 26, 4, 3, skinMid);
+                Line(p, SIC_W, SIC_H, 12, 11, 17, 17, bladeEdge);
+            }
+            Line(p, SIC_W, SIC_H, 11, 10, 16, 4, cowlMid);
+            Line(p, SIC_W, SIC_H, 12, 11, 18, 5, cowlDark);
+        }
+        else if (action == 3) {
+            // --- 3: HOP (Shinobi acrobatic mid-air flip) ---
+            FillCircle(p, SIC_W, SIC_H, 12, 14, 9, cowlMid);
+            OutlineCircle(p, SIC_W, SIC_H, 12, 14, 9, cowlDark);
+            FillCircle(p, SIC_W, SIC_H, 11, 11, 4, cowlDark);
+            Set(p, SIC_W, SIC_H, 13, 10, eyeAmber);
+            Set(p, SIC_W, SIC_H, 14, 10, Color{ 255, 255, 255, 240 });
+            Line(p, SIC_W, SIC_H, 7, 14, 17, 14, wrapHi);
+            Line(p, SIC_W, SIC_H, 6, 16, 18, 16, wrapMid);
+            FillRect(p, SIC_W, SIC_H, 7, 21, 4, 4, leatherMid);
+            FillRect(p, SIC_W, SIC_H, 13, 21, 4, 4, leatherMid);
+            Line(p, SIC_W, SIC_H, 18, 6, 22, 12, bladeEdge);
+            Set(p, SIC_W, SIC_H, 23, 11, Color{ 255, 255, 255, 255 });
+            Line(p, SIC_W, SIC_H, 3, 18, 7, 24, bladeEdge);
+        }
+        else if (action == 4) {
+            // --- 4: STAND (Agile combat stance) ---
+            FillCircle(p, SIC_W, SIC_H, 11, 6, 4, cowlMid);
+            HLine(p, SIC_W, SIC_H, 8, 14, 3, cowlHi);
+            FillRect(p, SIC_W, SIC_H, 9, 6, 6, 4, Color{ 12, 14, 22, 255 });
+            Set(p, SIC_W, SIC_H, 12, 7, eyeAmber);
+            Set(p, SIC_W, SIC_H, 13, 7, Color{ 255, 255, 255, 240 });
+            HLine(p, SIC_W, SIC_H, 10, 14, 9, wrapMid);
+            HLine(p, SIC_W, SIC_H, 11, 13, 10, wrapDark);
+            FillRect(p, SIC_W, SIC_H, 7, 10, 10, 3, cowlMid);
+            HLine(p, SIC_W, SIC_H, 7, 16, 10, cowlHi);
+            FillRect(p, SIC_W, SIC_H, 8, 13, 8, 8, wrapMid);
+            Line(p, SIC_W, SIC_H, 8, 13, 15, 20, leatherMid);
+            Line(p, SIC_W, SIC_H, 15, 13, 8, 20, leatherMid);
+            Set(p, SIC_W, SIC_H, 11, 16, bronzeGleam);
+            HLine(p, SIC_W, SIC_H, 7, 16, 21, leatherMid);
+            Set(p, SIC_W, SIC_H, 11, 21, bronzeGleam);
+            VLine(p, SIC_W, SIC_H, 6, 13, 24, cowlDark);
+            VLine(p, SIC_W, SIC_H, 5, 15, 26, cowlMid);
+            FillRect(p, SIC_W, SIC_H, 15, 14, 3, 4, skinMid);
+            Line(p, SIC_W, SIC_H, 17, 17, 22, 19, bladeEdge);
+            Set(p, SIC_W, SIC_H, 23, 18, bladeEdge);
+            Set(p, SIC_W, SIC_H, 17, 17, bronzeGleam);
+            FillRect(p, SIC_W, SIC_H, 5, 12, 3, 3, skinMid);
+            Line(p, SIC_W, SIC_H, 4, 11, 1, 7, bladeEdge);
+            Set(p, SIC_W, SIC_H, 1, 6, bladeEdge);
+            FillRect(p, SIC_W, SIC_H, 7, 22, 4, 6, wrapDark);
+            FillRect(p, SIC_W, SIC_H, 13, 22, 4, 6, wrapMid);
+            FillRect(p, SIC_W, SIC_H, 6, 28, 5, 3, leatherMid);
+            FillRect(p, SIC_W, SIC_H, 13, 28, 5, 3, leatherMid);
+            HLine(p, SIC_W, SIC_H, 6, 11, 31, leatherHi);
+            HLine(p, SIC_W, SIC_H, 13, 18, 31, leatherHi);
+        }
+        else if (action == 5) {
+            // --- 5: SLASH (Double-bladed cross slash) ---
+            FillCircle(p, SIC_W, SIC_H, 14, 6, 4, cowlMid);
+            FillRect(p, SIC_W, SIC_H, 14, 6, 5, 3, Color{ 12, 14, 22, 255 });
+            Set(p, SIC_W, SIC_H, 16, 7, eyeAmber);
+            FillRect(p, SIC_W, SIC_H, 10, 11, 9, 8, wrapMid);
+            Line(p, SIC_W, SIC_H, 9, 12, 1, 8, cowlMid);
+            Line(p, SIC_W, SIC_H, 8, 13, 0, 10, cowlDark);
+            Line(p, SIC_W, SIC_H, 8, 15, 2, 14, cowlMid);
+            FillRect(p, SIC_W, SIC_H, 17, 11, 4, 3, skinMid);
+            FillRect(p, SIC_W, SIC_H, 16, 15, 4, 3, skinMid);
+            Line(p, SIC_W, SIC_H, 16, 6, 23, 17, bladeEdge);
+            Line(p, SIC_W, SIC_H, 16, 22, 23, 11, bladeEdge);
+            Set(p, SIC_W, SIC_H, 22, 14, Color{ 255, 255, 255, 255 });
+            FillRect(p, SIC_W, SIC_H, 5, 22, 5, 6, wrapDark);
+            FillRect(p, SIC_W, SIC_H, 15, 20, 5, 7, wrapMid);
+            FillRect(p, SIC_W, SIC_H, 4, 28, 5, 3, leatherMid);
+            FillRect(p, SIC_W, SIC_H, 17, 27, 6, 4, leatherMid);
+        }
+        else if (action == 6) {
+            // --- 6: THROW (Spinning dagger toss) ---
+            FillCircle(p, SIC_W, SIC_H, 10, 6, 4, cowlMid);
+            FillRect(p, SIC_W, SIC_H, 10, 6, 5, 3, Color{ 12, 14, 22, 255 });
+            Set(p, SIC_W, SIC_H, 12, 7, eyeAmber);
+            FillRect(p, SIC_W, SIC_H, 7, 11, 8, 9, wrapMid);
+            FillRect(p, SIC_W, SIC_H, 14, 10, 6, 3, skinMid);
+            HLine(p, SIC_W, SIC_H, 14, 19, 10, skinHi);
+            Set(p, SIC_W, SIC_H, 20, 11, skinHi);
+            HLine(p, SIC_W, SIC_H, 20, 23, 11, Color{ 255, 255, 255, 220 });
+            FillRect(p, SIC_W, SIC_H, 3, 13, 4, 3, skinMid);
+            Line(p, SIC_W, SIC_H, 3, 14, 0, 18, bladeEdge);
+            FillRect(p, SIC_W, SIC_H, 6, 21, 4, 7, wrapMid);
+            FillRect(p, SIC_W, SIC_H, 12, 21, 5, 6, wrapDark);
+            FillRect(p, SIC_W, SIC_H, 5, 28, 5, 3, leatherMid);
+            FillRect(p, SIC_W, SIC_H, 14, 27, 5, 4, leatherMid);
+        }
+        else if (action == 7) {
+            // --- 7: HURT ---
+            Color hurtCowl = Color{ 110, 50, 70, 255 };
+            Color hurtSkin = Color{ 255, 140, 140, 255 };
+            FillCircle(p, SIC_W, SIC_H, 8, 6, 4, hurtCowl);
+            FillRect(p, SIC_W, SIC_H, 6, 11, 8, 9, hurtCowl);
+            FillRect(p, SIC_W, SIC_H, 13, 12, 4, 3, hurtSkin);
+            FillRect(p, SIC_W, SIC_H, 2, 9, 4, 3, hurtSkin);
+            FillRect(p, SIC_W, SIC_H, 4, 21, 5, 7, cowlDark);
+            FillRect(p, SIC_W, SIC_H, 11, 21, 5, 6, cowlDark);
+        }
+    };
+
+    PaintSicarii(sic.data(), 0);
+    s_sprites[SPR_SICARII_WALL_CLING] = CreateTextureFromPixels(SIC_W, SIC_H, sic.data());
+    PaintSicarii(sic.data(), 1);
+    s_sprites[SPR_SICARII_WALL_CRAWL_0] = CreateTextureFromPixels(SIC_W, SIC_H, sic.data());
+    PaintSicarii(sic.data(), 2);
+    s_sprites[SPR_SICARII_WALL_CRAWL_1] = CreateTextureFromPixels(SIC_W, SIC_H, sic.data());
+    PaintSicarii(sic.data(), 3);
+    s_sprites[SPR_SICARII_HOP] = CreateTextureFromPixels(SIC_W, SIC_H, sic.data());
+    PaintSicarii(sic.data(), 4);
+    s_sprites[SPR_SICARII_STAND] = CreateTextureFromPixels(SIC_W, SIC_H, sic.data());
+    PaintSicarii(sic.data(), 5);
+    s_sprites[SPR_SICARII_SLASH] = CreateTextureFromPixels(SIC_W, SIC_H, sic.data());
+    PaintSicarii(sic.data(), 6);
+    s_sprites[SPR_SICARII_THROW] = CreateTextureFromPixels(SIC_W, SIC_H, sic.data());
+    PaintSicarii(sic.data(), 7);
+    s_sprites[SPR_SICARII_HURT] = CreateTextureFromPixels(SIC_W, SIC_H, sic.data());
+
+    // Sicarii Curved Sica Dagger Projectile (8x8)
+    constexpr int DAG_W = 8, DAG_H = 8;
+    std::vector<Color> dagger(DAG_W * DAG_H, BLANK);
+    Line(dagger.data(), DAG_W, DAG_H, 1, 6, 6, 1, COLOR_SICARII_BLADE);
+    Set(dagger.data(), DAG_W, DAG_H, 7, 1, Color{ 255, 255, 255, 255 });
+    Set(dagger.data(), DAG_W, DAG_H, 2, 5, Color{ 200, 220, 245, 255 });
+    Set(dagger.data(), DAG_W, DAG_H, 5, 2, Color{ 255, 255, 255, 240 });
+    Set(dagger.data(), DAG_W, DAG_H, 0, 7, Color{ 215, 160, 45, 255 });
+    Set(dagger.data(), DAG_W, DAG_H, 1, 7, Color{ 160, 105, 30, 255 });
+    s_sprites[SPR_SICARII_DAGGER] = CreateTextureFromPixels(DAG_W, DAG_H, dagger.data());
+
+    // =========================================================================
+    // TEMPLE BOSS: COMMANDER MALCHUS (Temple Guard Master) - 32x48
+    // =========================================================================
+    constexpr int TBW = 32, TBH = 48;
+    std::vector<Color> tboss(TBW * TBH);
+
+    auto PaintTempleBoss = [&](Color* p, int action) {
+        // action: 0=Idle, 1=Walk0, 2=Walk1, 3=Slash, 4=Slam, 5=Hurt, 6=Kneel
+        for (int i = 0; i < TBW * TBH; ++i) p[i] = BLANK;
+
+        bool hurt = (action == 5);
+        Color bronzeHi   = hurt ? Color{ 255, 160, 160, 255 } : Color{ 255, 230, 110, 255 };
+        Color bronzeMid  = hurt ? Color{ 210,  90,  90, 255 } : Color{ 215, 140,  45, 255 };
+        Color bronzeDark = hurt ? Color{ 140,  40,  40, 255 } : Color{ 145,  80,  20, 255 };
+        Color purpleHi   = Color{ 155,  50, 185, 255 };
+        Color purpleMid  = COLOR_TEMPLE_PURPLE; // 95, 25, 115
+        Color purpleDark = Color{  55,  12,  68, 255 };
+        Color goldTrim   = COLOR_TEMPLE_GOLD;
+        Color skinHi     = Color{ 240, 195, 155, 255 };
+        Color skinMid    = Color{ 200, 145, 105, 255 };
+        Color skinDark   = Color{ 145,  95,  60, 255 };
+        (void)skinDark;
+        Color bladeSteel = Color{ 235, 245, 255, 255 };
+        Color bladeDark  = Color{ 150, 170, 195, 255 };
+
+        if (action == 6) {
+            FillCircle(p, TBW, TBH, 14, 18, 5, skinMid);
+            HLine(p, TBW, TBH, 10, 18, 14, Color{ 60, 40, 25, 255 });
+            Set(p, TBW, TBH, 16, 18, Color{ 160, 60, 60, 255 });
+            FillRect(p, TBW, TBH, 9, 23, 13, 10, bronzeMid);
+            OutlineRect(p, TBW, TBH, 9, 23, 13, 10, bronzeDark);
+            FillRect(p, TBW, TBH, 4, 33, 18, 6, purpleMid);
+            HLine(p, TBW, TBH, 3, 23, 38, goldTrim);
+            FillRect(p, TBW, TBH, 7, 34, 7, 8, bronzeMid);
+            FillRect(p, TBW, TBH, 16, 30, 8, 12, bronzeMid);
+            Line(p, TBW, TBH, 20, 42, 30, 43, bladeSteel);
+            Set(p, TBW, TBH, 19, 42, bronzeHi);
+            return;
+        }
+
+        int walkOff = (action == 2) ? 2 : ((action == 1) ? -2 : 0);
+
+        for (int x = 11; x <= 19; ++x) {
+            Set(p, TBW, TBH, x, 1, goldTrim);
+            Set(p, TBW, TBH, x, 2, (x % 2 == 1) ? Color{ 255, 255, 255, 240 } : goldTrim);
+        }
+        FillCircle(p, TBW, TBH, 15, 6, 5, bronzeMid);
+        HLine(p, TBW, TBH, 11, 19, 5, bronzeHi);
+        HLine(p, TBW, TBH, 11, 20, 7, goldTrim);
+        VLine(p, TBW, TBH, 17, 7, 11, bronzeHi);
+        Set(p, TBW, TBH, 18, 8, Color{ 255, 255, 255, 255 });
+        Set(p, TBW, TBH, 19, 8, Color{ 30, 20, 15, 255 });
+        FillRect(p, TBW, TBH, 15, 11, 5, 4, Color{ 55, 40, 30, 255 });
+        Set(p, TBW, TBH, 19, 10, skinMid);
+
+        FillRect(p, TBW, TBH, 6, 13, 5, 22, purpleMid);
+        VLine(p, TBW, TBH, 6, 13, 34, purpleDark);
+        VLine(p, TBW, TBH, 7, 14, 34, purpleHi);
+        HLine(p, TBW, TBH, 6, 11, 35, goldTrim);
+
+        FillRect(p, TBW, TBH, 10, 13, 12, 14, bronzeMid);
+        for (int y = 14; y <= 25; ++y) {
+            for (int x = 11; x <= 20; ++x) {
+                if ((x + y) % 2 == 0) Set(p, TBW, TBH, x, y, bronzeHi);
+                else Set(p, TBW, TBH, x, y, bronzeDark);
+            }
+        }
+        FillRect(p, TBW, TBH, 14, 16, 4, 4, goldTrim);
+        Set(p, TBW, TBH, 15, 17, Color{ 255, 255, 255, 240 });
+        HLine(p, TBW, TBH, 9, 22, 27, goldTrim);
+        for (int x = 11; x <= 20; x += 2) {
+            VLine(p, TBW, TBH, x, 28, 32, purpleDark);
+            Set(p, TBW, TBH, x, 32, goldTrim);
+        }
+
+        if (action == 3) {
+            FillRect(p, TBW, TBH, 18, 14, 8, 4, skinMid);
+            HLine(p, TBW, TBH, 18, 25, 14, skinHi);
+            Line(p, TBW, TBH, 25, 16, 31, 24, bladeSteel);
+            Line(p, TBW, TBH, 24, 17, 30, 25, bladeDark);
+            Set(p, TBW, TBH, 31, 25, Color{ 255, 255, 255, 255 });
+            FillRect(p, TBW, TBH, 23, 13, 3, 4, goldTrim);
+        }
+        else if (action == 4) {
+            FillRect(p, TBW, TBH, 13, 5, 4, 8, skinMid);
+            FillRect(p, TBW, TBH, 15, 2, 4, 8, skinHi);
+            VLine(p, TBW, TBH, 16, 0, 7, bladeSteel);
+            VLine(p, TBW, TBH, 17, 0, 7, bladeSteel);
+            Set(p, TBW, TBH, 16, 8, goldTrim);
+        }
+        else {
+            FillRect(p, TBW, TBH, 20, 15, 4, 8, skinMid);
+            HLine(p, TBW, TBH, 20, 23, 15, bronzeHi);
+            Line(p, TBW, TBH, 22, 21, 25, 36, bladeSteel);
+            Line(p, TBW, TBH, 23, 22, 26, 37, bladeDark);
+            FillRect(p, TBW, TBH, 21, 19, 3, 3, goldTrim);
+        }
+
+        int leftLegX = 11 + walkOff;
+        int rightLegX = 17 - walkOff;
+        FillRect(p, TBW, TBH, leftLegX, 32, 5, 12, bronzeMid);
+        VLine(p, TBW, TBH, leftLegX + 1, 32, 43, bronzeHi);
+        FillRect(p, TBW, TBH, rightLegX, 32, 5, 12, bronzeMid);
+        VLine(p, TBW, TBH, rightLegX + 1, 32, 43, bronzeHi);
+        HLine(p, TBW, TBH, leftLegX - 1, leftLegX + 4, 44, bronzeDark);
+        HLine(p, TBW, TBH, rightLegX - 1, rightLegX + 4, 44, bronzeDark);
+        HLine(p, TBW, TBH, leftLegX - 1, leftLegX + 4, 45, bronzeMid);
+        HLine(p, TBW, TBH, rightLegX - 1, rightLegX + 4, 45, bronzeMid);
+    };
+
+    PaintTempleBoss(tboss.data(), 0);
+    s_sprites[SPR_TEMPLE_BOSS_IDLE] = CreateTextureFromPixels(TBW, TBH, tboss.data());
+    PaintTempleBoss(tboss.data(), 1);
+    s_sprites[SPR_TEMPLE_BOSS_WALK_0] = CreateTextureFromPixels(TBW, TBH, tboss.data());
+    PaintTempleBoss(tboss.data(), 2);
+    s_sprites[SPR_TEMPLE_BOSS_WALK_1] = CreateTextureFromPixels(TBW, TBH, tboss.data());
+    PaintTempleBoss(tboss.data(), 3);
+    s_sprites[SPR_TEMPLE_BOSS_SLASH] = CreateTextureFromPixels(TBW, TBH, tboss.data());
+    PaintTempleBoss(tboss.data(), 4);
+    s_sprites[SPR_TEMPLE_BOSS_SLAM] = CreateTextureFromPixels(TBW, TBH, tboss.data());
+    PaintTempleBoss(tboss.data(), 5);
+    s_sprites[SPR_TEMPLE_BOSS_HURT] = CreateTextureFromPixels(TBW, TBH, tboss.data());
+    PaintTempleBoss(tboss.data(), 6);
+    s_sprites[SPR_TEMPLE_BOSS_KNEEL] = CreateTextureFromPixels(TBW, TBH, tboss.data());
+
+    // Sacred Golden Censer Pickup (18x18)
+    constexpr int CEN_W = 18, CEN_H = 18;
+    std::vector<Color> censer(CEN_W * CEN_H, BLANK);
+    Color censerGoldHi   = COLOR_GOLD_BRIGHT;
+    Color censerGoldMid  = COLOR_GOLD_DARK;
+    Color censerGoldDark = Color{ 175, 120,  25, 255 };
+    Color coalRed        = Color{ 255,  60,  30, 255 };
+    Color coalHot        = Color{ 255, 220, 100, 255 };
+    Color smokeCol       = Color{ 230, 225, 245, 170 };
+
+    Set(censer.data(), CEN_W, CEN_H, 8, 1, censerGoldHi);
+    Set(censer.data(), CEN_W, CEN_H, 9, 1, censerGoldHi);
+    Set(censer.data(), CEN_W, CEN_H, 8, 2, censerGoldDark);
+    Set(censer.data(), CEN_W, CEN_H, 9, 2, censerGoldDark);
+    for (int y = 3; y <= 7; ++y) {
+        if (y % 2 == 1) {
+            Set(censer.data(), CEN_W, CEN_H, 6, y, censerGoldMid);
+            Set(censer.data(), CEN_W, CEN_H, 8, y, censerGoldHi);
+            Set(censer.data(), CEN_W, CEN_H, 11, y, censerGoldMid);
+        }
+    }
+    FillCircle(censer.data(), CEN_W, CEN_H, 8, 10, 4, censerGoldMid);
+    HLine(censer.data(), CEN_W, CEN_H, 5, 12, 10, censerGoldHi);
+    Set(censer.data(), CEN_W, CEN_H, 7, 10, coalRed);
+    Set(censer.data(), CEN_W, CEN_H, 8, 10, coalHot);
+    Set(censer.data(), CEN_W, CEN_H, 10, 10, coalRed);
+    FillCircle(censer.data(), CEN_W, CEN_H, 8, 13, 4, censerGoldMid);
+    HLine(censer.data(), CEN_W, CEN_H, 6, 11, 14, censerGoldDark);
+    HLine(censer.data(), CEN_W, CEN_H, 7, 10, 15, censerGoldHi);
+    Set(censer.data(), CEN_W, CEN_H, 11, 3, smokeCol);
+    Set(censer.data(), CEN_W, CEN_H, 12, 2, smokeCol);
+    Set(censer.data(), CEN_W, CEN_H, 13, 1, smokeCol);
+    Set(censer.data(), CEN_W, CEN_H, 5, 2, smokeCol);
+    s_sprites[SPR_CENSER_GOLD] = CreateTextureFromPixels(CEN_W, CEN_H, censer.data());
 }
 
 // Generate all procedural tiles (16x16 pixels each)
@@ -1895,10 +2282,160 @@ void GraphicsManager::GenerateAllProceduralTiles() {
     Set(p.data(), TW, TH, 12, 5, Color{ 255, 160, 40, 255 });
     Set(p.data(), TW, TH, 12, 4, Color{ 255, 250, 210, 255 }); // White hot flame tip!
     s_tiles[TILE_OIL_LAMP] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 17. TILE_TEMPLE_FLOOR_CHECKER (White & Black Polished Marble Checkerboard)
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            bool whiteCheck = ((x < 8 && y < 8) || (x >= 8 && y >= 8));
+            Color c = whiteCheck ? COLOR_TEMPLE_MARBLE : Color{ 32, 30, 42, 255 };
+            if (x == 0 || x == 8 || y == 0 || y == 8) {
+                c = whiteCheck ? COLOR_TEMPLE_SHADOW : Color{ 18, 16, 24, 255 };
+            } else if (whiteCheck && ((x + y == 5) || (x + y == 19))) {
+                c = Color{ 220, 195, 140, 255 };
+            }
+            p[y * TW + x] = c;
+        }
+    }
+    s_tiles[TILE_TEMPLE_FLOOR_CHECKER] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 18. TILE_TEMPLE_FLOOR_SUB (Hewn White Limestone Foundation)
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            Color c = ((x + y) % 7 == 0) ? COLOR_TEMPLE_SHADOW : COLOR_TEMPLE_MARBLE;
+            p[y * TW + x] = c;
+        }
+    }
+    OutlineRect(p.data(), TW, TH, 0, 0, TW, TH, Color{ 150, 145, 135, 255 });
+    Set(p.data(), TW, TH, 7, 7, COLOR_TEMPLE_GOLD);
+    Set(p.data(), TW, TH, 8, 7, COLOR_TEMPLE_GOLD);
+    Set(p.data(), TW, TH, 7, 8, COLOR_TEMPLE_GOLD);
+    Set(p.data(), TW, TH, 8, 8, COLOR_TEMPLE_GOLD);
+    s_tiles[TILE_TEMPLE_FLOOR_SUB] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 19. TILE_TEMPLE_BALCONY_1 (Mezzanine Ledge - Tier 1 Platform)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 0, 0, TW, 3, COLOR_TEMPLE_MARBLE);
+    HLine(p.data(), TW, TH, 0, TW - 1, 0, Color{ 255, 255, 255, 255 });
+    HLine(p.data(), TW, TH, 0, TW - 1, 2, COLOR_TEMPLE_SHADOW);
+    FillRect(p.data(), TW, TH, 0, 3, TW, 7, COLOR_TEMPLE_CEDAR);
+    HLine(p.data(), TW, TH, 0, TW - 1, 3, COLOR_TEMPLE_GOLD);
+    Set(p.data(), TW, TH, 3, 6, COLOR_TEMPLE_GOLD);
+    Set(p.data(), TW, TH, 11, 6, COLOR_TEMPLE_GOLD);
+    s_tiles[TILE_TEMPLE_BALCONY_1] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 20. TILE_TEMPLE_BALCONY_2 (High Gallery Parapet - Tier 2 Platform)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 0, 0, TW, 3, COLOR_TEMPLE_CEDAR);
+    HLine(p.data(), TW, TH, 0, TW - 1, 0, Color{ 175, 115, 60, 255 });
+    HLine(p.data(), TW, TH, 0, TW - 1, 2, COLOR_TEMPLE_GOLD);
+    for (int y = 3; y <= 12; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            if ((x + y) % 4 == 0 || (x - y + 16) % 4 == 0) {
+                p[y * TW + x] = COLOR_TEMPLE_GOLD;
+            }
+        }
+    }
+    s_tiles[TILE_TEMPLE_BALCONY_2] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 21. TILE_TEMPLE_COLUMN_HEAD (Golden Corinthian Capital)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 1, 2, 14, 14, COLOR_TEMPLE_GOLD);
+    HLine(p.data(), TW, TH, 0, 15, 2, Color{ 255, 245, 160, 255 });
+    FillCircle(p.data(), TW, TH, 2, 5, 2, Color{ 190, 130, 20, 255 });
+    FillCircle(p.data(), TW, TH, 13, 5, 2, Color{ 190, 130, 20, 255 });
+    VLine(p.data(), TW, TH, 7, 6, 14, Color{ 255, 245, 160, 255 });
+    VLine(p.data(), TW, TH, 8, 6, 14, Color{ 255, 245, 160, 255 });
+    s_tiles[TILE_TEMPLE_COLUMN_HEAD] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 22. TILE_TEMPLE_COLUMN_MID (Fluted White Marble Shaft)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 3, 0, 10, TH, COLOR_TEMPLE_MARBLE);
+    VLine(p.data(), TW, TH, 3, 0, TH - 1, COLOR_TEMPLE_SHADOW);
+    VLine(p.data(), TW, TH, 12, 0, TH - 1, COLOR_TEMPLE_SHADOW);
+    VLine(p.data(), TW, TH, 5, 0, TH - 1, Color{ 220, 215, 205, 255 });
+    VLine(p.data(), TW, TH, 7, 0, TH - 1, Color{ 255, 255, 255, 255 });
+    VLine(p.data(), TW, TH, 9, 0, TH - 1, Color{ 220, 215, 205, 255 });
+    s_tiles[TILE_TEMPLE_COLUMN_MID] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 23. TILE_TEMPLE_COLUMN_BASE (Molded White Marble Plinth)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 3, 0, 10, 6, COLOR_TEMPLE_MARBLE);
+    FillRect(p.data(), TW, TH, 1, 6, 14, 5, COLOR_TEMPLE_MARBLE);
+    FillRect(p.data(), TW, TH, 0, 11, 16, 5, COLOR_TEMPLE_MARBLE);
+    HLine(p.data(), TW, TH, 1, 14, 6, Color{ 255, 255, 255, 255 });
+    HLine(p.data(), TW, TH, 0, 15, 11, Color{ 255, 255, 255, 255 });
+    HLine(p.data(), TW, TH, 0, 15, 15, COLOR_TEMPLE_SHADOW);
+    s_tiles[TILE_TEMPLE_COLUMN_BASE] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 24. TILE_TEMPLE_MENORAH (Golden 7-Branched Candelabrum)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    VLine(p.data(), TW, TH, 7, 4, 15, COLOR_TEMPLE_GOLD);
+    VLine(p.data(), TW, TH, 8, 4, 15, COLOR_TEMPLE_GOLD);
+    HLine(p.data(), TW, TH, 4, 11, 14, COLOR_TEMPLE_GOLD);
+    HLine(p.data(), TW, TH, 3, 12, 15, Color{ 200, 140, 25, 255 });
+    HLine(p.data(), TW, TH, 5, 9, 10, COLOR_TEMPLE_GOLD);
+    VLine(p.data(), TW, TH, 5, 5, 9, COLOR_TEMPLE_GOLD);
+    VLine(p.data(), TW, TH, 9, 5, 9, COLOR_TEMPLE_GOLD);
+    HLine(p.data(), TW, TH, 3, 11, 12, COLOR_TEMPLE_GOLD);
+    VLine(p.data(), TW, TH, 3, 5, 11, COLOR_TEMPLE_GOLD);
+    VLine(p.data(), TW, TH, 11, 5, 11, COLOR_TEMPLE_GOLD);
+    HLine(p.data(), TW, TH, 1, 13, 13, COLOR_TEMPLE_GOLD);
+    VLine(p.data(), TW, TH, 1, 5, 12, COLOR_TEMPLE_GOLD);
+    VLine(p.data(), TW, TH, 13, 5, 12, COLOR_TEMPLE_GOLD);
+    int menorahFlames[7] = { 1, 3, 5, 7, 9, 11, 13 };
+    for (int f = 0; f < 7; ++f) {
+        int x = menorahFlames[f];
+        Set(p.data(), TW, TH, x, 4, COLOR_TEMPLE_GOLD);
+        Set(p.data(), TW, TH, x, 3, Color{ 255, 170, 30, 255 });
+        Set(p.data(), TW, TH, x, 2, Color{ 255, 250, 180, 255 });
+    }
+    s_tiles[TILE_TEMPLE_MENORAH] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 25. TILE_TEMPLE_DRAPERY_PURPLE (Tyrian Purple Velvet with Gold Fringe)
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            int fold = (x % 5);
+            Color c = (fold == 0) ? Color{ 55, 12, 68, 255 } :
+                      ((fold == 1 || fold == 2) ? Color{ 135, 40, 160, 255 } : COLOR_TEMPLE_PURPLE);
+            p[y * TW + x] = c;
+        }
+    }
+    HLine(p.data(), TW, TH, 0, TW - 1, 13, COLOR_TEMPLE_GOLD);
+    for (int x = 0; x < TW; ++x) {
+        p[14 * TW + x] = Color{ 200, 150, 30, 255 };
+        if (x % 2 == 0) p[15 * TW + x] = COLOR_TEMPLE_GOLD;
+    }
+    s_tiles[TILE_TEMPLE_DRAPERY_PURPLE] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 26. TILE_TEMPLE_ALTAR (Horned Golden Altar of Incense)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 1, 5, 14, 11, COLOR_TEMPLE_GOLD);
+    OutlineRect(p.data(), TW, TH, 1, 5, 14, 11, Color{ 180, 120, 25, 255 });
+    Set(p.data(), TW, TH, 1, 3, COLOR_TEMPLE_GOLD);
+    Set(p.data(), TW, TH, 1, 4, COLOR_TEMPLE_GOLD);
+    Set(p.data(), TW, TH, 14, 3, COLOR_TEMPLE_GOLD);
+    Set(p.data(), TW, TH, 14, 4, COLOR_TEMPLE_GOLD);
+    HLine(p.data(), TW, TH, 3, 12, 5, Color{ 255, 140, 40, 255 });
+    Set(p.data(), TW, TH, 6, 2, Color{ 240, 230, 255, 180 });
+    Set(p.data(), TW, TH, 9, 1, Color{ 240, 230, 255, 180 });
+    s_tiles[TILE_TEMPLE_ALTAR] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 27. TILE_TEMPLE_INCENSE_BURNER (Standing Bronze Brazier)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    Line(p.data(), TW, TH, 7, 7, 3, 15, Color{ 140, 85, 30, 255 });
+    Line(p.data(), TW, TH, 8, 7, 12, 15, Color{ 140, 85, 30, 255 });
+    VLine(p.data(), TW, TH, 7, 7, 14, Color{ 190, 125, 45, 255 });
+    FillCircle(p.data(), TW, TH, 7, 6, 4, Color{ 190, 125, 45, 255 });
+    HLine(p.data(), TW, TH, 4, 11, 4, Color{ 240, 180, 60, 255 });
+    Set(p.data(), TW, TH, 6, 4, Color{ 255, 60, 30, 255 });
+    Set(p.data(), TW, TH, 8, 4, Color{ 255, 120, 40, 255 });
+    FillCircle(p.data(), TW, TH, 7, 2, 2, Color{ 255, 215, 80, 120 });
+    s_tiles[TILE_TEMPLE_INCENSE_BURNER] = CreateTextureFromPixels(TW, TH, p.data());
 }
 
 // Generate the 3-layer parallax backgrounds
 void GraphicsManager::GenerateParallaxBackgrounds() {
+    using namespace PixelArt;
     // =========================================================================
     // 4-LAYER MULTI-DEPTH CINEMATIC PARALLAX BACKGROUND SYSTEM
     // Featuring The Monumental Temple & Citadel of David (Migdal David)
@@ -2242,6 +2779,224 @@ void GraphicsManager::GenerateParallaxBackgrounds() {
         }
     }
     s_bgNearStreetscape = CreateTextureFromPixels(NEAR_W, NEAR_H, bgNear.data());
+
+    // =========================================================================
+    // STAGE 2: TEMPLE SANCTUARY & COLONNADE PARALLAX LAYERS
+    // =========================================================================
+    // 5. Far Temple Sanctuary Interior (320x160, 0.15x scroll)
+    constexpr int TS_W = 320;
+    constexpr int TS_H = 160;
+    std::vector<Color> bgSanctuary(TS_W * TS_H);
+
+    for (int y = 0; y < TS_H; ++y) {
+        for (int x = 0; x < TS_W; ++x) {
+            float ty = static_cast<float>(y) / TS_H;
+            Color wallBase = {
+                static_cast<unsigned char>(35 + ty * 30),
+                static_cast<unsigned char>(25 + ty * 25),
+                static_cast<unsigned char>(40 + ty * 20),
+                255
+            };
+            bgSanctuary[y * TS_W + x] = wallBase;
+
+            // Vaulted Cedar Coffered Ceiling (y = 0 to 42)
+            if (y <= 42) {
+                if (y % 14 == 0 || y % 14 == 1) {
+                    bgSanctuary[y * TS_W + x] = COLOR_TEMPLE_CEDAR;
+                } else if (x % 32 == 0 || x % 32 == 1) {
+                    bgSanctuary[y * TS_W + x] = COLOR_TEMPLE_CEDAR;
+                } else if ((x % 32 == 16) && (y % 14 == 7)) {
+                    bgSanctuary[y * TS_W + x] = COLOR_TEMPLE_GOLD;
+                }
+            }
+
+            // High Clerestory Arched Windows (y = 44 to 76, spaced every 48 px)
+            int winX = x % 48;
+            if (winX >= 16 && winX <= 32 && y >= 44 && y <= 76) {
+                int dx = winX - 24;
+                int dy = y - 56;
+                if (y <= 56 || (dx * dx + dy * dy <= 64)) {
+                    bgSanctuary[y * TS_W + x] = Color{ 215, 235, 255, 255 };
+                }
+            }
+        }
+    }
+
+    // Crepuscular Morning God Rays streaming down from clerestory windows
+    for (int wx = 24; wx < TS_W; wx += 48) {
+        for (int step = 0; step < 75; ++step) {
+            int rx = wx + step * 2;
+            int ry = 58 + step;
+            if (rx >= 0 && rx < TS_W && ry >= 0 && ry < TS_H) {
+                Blend(bgSanctuary.data(), TS_W, TS_H, rx, ry, Color{ 255, 245, 180, 45 });
+                Blend(bgSanctuary.data(), TS_W, TS_H, rx + 1, ry, Color{ 255, 255, 220, 35 });
+            }
+        }
+    }
+    s_bgTempleSanctuary = CreateTextureFromPixels(TS_W, TS_H, bgSanctuary.data());
+
+    // 6. Near Temple Colonnade (480x160, 0.50x scroll)
+    constexpr int TC_W = 480;
+    constexpr int TC_H = 160;
+    std::vector<Color> bgColonnade(TC_W * TC_H, BLANK);
+
+    for (int px = 20; px < TC_W; px += 60) {
+        FillRect(bgColonnade.data(), TC_W, TC_H, px - 6, 12, 14, 10, COLOR_TEMPLE_GOLD);
+        HLine(bgColonnade.data(), TC_W, TC_H, px - 7, px + 8, 12, Color{ 255, 245, 160, 255 });
+        FillRect(bgColonnade.data(), TC_W, TC_H, px - 4, 22, 10, 130, COLOR_TEMPLE_MARBLE);
+        VLine(bgColonnade.data(), TC_W, TC_H, px - 4, 22, 151, COLOR_TEMPLE_SHADOW);
+        VLine(bgColonnade.data(), TC_W, TC_H, px + 5, 22, 151, COLOR_TEMPLE_SHADOW);
+        VLine(bgColonnade.data(), TC_W, TC_H, px, 22, 151, Color{ 255, 255, 255, 240 });
+        FillRect(bgColonnade.data(), TC_W, TC_H, px - 6, 148, 14, 8, COLOR_TEMPLE_MARBLE);
+
+        int lampX = px + 30;
+        if (lampX < TC_W - 10) {
+            VLine(bgColonnade.data(), TC_W, TC_H, lampX, 10, 32, Color{ 140, 100, 40, 255 });
+            FillCircle(bgColonnade.data(), TC_W, TC_H, lampX, 35, 3, Color{ 215, 150, 45, 255 });
+            FillCircle(bgColonnade.data(), TC_W, TC_H, lampX, 35, 7, Color{ 255, 210, 80, 50 });
+            Set(bgColonnade.data(), TC_W, TC_H, lampX, 34, Color{ 255, 255, 220, 255 });
+        }
+
+        if (px + 60 < TC_W) {
+            for (int dx = 6; dx < 54; ++dx) {
+                float swagT = sinf((dx - 6) / 48.0f * 3.14159f);
+                int swagY = static_cast<int>(18 + swagT * 14.0f);
+                FillRect(bgColonnade.data(), TC_W, TC_H, px + dx, swagY, 1, 6, COLOR_TEMPLE_PURPLE);
+                Set(bgColonnade.data(), TC_W, TC_H, px + dx, swagY + 6, COLOR_TEMPLE_GOLD);
+            }
+        }
+    }
+    s_bgTempleColonnade = CreateTextureFromPixels(TC_W, TC_H, bgColonnade.data());
+}
+
+void GraphicsManager::GenerateMissionMap() {
+    using namespace PixelArt;
+    constexpr int MW = VIRTUAL_WIDTH;
+    constexpr int MH = VIRTUAL_HEIGHT;
+    std::vector<Color> mapPix(MW * MH);
+
+    Color parchmentBase = Color{ 236, 222, 192, 255 };
+    Color parchmentDark = Color{ 208, 188, 152, 255 };
+    Color parchmentEdge = Color{ 175, 150, 112, 255 };
+    Color inkDark       = Color{  52,  38,  28, 255 };
+    Color inkRed        = Color{ 175,  28,  32, 255 };
+    Color inkGold       = Color{ 195, 145,  35, 255 };
+    Color waterBlue     = Color{ 180, 205, 218, 255 };
+
+    // 1. Aged Antique Vellum / Parchment Mottling & Vignette
+    for (int y = 0; y < MH; ++y) {
+        for (int x = 0; x < MW; ++x) {
+            float edgeDist = std::min({ (float)x, (float)(MW - 1 - x), (float)y, (float)(MH - 1 - y) });
+            float vignette = std::clamp(edgeDist / 32.0f, 0.0f, 1.0f);
+            float grain = ((x * 13 + y * 29) % 17) / 17.0f * 8.0f;
+            Color c = {
+                static_cast<unsigned char>(parchmentEdge.r + vignette * (parchmentBase.r - parchmentEdge.r) + grain),
+                static_cast<unsigned char>(parchmentEdge.g + vignette * (parchmentBase.g - parchmentEdge.g) + grain),
+                static_cast<unsigned char>(parchmentEdge.b + vignette * (parchmentBase.b - parchmentEdge.b) + grain),
+                255
+            };
+            mapPix[y * MW + x] = c;
+        }
+    }
+
+    // 2. Classical Roman / Judean Cartouche Border
+    OutlineRect(mapPix.data(), MW, MH, 4, 4, MW - 8, MH - 8, inkDark);
+    OutlineRect(mapPix.data(), MW, MH, 7, 7, MW - 14, MH - 14, inkGold);
+    OutlineRect(mapPix.data(), MW, MH, 9, 9, MW - 18, MH - 18, inkDark);
+    FillRect(mapPix.data(), MW, MH, 5, 5, 4, 4, inkGold);
+    FillRect(mapPix.data(), MW, MH, MW - 9, 5, 4, 4, inkGold);
+    FillRect(mapPix.data(), MW, MH, 5, MH - 9, 4, 4, inkGold);
+    FillRect(mapPix.data(), MW, MH, MW - 9, MH - 9, 4, 4, inkGold);
+
+    // 3. Topographic Contours (Hills of Jerusalem & Valleys)
+    for (int y = 20; y < 165; ++y) {
+        int kx = static_cast<int>(205 + sinf(y * 0.06f) * 16.0f);
+        Set(mapPix.data(), MW, MH, kx, y, waterBlue);
+        Set(mapPix.data(), MW, MH, kx + 1, y, waterBlue);
+        Set(mapPix.data(), MW, MH, kx - 1, y, parchmentDark);
+    }
+    for (int x = 40; x < 210; ++x) {
+        int hy = static_cast<int>(148 + sinf(x * 0.04f) * 8.0f);
+        Set(mapPix.data(), MW, MH, x, hy, parchmentDark);
+        Set(mapPix.data(), MW, MH, x, hy + 1, inkDark);
+    }
+
+    // 4. Fortified Stone City Walls
+    HLine(mapPix.data(), MW, MH, 30, 240, 48, inkDark);
+    HLine(mapPix.data(), MW, MH, 30, 240, 49, parchmentDark);
+    for (int x = 32; x < 238; x += 6) {
+        FillRect(mapPix.data(), MW, MH, x, 46, 3, 2, inkDark);
+    }
+    VLine(mapPix.data(), MW, MH, 30, 48, 145, inkDark);
+    HLine(mapPix.data(), MW, MH, 30, 210, 145, inkDark);
+    VLine(mapPix.data(), MW, MH, 210, 48, 145, inkDark);
+
+    // 5. Campaign March Dotted Red Route
+    for (int t = 0; t <= 30; ++t) {
+        if (t % 2 == 0) {
+            float frac = t / 30.0f;
+            int rx = static_cast<int>(60 + frac * (160 - 60));
+            int ry = static_cast<int>(90 + frac * (78 - 90) + sinf(frac * 3.14159f) * -10.0f);
+            FillCircle(mapPix.data(), MW, MH, rx, ry, 1, inkRed);
+        }
+    }
+    for (int t = 0; t <= 30; ++t) {
+        if (t % 2 == 0) {
+            float frac = t / 30.0f;
+            int rx = static_cast<int>(160 + frac * (255 - 160));
+            int ry = static_cast<int>(78 + frac * (95 - 78) + sinf(frac * 3.14159f) * -12.0f);
+            FillCircle(mapPix.data(), MW, MH, rx, ry, 1, inkRed);
+        }
+    }
+
+    // 6. Area 1 Vignette: Fortress Antonia & Roman Garrison (X ~ 48..76, Y ~ 70..100)
+    FillRect(mapPix.data(), MW, MH, 48, 76, 28, 24, Color{ 220, 205, 175, 255 });
+    OutlineRect(mapPix.data(), MW, MH, 48, 76, 28, 24, inkDark);
+    FillRect(mapPix.data(), MW, MH, 46, 70, 10, 8, Color{ 220, 205, 175, 255 });
+    OutlineRect(mapPix.data(), MW, MH, 46, 70, 10, 8, inkDark);
+    FillRect(mapPix.data(), MW, MH, 68, 70, 10, 8, Color{ 220, 205, 175, 255 });
+    OutlineRect(mapPix.data(), MW, MH, 68, 70, 10, 8, inkDark);
+    FillRect(mapPix.data(), MW, MH, 54, 62, 10, 6, inkRed);
+    VLine(mapPix.data(), MW, MH, 53, 60, 70, inkDark);
+    for (int ax = 78; ax < 105; ax += 8) {
+        HLine(mapPix.data(), MW, MH, ax, ax + 7, 88, inkDark);
+        VLine(mapPix.data(), MW, MH, ax, 88, 98, inkDark);
+    }
+
+    // 7. Area 2 Vignette: The Great Temple Mount & Porch (X ~ 142..180, Y ~ 54..92)
+    FillRect(mapPix.data(), MW, MH, 142, 66, 38, 26, Color{ 245, 240, 225, 255 });
+    OutlineRect(mapPix.data(), MW, MH, 142, 66, 38, 26, inkDark);
+    for (int cx = 145; cx <= 177; cx += 4) {
+        VLine(mapPix.data(), MW, MH, cx, 68, 86, inkDark);
+    }
+    FillRect(mapPix.data(), MW, MH, 152, 54, 18, 14, Color{ 255, 248, 230, 255 });
+    OutlineRect(mapPix.data(), MW, MH, 152, 54, 18, 14, inkDark);
+    Line(mapPix.data(), MW, MH, 151, 54, 161, 46, inkGold);
+    Line(mapPix.data(), MW, MH, 171, 54, 161, 46, inkGold);
+    VLine(mapPix.data(), MW, MH, 161, 42, 46, inkGold);
+
+    // 8. Area 3 Vignette: Mount Golgotha & Upper Citadel (X ~ 244..278, Y ~ 78..112)
+    for (int dy = 0; dy < 22; ++dy) {
+        int gw = 34 - dy;
+        HLine(mapPix.data(), MW, MH, 244 + dy / 2, 244 + dy / 2 + gw, 94 + dy, Color{ 210, 195, 165, 255 });
+    }
+    FillCircle(mapPix.data(), MW, MH, 246, 88, 5, Color{ 95, 120, 75, 255 });
+    FillCircle(mapPix.data(), MW, MH, 268, 85, 6, Color{ 95, 120, 75, 255 });
+    FillCircle(mapPix.data(), MW, MH, 258, 80, 5, Color{ 80, 105, 65, 255 });
+    FillRect(mapPix.data(), MW, MH, 253, 90, 14, 16, Color{ 225, 215, 190, 255 });
+    OutlineRect(mapPix.data(), MW, MH, 253, 90, 14, 16, inkDark);
+
+    // 9. Classical Antique Compass Rose
+    int crX = 286, crY = 145;
+    FillCircle(mapPix.data(), MW, MH, crX, crY, 14, parchmentBase);
+    OutlineCircle(mapPix.data(), MW, MH, crX, crY, 14, inkDark);
+    OutlineCircle(mapPix.data(), MW, MH, crX, crY, 12, inkGold);
+    VLine(mapPix.data(), MW, MH, crX, crY - 14, crY + 14, inkDark);
+    HLine(mapPix.data(), MW, MH, crX - 14, crX + 14, crY, inkDark);
+    Line(mapPix.data(), MW, MH, crX, crY - 12, crX + 4, crY, inkRed);
+    Line(mapPix.data(), MW, MH, crX, crY - 12, crX - 4, crY, inkDark);
+
+    s_texMissionMap = CreateTextureFromPixels(MW, MH, mapPix.data());
 }
 
 void GraphicsManager::Init() {
@@ -2250,6 +3005,7 @@ void GraphicsManager::Init() {
     GenerateAllProceduralSprites();
     GenerateAllProceduralTiles();
     GenerateParallaxBackgrounds();
+    GenerateMissionMap();
 
     // Load Title Splash Screen (from file or embedded bytes)
     Image splashImg{};
@@ -2284,6 +3040,9 @@ void GraphicsManager::Close() {
     if (s_bgTempleOfDavid.id > 0) UnloadTexture(s_bgTempleOfDavid);
     if (s_bgMidJerusalemVillas.id > 0) UnloadTexture(s_bgMidJerusalemVillas);
     if (s_bgNearStreetscape.id > 0) UnloadTexture(s_bgNearStreetscape);
+    if (s_bgTempleSanctuary.id > 0) UnloadTexture(s_bgTempleSanctuary);
+    if (s_bgTempleColonnade.id > 0) UnloadTexture(s_bgTempleColonnade);
+    if (s_texMissionMap.id > 0) UnloadTexture(s_texMissionMap);
     if (s_texTitleSplash.id > 0) UnloadTexture(s_texTitleSplash);
 
     s_initialized = false;
@@ -2294,6 +3053,101 @@ void GraphicsManager::DrawTitleSplash(int destWidth, int destHeight) {
     Rectangle src = { 0, 0, (float)s_texTitleSplash.width, (float)s_texTitleSplash.height };
     Rectangle dst = { 0, 0, (float)destWidth, (float)destHeight };
     DrawTexturePro(s_texTitleSplash, src, dst, { 0, 0 }, 0.0f, WHITE);
+}
+
+void GraphicsManager::DrawMissionMap(int currentMission, bool m1Cleared, bool m2Cleared, bool m3Cleared, float time) {
+    if (s_texMissionMap.id == 0) return;
+
+    DrawTexture(s_texMissionMap, 0, 0, WHITE);
+
+    struct AreaNode {
+        int x, y, w, h;
+        const char* name;
+        const char* sub;
+        const char* boss;
+        bool cleared;
+    };
+
+    AreaNode areas[3] = {
+        {  42,  64, 46, 44, "AREA 1: VIA DOLOROSA", "ROMAN GARRISON & AQUEDUCT", "CENTURION BRUTUS", m1Cleared },
+        { 138,  48, 52, 48, "AREA 2: THE INNER TEMPLE", "SOLOMON'S PORCH & SANCTUARY", "SICARII & MALCHUS", m2Cleared },
+        { 236,  72, 48, 44, "AREA 3: GOLGOTHA CITADEL", "THE CRAGS & UPPER CITADEL", "TRIBUNAL PHANTOM", m3Cleared }
+    };
+
+    for (int i = 0; i < 3; ++i) {
+        const auto& a = areas[i];
+        bool isCurrent = (currentMission == (i + 1));
+
+        if (a.cleared) {
+            DrawRectangle(a.x - 2, a.y - 2, a.w + 4, a.h + 4, Color{ 40, 35, 45, 130 });
+            DrawRectangleLines(a.x - 2, a.y - 2, a.w + 4, a.h + 4, Color{ 90, 75, 70, 200 });
+
+            const char* stamp = "DEFEATED";
+            int sw = MeasureText(stamp, 10);
+            int sx = a.x + (a.w - sw) / 2;
+            int sy = a.y + (a.h - 12) / 2;
+
+            DrawRectangle(sx - 4, sy - 2, sw + 8, 14, Color{ 140, 15, 20, 210 });
+            DrawRectangleLines(sx - 5, sy - 3, sw + 10, 16, Color{ 230, 45, 55, 255 });
+            DrawRectangleLines(sx - 3, sy - 1, sw + 6, 12, Color{ 255, 120, 120, 220 });
+            DrawText(stamp, sx, sy, 10, Color{ 255, 240, 240, 255 });
+        }
+        else if (isCurrent) {
+            bool blink = (static_cast<int>(time * 6.0f) % 2 == 0);
+            Color frameCol = blink ? COLOR_GOLD_BRIGHT : Color{ 255, 255, 255, 240 };
+
+            DrawRectangleLines(a.x - 3, a.y - 3, a.w + 6, a.h + 6, frameCol);
+            DrawRectangleLines(a.x - 4, a.y - 4, a.w + 8, a.h + 8, COLOR_ROMAN_CRIMSON);
+
+            int len = 7;
+            DrawLine(a.x - 6, a.y - 6, a.x - 6 + len, a.y - 6, frameCol);
+            DrawLine(a.x - 6, a.y - 6, a.x - 6, a.y - 6 + len, frameCol);
+            DrawLine(a.x + a.w + 5, a.y - 6, a.x + a.w + 5 - len, a.y - 6, frameCol);
+            DrawLine(a.x + a.w + 5, a.y - 6, a.x + a.w + 5, a.y - 6 + len, frameCol);
+            DrawLine(a.x - 6, a.y + a.h + 5, a.x - 6 + len, a.y + a.h + 5, frameCol);
+            DrawLine(a.x - 6, a.y + a.h + 5, a.x - 6, a.y + a.h + 5 - len, frameCol);
+            DrawLine(a.x + a.w + 5, a.y + a.h + 5, a.x + a.w + 5 - len, a.y + a.h + 5, frameCol);
+            DrawLine(a.x + a.w + 5, a.y + a.h + 5, a.x + a.w + 5, a.y + a.h + 5 - len, frameCol);
+
+            if (blink) {
+                const char* targetLbl = ">> TARGET <<";
+                int tlw = MeasureText(targetLbl, 10);
+                DrawRectangle(a.x + (a.w - tlw) / 2 - 2, a.y - 15, tlw + 4, 11, Color{ 15, 10, 18, 220 });
+                DrawText(targetLbl, a.x + (a.w - tlw) / 2, a.y - 14, 10, COLOR_GOLD_BRIGHT);
+            }
+        }
+        else {
+            DrawRectangle(a.x - 2, a.y - 2, a.w + 4, a.h + 4, Color{ 20, 15, 18, 90 });
+            DrawRectangleLines(a.x - 2, a.y - 2, a.w + 4, a.h + 4, Color{ 140, 120, 95, 160 });
+        }
+    }
+
+    const char* topTitle = "JERUSALEM CAMPAIGN MAP";
+    int ttw = MeasureText(topTitle, 10);
+    DrawRectangle((VIRTUAL_WIDTH - ttw) / 2 - 10, 12, ttw + 20, 15, Color{ 24, 18, 22, 230 });
+    DrawRectangleLines((VIRTUAL_WIDTH - ttw) / 2 - 10, 12, ttw + 20, 15, COLOR_GOLD_BRIGHT);
+    DrawText(topTitle, (VIRTUAL_WIDTH - ttw) / 2, 15, 10, COLOR_GOLD_BRIGHT);
+
+    int bx = 16, by = 162, bw = 288, bh = 52;
+    DrawRectangle(bx, by, bw, bh, Color{ 18, 14, 22, 240 });
+    DrawRectangleLines(bx - 1, by - 1, bw + 2, bh + 2, COLOR_ROMAN_CRIMSON);
+    DrawRectangleLines(bx - 2, by - 2, bw + 4, bh + 4, COLOR_GOLD_BRIGHT);
+
+    int curIdx = std::clamp(currentMission - 1, 0, 2);
+    const auto& curArea = areas[curIdx];
+
+    DrawText(curArea.name, bx + 10, by + 6, 10, COLOR_GOLD_BRIGHT);
+    DrawText(curArea.sub, bx + 10, by + 18, 10, Color{ 210, 215, 225, 255 });
+    char targetBuf[64];
+    snprintf(targetBuf, sizeof(targetBuf), "TARGET: %s", curArea.boss);
+    DrawText(targetBuf, bx + 10, by + 29, 10, Color{ 255, 95, 95, 255 });
+
+    bool promptBlink = (static_cast<int>(time * 4.0f) % 2 == 0);
+    if (promptBlink) {
+        const char* prompt = "[PRESS START OR ATTACK TO EMBARK]";
+        int pw = MeasureText(prompt, 10);
+        DrawText(prompt, bx + bw - pw - 10, by + 37, 10, COLOR_GOLD_BRIGHT);
+    }
 }
 
 void GraphicsManager::DrawSprite(SpriteId id, float x, float y, bool flipH, Color tint) {
@@ -2314,7 +3168,22 @@ void GraphicsManager::DrawTile(TileId id, float x, float y, Color tint) {
     DrawTexture(tex, static_cast<int>(x), static_cast<int>(y), tint);
 }
 
-void GraphicsManager::DrawParallaxBackground(float cameraX, float time) {
+void GraphicsManager::DrawParallaxBackground(float cameraX, float time, int stageId) {
+    if (stageId == 2) {
+        // --- STAGE 2: INSIDE THE TEMPLE OF JERUSALEM ---
+        float sX = -fmodf(cameraX * 0.15f, (float)s_bgTempleSanctuary.width);
+        DrawTexture(s_bgTempleSanctuary, static_cast<int>(sX), 0, WHITE);
+        DrawTexture(s_bgTempleSanctuary, static_cast<int>(sX + s_bgTempleSanctuary.width), 0, WHITE);
+        if (sX > 0) DrawTexture(s_bgTempleSanctuary, static_cast<int>(sX - s_bgTempleSanctuary.width), 0, WHITE);
+
+        float cX = -fmodf(cameraX * 0.50f, (float)s_bgTempleColonnade.width);
+        DrawTexture(s_bgTempleColonnade, static_cast<int>(cX), 10, WHITE);
+        DrawTexture(s_bgTempleColonnade, static_cast<int>(cX + s_bgTempleColonnade.width), 10, WHITE);
+        if (cX > 0) DrawTexture(s_bgTempleColonnade, static_cast<int>(cX - s_bgTempleColonnade.width), 10, WHITE);
+        return;
+    }
+
+    // --- STAGE 1: STREETS OF JERUSALEM & TEMPLE OF DAVID ---
     // 1. Layer 1: Far Sky & Sunset (0.05x parallax)
     float skyX = -fmodf(cameraX * 0.05f, (float)s_bgSkyDistant.width);
     DrawTexture(s_bgSkyDistant, static_cast<int>(skyX), 0, WHITE);
@@ -2322,7 +3191,6 @@ void GraphicsManager::DrawParallaxBackground(float cameraX, float time) {
     if (skyX > 0) DrawTexture(s_bgSkyDistant, static_cast<int>(skyX - s_bgSkyDistant.width), 0, WHITE);
 
     // 2. Layer 2: The Temple & Citadel of David Panorama (0.20x parallax, 960px wide)
-    // As Jesus traverses screens 3-4 (x ~ 800 - 1400), the Temple of David scrolls majestically across the screen!
     float davidX = -fmodf(cameraX * 0.20f, (float)s_bgTempleOfDavid.width);
     DrawTexture(s_bgTempleOfDavid, static_cast<int>(davidX), 8, WHITE);
     DrawTexture(s_bgTempleOfDavid, static_cast<int>(davidX + s_bgTempleOfDavid.width), 8, WHITE);

@@ -19,7 +19,9 @@ struct OneWayPlatform {
 class Level {
 public:
     Level();
-    void Reset();
+    void Reset(int stageId = 1);
+    void SetStage(int stageId) { Reset(stageId); }
+    int GetStage() const { return m_stageId; }
     void Update(float dt, const Vector2& playerPos);
     void Draw(float cameraX);
 
@@ -57,8 +59,10 @@ private:
     bool m_arenaUnlocked;
     bool m_arenaLockedDown;
     bool m_exitOpen;
+    int m_stageId;
     float m_gateOpenOffsetY; // Visual offset for portcullis lifting
 
     void BuildStreetsOfJerusalem();
+    void BuildInsideTheTemple();
 };
 

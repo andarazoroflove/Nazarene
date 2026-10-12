@@ -11,7 +11,19 @@ enum class EnemyType {
     PATROL_GUARD,
     ARCHER,
     HEAVY_LEGIONARY,
-    BOSS_GLADIATOR
+    BOSS_GLADIATOR,
+    SICARII_ASSASSIN,
+    BOSS_TEMPLE_COMMANDER
+};
+
+enum class SicariiState {
+    WALL_CLING,
+    WALL_CRAWL,
+    HOP,
+    STAND,
+    SLASH,
+    THROW,
+    HURT
 };
 
 enum class BossPhase {
@@ -56,6 +68,13 @@ struct EnemyArrow {
     bool active;
 };
 
+struct EnemyDagger {
+    Vector2 position;
+    float velocityX;
+    bool active;
+    float spinTimer;
+};
+
 class Enemy {
 public:
     Enemy(EnemyType type, Vector2 pos, float patrolMinX, float patrolMaxX);
@@ -70,20 +89,23 @@ public:
     virtual bool OnHit(int damage, bool hitFromBehind, bool isHighHit);
 
     bool IsActive() const { return m_active; }
+    bool IsBoss() const {
+        return m_type == EnemyType::BOSS_GLADIATOR || m_type == EnemyType::BOSS_TEMPLE_COMMANDER;
+    }
     bool IsDefeated() const {
-        if (m_type == EnemyType::BOSS_GLADIATOR) {
-            return m_hp <= 0 && (m_whipState == BossWhipState::DEAD_WITHERED || m_whipState == BossWhipState::WALK_OFF || m_whipState == BossWhipState::EXITED);
+        if (IsBoss()) {
+            return m_hp <= 0 && (m_whipState == BossWhipState::DEAD_WITHERED || m_whipState == BossWhipState::KNEEL || m_whipState == BossWhipState::WALK_OFF || m_whipState == BossWhipState::EXITED);
         }
         return m_hp <= 0;
     }
     bool IsInDefeatSequence() const {
-        return m_type == EnemyType::BOSS_GLADIATOR && (m_hp <= 0 || m_whipState == BossWhipState::KNEEL || m_whipState == BossWhipState::WITHERING || m_whipState == BossWhipState::DEAD_WITHERED);
+        return IsBoss() && (m_hp <= 0 || m_whipState == BossWhipState::KNEEL || m_whipState == BossWhipState::WITHERING || m_whipState == BossWhipState::DEAD_WITHERED);
     }
     bool IsWithering() const {
-        return m_type == EnemyType::BOSS_GLADIATOR && (m_whipState == BossWhipState::KNEEL || m_whipState == BossWhipState::WITHERING || m_whipState == BossWhipState::DEAD_WITHERED);
+        return IsBoss() && (m_whipState == BossWhipState::KNEEL || m_whipState == BossWhipState::WITHERING || m_whipState == BossWhipState::DEAD_WITHERED);
     }
     bool IsWitheredDead() const {
-        return m_type == EnemyType::BOSS_GLADIATOR && m_whipState == BossWhipState::DEAD_WITHERED;
+        return IsBoss() && m_whipState == BossWhipState::DEAD_WITHERED;
     }
     EnemyType GetType() const { return m_type; }
     Vector2 GetPosition() const { return m_position; }
@@ -98,7 +120,7 @@ public:
     bool IsFacingLeft() const { return m_facingLeft; }
     bool HasBossWalkedOff() const { return m_bossWalkedOff; }
     bool HasPhase1WalkedOff() const { return m_phase1WalkedOff; }
-    bool IsBossWalkingOff() const { return m_type == EnemyType::BOSS_GLADIATOR && (m_whipState == BossWhipState::WALK_OFF || m_whipState == BossWhipState::EXITED); }
+    bool IsBossWalkingOff() const { return IsBoss() && (m_whipState == BossWhipState::WALK_OFF || m_whipState == BossWhipState::EXITED); }
 
     BossPhase GetBossPhase() const { return m_bossPhase; }
     void SetBossPhase(BossPhase phase) { m_bossPhase = phase; }
@@ -115,6 +137,16 @@ public:
             m_justFired = false;
             outPos = m_firedPos;
             outVelX = m_firedVelX;
+            return true;
+        }
+        return false;
+    }
+
+    bool CheckAndClearJustThrewDagger(Vector2& outPos, float& outVelX) {
+        if (m_justThrewDagger) {
+            m_justThrewDagger = false;
+            outPos = m_daggerPos;
+            outVelX = m_daggerVelX;
             return true;
         }
         return false;
@@ -145,6 +177,15 @@ protected:
     Vector2 m_firedPos = { 0, 0 };
     float m_firedVelX = 0.0f;
 
+    // Sicarii specific
+    SicariiState m_sicariiState;
+    float m_sicariiTimer;
+    float m_sicariiThrowCooldown;
+    float m_sicariiHopCooldown;
+    bool m_justThrewDagger = false;
+    Vector2 m_daggerPos = { 0, 0 };
+    float m_daggerVelX = 0.0f;
+
     // Heavy specific
     bool m_isShieldUp;
 
@@ -162,8 +203,8 @@ protected:
 class EnemyManager {
 public:
     EnemyManager();
-    void Reset();
-    void SpawnStageEnemies();
+    void Reset(int stageId = 1);
+    void SpawnStageEnemies(int stageId = 1);
     void Update(float dt, const Vector2& playerPos, Level& level, bool screenFrozen, bool triggerWrathWipe);
     void Draw();
 
@@ -176,10 +217,12 @@ public:
     bool IsBossActive() const;
     Enemy* GetBoss() const;
     const std::vector<EnemyArrow>& GetArrows() const { return m_arrows; }
+    const std::vector<EnemyDagger>& GetDaggers() const { return m_daggers; }
 
 private:
     std::vector<Enemy> m_enemies;
     std::vector<EnemyArrow> m_arrows;
+    std::vector<EnemyDagger> m_daggers;
     std::vector<DeathParticle> m_particles;
 
     void SpawnExplosion(Vector2 pos, Color mainColor);

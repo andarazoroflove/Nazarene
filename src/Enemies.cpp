@@ -56,6 +56,23 @@ Enemy::Enemy(EnemyType type, Vector2 pos, float patrolMinX, float patrolMaxX)
             m_whipState = BossWhipState::PHASE1_STANDBY;
             m_facingLeft = true;
             break;
+        case EnemyType::SICARII_ASSASSIN:
+            m_maxHp = 2;
+            m_hp = 2;
+            m_sicariiState = SicariiState::WALL_CLING;
+            m_sicariiTimer = 0.0f;
+            m_sicariiThrowCooldown = 1.2f;
+            m_sicariiHopCooldown = 2.0f;
+            m_velocity = { 0.0f, 0.0f };
+            break;
+        case EnemyType::BOSS_TEMPLE_COMMANDER:
+            m_maxHp = BOSS_MAX_HP;
+            m_hp = BOSS_MAX_HP;
+            m_velocity.x = 0.0f;
+            m_bossPhase = BossPhase::PHASE_2_ARENA;
+            m_whipState = BossWhipState::IDLE;
+            m_facingLeft = true;
+            break;
     }
 }
 
@@ -72,6 +89,10 @@ Rectangle Enemy::GetHurtbox() const {
             return { m_position.x + 4.0f, m_position.y + 4.0f, 20.0f, 28.0f };
         case EnemyType::BOSS_GLADIATOR:
             return { m_position.x + 6.0f, m_position.y + 4.0f, 24.0f, 44.0f };
+        case EnemyType::SICARII_ASSASSIN:
+            return { m_position.x + 3.0f, m_position.y + 4.0f, 18.0f, 26.0f };
+        case EnemyType::BOSS_TEMPLE_COMMANDER:
+            return { m_position.x + 6.0f, m_position.y + 4.0f, 24.0f, 44.0f };
     }
     return { m_position.x, m_position.y, 16.0f, 28.0f };
 }
@@ -84,33 +105,28 @@ Rectangle Enemy::GetAttackHitbox() const {
 }
 
 bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
-    if (m_hurtTimer > 0.0f || m_hp <= 0) return true; // Already hurt or dead
+    if (m_hurtTimer > 0.0f || m_hp <= 0) return true;
 
     // 1. Heavy Legionary Shield Logic
     if (m_type == EnemyType::HEAVY_LEGIONARY) {
-        // Blocks frontal hits while shield is up
         if (m_isShieldUp && !hitFromBehind) {
             AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
-            return true; // Blocked!
+            return true;
         }
     }
 
-    // 2. Boss Gladiator Armor Logic (Ken-Oh Shinobi jump challenge)
-    if (m_type == EnemyType::BOSS_GLADIATOR) {
-        // Body armor (muscle cuirass & greaves) completely deflects nails!
-        // Only high hits (headshots) damage Brutus!
-        // (Divine Wrath damage >= 4 penetrates all defenses)
-        bool isVulnerable = isHighHit || (damage >= 4);
+    // 2. Boss Armor Logic (Brutus and Commander Malchus)
+    if (m_type == EnemyType::BOSS_GLADIATOR || m_type == EnemyType::BOSS_TEMPLE_COMMANDER) {
+        bool isVulnerable = isHighHit || (damage >= 4) || hitFromBehind;
         if (!isVulnerable) {
             AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
-            return true; // Chest armor deflected hit!
+            return true; // Armor deflected hit!
         }
     }
 
     // 3. Archer Ducking Protection against standard mid-level shots
     if (m_type == EnemyType::ARCHER && m_isDucking) {
         if (!isHighHit) {
-            // Low sandbag cover absorbs straight standing shots
             return true;
         }
     }
@@ -120,7 +136,7 @@ bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
     if (m_hp < 0) m_hp = 0;
     m_hurtTimer = 0.28f;
 
-    if (m_type == EnemyType::BOSS_GLADIATOR) {
+    if (m_type == EnemyType::BOSS_GLADIATOR || m_type == EnemyType::BOSS_TEMPLE_COMMANDER) {
         AudioManager::PlaySfx(SFX_BOSS_HURT);
         if (m_hp <= 0) {
             m_hp = 0;
@@ -134,15 +150,15 @@ bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
         if (m_hp <= 0) {
             AudioManager::PlaySfx(SFX_ENEMY_DEFEAT);
         } else {
-            AudioManager::PlaySfx(SFX_BOSS_HURT); // Grunt
+            AudioManager::PlaySfx(SFX_BOSS_HURT);
         }
     }
 
-    return false; // Hit successfully connected!
+    return false;
 }
 
 void Enemy::Update(float dt, const Vector2& playerPos, Level& level) {
-    if (m_hp <= 0 && m_type != EnemyType::BOSS_GLADIATOR) return;
+    if (m_hp <= 0 && !IsBoss()) return;
 
     if (m_hurtTimer > 0.0f) {
         m_hurtTimer -= dt;
@@ -469,6 +485,222 @@ void Enemy::Update(float dt, const Vector2& playerPos, Level& level) {
             }
             break;
         }
+
+        case EnemyType::SICARII_ASSASSIN: {
+            if (m_sicariiState != SicariiState::WALL_CLING && m_sicariiState != SicariiState::WALL_CRAWL) {
+                m_facingLeft = (playerPos.x < m_position.x);
+            }
+
+            m_sicariiTimer += dt;
+            if (m_sicariiThrowCooldown > 0.0f) m_sicariiThrowCooldown -= dt;
+            if (m_sicariiHopCooldown > 0.0f) m_sicariiHopCooldown -= dt;
+
+            switch (m_sicariiState) {
+                case SicariiState::WALL_CLING: {
+                    m_attackHitboxActive = false;
+                    float dist = fabsf(playerPos.x - m_position.x);
+                    if (dist < 150.0f) {
+                        m_sicariiState = SicariiState::WALL_CRAWL;
+                        m_sicariiTimer = 0.0f;
+                        m_animTimer = 0.0f;
+                    }
+                    break;
+                }
+
+                case SicariiState::WALL_CRAWL: {
+                    m_attackHitboxActive = false;
+                    m_position.y += 65.0f * dt;
+                    if (m_animTimer >= 0.15f) {
+                        m_animTimer = 0.0f;
+                        m_animFrame = (m_animFrame + 1) % 2;
+                    }
+
+                    if (m_position.y >= 130.0f || (playerPos.y - m_position.y) < 45.0f) {
+                        m_sicariiState = SicariiState::HOP;
+                        m_sicariiTimer = 0.0f;
+                        float hopDir = (playerPos.x < m_position.x) ? -1.0f : 1.0f;
+                        m_velocity.x = hopDir * 110.0f;
+                        m_velocity.y = -180.0f;
+                        m_facingLeft = (hopDir < 0.0f);
+                        AudioManager::PlaySfx(SFX_HIGH_JUMP);
+                    }
+                    break;
+                }
+
+                case SicariiState::HOP: {
+                    m_attackHitboxActive = false;
+                    m_position.x += m_velocity.x * dt;
+                    m_position.y += m_velocity.y * dt;
+                    m_velocity.y += GRAVITY * dt;
+                    if (m_velocity.y > MAX_FALL_SPEED) m_velocity.y = MAX_FALL_SPEED;
+
+                    float prevY = m_position.y - m_velocity.y * dt;
+                    float ledgeY = 0.0f;
+                    if (m_velocity.y >= 0.0f) {
+                        if (level.CheckOneWayLanding(GetHurtbox(), prevY, ledgeY)) {
+                            m_position.y = ledgeY - 30.0f;
+                            m_velocity = { 0, 0 };
+                            m_sicariiState = SicariiState::STAND;
+                            m_sicariiTimer = 0.0f;
+                        } else if (level.IsOnGround(GetHurtbox(), ledgeY)) {
+                            m_position.y = ledgeY - 30.0f;
+                            m_velocity = { 0, 0 };
+                            m_sicariiState = SicariiState::STAND;
+                            m_sicariiTimer = 0.0f;
+                        }
+                    }
+                    break;
+                }
+
+                case SicariiState::STAND: {
+                    m_attackHitboxActive = false;
+                    float dist = fabsf(playerPos.x - m_position.x);
+                    float yDiff = playerPos.y - m_position.y;
+
+                    if (fabsf(yDiff) > 28.0f && m_sicariiHopCooldown <= 0.0f && dist < 120.0f) {
+                        m_sicariiState = SicariiState::HOP;
+                        m_sicariiHopCooldown = 2.5f;
+                        float hopDir = (playerPos.x < m_position.x) ? -1.0f : 1.0f;
+                        m_velocity.x = hopDir * 100.0f;
+                        m_velocity.y = (yDiff < 0) ? -380.0f : -120.0f;
+                        AudioManager::PlaySfx(SFX_HIGH_JUMP);
+                        break;
+                    }
+
+                    if (dist < 32.0f && fabsf(yDiff) < 22.0f) {
+                        m_sicariiState = SicariiState::SLASH;
+                        m_sicariiTimer = 0.0f;
+                        m_attackHitboxActive = true;
+                        float slashX = m_facingLeft ? (m_position.x - 14.0f) : (m_position.x + 18.0f);
+                        m_attackHitbox = { slashX, m_position.y + 8.0f, 20.0f, 18.0f };
+                        AudioManager::PlaySfx(SFX_MELEE_STRIKE);
+                        break;
+                    }
+
+                    if (dist >= 45.0f && dist <= 200.0f && fabsf(yDiff) < 24.0f && m_sicariiThrowCooldown <= 0.0f) {
+                        m_sicariiState = SicariiState::THROW;
+                        m_sicariiTimer = 0.0f;
+                        m_sicariiThrowCooldown = 2.2f;
+                        break;
+                    }
+
+                    if (dist > 30.0f) {
+                        float stalkDir = (playerPos.x < m_position.x) ? -1.0f : 1.0f;
+                        m_position.x += stalkDir * 55.0f * dt;
+                    }
+                    break;
+                }
+
+                case SicariiState::SLASH: {
+                    if (m_sicariiTimer <= 0.35f) {
+                        m_attackHitboxActive = true;
+                        float slashX = m_facingLeft ? (m_position.x - 14.0f) : (m_position.x + 18.0f);
+                        m_attackHitbox = { slashX, m_position.y + 8.0f, 20.0f, 18.0f };
+                    } else {
+                        m_attackHitboxActive = false;
+                        if (m_sicariiTimer >= 0.55f) {
+                            m_sicariiState = SicariiState::STAND;
+                            m_sicariiTimer = 0.0f;
+                        }
+                    }
+                    break;
+                }
+
+                case SicariiState::THROW: {
+                    m_attackHitboxActive = false;
+                    if (m_sicariiTimer >= 0.18f && !m_justThrewDagger && m_sicariiTimer < 0.30f) {
+                        m_justThrewDagger = true;
+                        m_daggerPos = { m_facingLeft ? (m_position.x - 6.0f) : (m_position.x + 20.0f), m_position.y + 12.0f };
+                        m_daggerVelX = m_facingLeft ? -190.0f : 190.0f;
+                        AudioManager::PlaySfx(SFX_NAIL_THROW);
+                    }
+                    if (m_sicariiTimer >= 0.45f) {
+                        m_sicariiState = SicariiState::STAND;
+                        m_sicariiTimer = 0.0f;
+                    }
+                    break;
+                }
+
+                case SicariiState::HURT: {
+                    m_attackHitboxActive = false;
+                    if (m_sicariiTimer >= 0.3f) {
+                        m_sicariiState = SicariiState::STAND;
+                        m_sicariiTimer = 0.0f;
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+
+        case EnemyType::BOSS_TEMPLE_COMMANDER: {
+            m_facingLeft = (playerPos.x < m_position.x);
+
+            if (m_hp <= 0) {
+                m_attackHitboxActive = false;
+                m_whipState = BossWhipState::KNEEL;
+                m_witherTimer += dt;
+                if (m_witherTimer >= 1.2f) {
+                    m_whipState = BossWhipState::WITHERING;
+                }
+                if (m_witherTimer >= 4.0f) {
+                    m_whipState = BossWhipState::DEAD_WITHERED;
+                }
+                break;
+            }
+
+            m_whipTimer += dt;
+            switch (m_whipState) {
+                case BossWhipState::IDLE: {
+                    m_attackHitboxActive = false;
+                    if (m_whipTimer >= 0.8f) {
+                        m_whipState = BossWhipState::WINDUP;
+                        m_whipTimer = 0.0f;
+                    }
+                    break;
+                }
+                case BossWhipState::WINDUP: {
+                    float dir = m_facingLeft ? -1.0f : 1.0f;
+                    m_position.x += dir * 42.0f * dt;
+                    if (m_animTimer >= 0.2f) {
+                        m_animTimer = 0.0f;
+                        m_animFrame = (m_animFrame + 1) % 2;
+                    }
+
+                    float dist = fabsf(playerPos.x - m_position.x);
+                    if (dist < 40.0f || m_whipTimer >= 1.8f) {
+                        m_whipState = BossWhipState::HORIZONTAL_CRACK;
+                        m_whipTimer = 0.0f;
+                        AudioManager::PlaySfx(SFX_WHIP_CRACK);
+                    }
+                    break;
+                }
+                case BossWhipState::HORIZONTAL_CRACK: {
+                    m_attackHitboxActive = true;
+                    float slashX = m_facingLeft ? (m_position.x - 22.0f) : (m_position.x + 24.0f);
+                    m_attackHitbox = { slashX, m_position.y + 10.0f, 28.0f, 26.0f };
+
+                    if (m_whipTimer >= 0.4f) {
+                        m_attackHitboxActive = false;
+                        m_whipState = BossWhipState::RECOVERY;
+                        m_whipTimer = 0.0f;
+                    }
+                    break;
+                }
+                case BossWhipState::RECOVERY: {
+                    m_attackHitboxActive = false;
+                    if (m_whipTimer >= 0.7f) {
+                        m_whipState = BossWhipState::IDLE;
+                        m_whipTimer = 0.0f;
+                    }
+                    break;
+                }
+                default:
+                    m_whipState = BossWhipState::IDLE;
+                    break;
+            }
+            break;
+        }
     }
 }
 
@@ -578,58 +810,198 @@ void Enemy::Draw() {
             }
             break;
         }
+
+        case EnemyType::SICARII_ASSASSIN: {
+            SpriteId spr = SPR_SICARII_STAND;
+            switch (m_sicariiState) {
+                case SicariiState::WALL_CLING:
+                    spr = SPR_SICARII_WALL_CLING;
+                    break;
+                case SicariiState::WALL_CRAWL:
+                    spr = (m_animFrame == 0 ? SPR_SICARII_WALL_CRAWL_0 : SPR_SICARII_WALL_CRAWL_1);
+                    break;
+                case SicariiState::HOP:
+                    spr = SPR_SICARII_HOP;
+                    break;
+                case SicariiState::STAND:
+                    spr = SPR_SICARII_STAND;
+                    break;
+                case SicariiState::SLASH:
+                    spr = SPR_SICARII_SLASH;
+                    break;
+                case SicariiState::THROW:
+                    spr = SPR_SICARII_THROW;
+                    break;
+                case SicariiState::HURT:
+                    spr = SPR_SICARII_HURT;
+                    break;
+            }
+            if (hurtFlash) spr = SPR_SICARII_HURT;
+
+            if (m_sicariiState != SicariiState::WALL_CLING && m_sicariiState != SicariiState::WALL_CRAWL) {
+                GraphicsManager::DrawDropShadow(m_position.x + 14.0f, m_position.y + 31.0f, 18.0f, 5.0f);
+            }
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+
+            // Double blade slash streak
+            if (m_sicariiState == SicariiState::SLASH && m_attackHitboxActive) {
+                float slashX = m_facingLeft ? m_position.x - 4.0f : m_position.x + 24.0f;
+                float slashY = m_position.y + 14.0f;
+                DrawCircleLines(static_cast<int>(slashX), static_cast<int>(slashY), 12.0f, COLOR_SICARII_BLADE);
+                GraphicsManager::DrawSpark(slashX, slashY, 2.0f, Color{ 255, 255, 255, 220 });
+            }
+            break;
+        }
+
+        case EnemyType::BOSS_TEMPLE_COMMANDER: {
+            if (m_whipState == BossWhipState::DEAD_WITHERED) return;
+
+            SpriteId spr = SPR_TEMPLE_BOSS_IDLE;
+            if (m_whipState == BossWhipState::IDLE || m_whipState == BossWhipState::PHASE1_STANDBY || m_whipState == BossWhipState::PHASE1_PAUSE) {
+                spr = (m_animFrame == 0 ? SPR_TEMPLE_BOSS_WALK_0 : SPR_TEMPLE_BOSS_WALK_1);
+            } else if (m_whipState == BossWhipState::WINDUP || m_whipState == BossWhipState::PHASE1_WHIP_1_WINDUP || m_whipState == BossWhipState::PHASE1_WHIP_2_WINDUP) {
+                spr = SPR_TEMPLE_BOSS_SLASH;
+            } else if (m_whipState == BossWhipState::HORIZONTAL_CRACK || m_whipState == BossWhipState::PHASE1_WHIP_1_CRACK || m_whipState == BossWhipState::PHASE1_WHIP_2_CRACK) {
+                spr = SPR_TEMPLE_BOSS_SLAM;
+            } else if (m_whipState == BossWhipState::OVERHEAD_SLAM) {
+                spr = SPR_TEMPLE_BOSS_SLAM;
+            } else if (m_whipState == BossWhipState::PHASE1_WALK_OFF || m_whipState == BossWhipState::WALK_OFF) {
+                spr = (m_animFrame == 0 ? SPR_TEMPLE_BOSS_WALK_0 : SPR_TEMPLE_BOSS_WALK_1);
+            } else if (m_whipState == BossWhipState::KNEEL || m_whipState == BossWhipState::WITHERING) {
+                spr = SPR_TEMPLE_BOSS_KNEEL;
+            }
+
+            if (hurtFlash && m_whipState != BossWhipState::KNEEL && m_whipState != BossWhipState::WITHERING) {
+                spr = SPR_TEMPLE_BOSS_HURT;
+            }
+
+            if (m_whipState != BossWhipState::WITHERING) {
+                GraphicsManager::DrawDropShadow(m_position.x + 22.0f, m_position.y + 53.0f, 32.0f, 7.0f);
+            }
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+
+            // High golden ceremonial slash gleam
+            if (m_attackHitboxActive) {
+                float fx = m_facingLeft ? m_position.x - 12.0f : m_position.x + 40.0f;
+                DrawCircleLines(static_cast<int>(fx), static_cast<int>(m_position.y + 24.0f), 16.0f, COLOR_TEMPLE_GOLD);
+                GraphicsManager::DrawSpark(fx, m_position.y + 20.0f, 3.0f, Color{ 255, 255, 255, 255 });
+            }
+            break;
+        }
     }
 }
 
 // --- EnemyManager Implementation ---
 EnemyManager::EnemyManager() {
-    Reset();
+    Reset(1);
 }
 
-void EnemyManager::Reset() {
+void EnemyManager::Reset(int stageId) {
     m_enemies.clear();
     m_arrows.clear();
+    m_daggers.clear();
     m_particles.clear();
-    SpawnStageEnemies();
+    SpawnStageEnemies(stageId);
 }
 
-void EnemyManager::SpawnStageEnemies() {
-    // 1. Starting Street Grunt (Patrols open street before Crate 1)
-    m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 150.0f, GROUND_Y - 30.0f }, 90.0f, 205.0f);
+void EnemyManager::SpawnStageEnemies(int stageId) {
+    m_enemies.clear();
+    m_arrows.clear();
+    m_daggers.clear();
 
-    // 2. Upper Balcony Guard
-    m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 420.0f, UPPER_TIER_Y - 30.0f }, 390.0f, 550.0f);
+    if (stageId == 2) {
+        // =========================================================================
+        // STAGE 2: INSIDE THE TEMPLE OF JERUSALEM
+        // Features Sicarii Shadow Assassins crawling from columns/walls and hopping
+        // across 2-level stacked platforms (TEMPLE_TIER_1_Y and TEMPLE_TIER_2_Y)
+        // =========================================================================
 
-    // 3. Auxiliary Archer on High Aqueduct
-    m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 720.0f, UPPER_TIER_Y - 30.0f }, 720.0f, 720.0f);
+        // 1. Sicarii Assassin on Entrance Pillar (Clings to column, crawls down)
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 220.0f, 48.0f }, 150.0f, 320.0f);
 
-    // 4. Ground Heavy Legionary (Guarding lower path before aqueduct crate)
-    m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 680.0f, GROUND_Y - 32.0f }, 620.0f, 750.0f);
+        // 2. Heavy Temple Guard (Patrols ground floor before Tier 1 Balcony)
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 380.0f, GROUND_Y - 32.0f }, 320.0f, 440.0f);
 
-    // 5. Midfield Grunt Guard
-    m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 880.0f, GROUND_Y - 30.0f }, 820.0f, 925.0f);
+        // 3. High Gallery Archer (Standing on Tier 2 Gallery at Y = 96)
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 560.0f, TEMPLE_TIER_2_Y - 30.0f }, 560.0f, 560.0f);
 
-    // 6. Rooftop Terrace Archer (Guarding Basket 3)
-    m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1380.0f, UPPER_TIER_Y - 30.0f }, 1380.0f, 1380.0f);
+        // 4. Sicarii Assassin on Column between Balconies (Crawls down to Tier 1)
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 780.0f, 52.0f }, 720.0f, 880.0f);
 
-    // 7. Upper Tier Guard
-    m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1180.0f, UPPER_TIER_Y - 30.0f }, 1100.0f, 1240.0f);
+        // 5. Tier 1 Mezzanine Guard
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 920.0f, TEMPLE_TIER_1_Y - 30.0f }, 860.0f, 980.0f);
 
-    // 8. Ground Heavy Legionary (Market gate)
-    m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1280.0f, GROUND_Y - 32.0f }, 1220.0f, 1360.0f);
+        // 6. Heavy Temple Guard (Patrolling near Sacred Censer #2)
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1120.0f, GROUND_Y - 32.0f }, 1060.0f, 1180.0f);
 
-    // 9. Garrison Checkpoint Guard
-    m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1680.0f, GROUND_Y - 30.0f }, 1620.0f, 1780.0f);
+        // 7. Sicarii Shadow Assassin on High Column (Hops between Tier 2 and Tier 1)
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 1320.0f, 48.0f }, 1260.0f, 1420.0f);
 
-    // 10. Heavy Legionary guarding near Basket 4
-    m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1880.0f, GROUND_Y - 32.0f }, 1850.0f, 1935.0f);
+        // 8. Tier 2 Gallery Archer (Guarding high incense altar)
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1500.0f, TEMPLE_TIER_2_Y - 30.0f }, 1500.0f, 1500.0f);
 
-    // 11. Rampart Archer before Arena
-    m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 2000.0f, UPPER_TIER_Y - 30.0f }, 2000.0f, 2000.0f);
+        // 9. Tier 1 Mezzanine Guard
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1680.0f, TEMPLE_TIER_1_Y - 30.0f }, 1620.0f, 1740.0f);
 
-    // 12. Stage 1 Boss: Centurion Brutus (Ken-Oh equivalent)
-    // Spawns before the gate (at x = 2080.0f) in Phase 1 (takes 2 whip swings, moves into arena)
-    m_enemies.emplace_back(EnemyType::BOSS_GLADIATOR, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
+        // 10. Heavy Temple Guard at the Inner Veil Archway
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1880.0f, GROUND_Y - 32.0f }, 1820.0f, 1940.0f);
+
+        // 11. Stage 2 Boss: Commander Malchus (High Priest's Guard Commander)
+        m_enemies.emplace_back(EnemyType::BOSS_TEMPLE_COMMANDER, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
+    } else if (stageId == 3) {
+        // =========================================================================
+        // STAGE 3: GOLGOTHA / ROMAN FORTRESS ANTONIA
+        // =========================================================================
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 260.0f, 48.0f }, 200.0f, 340.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 420.0f, GROUND_Y - 32.0f }, 360.0f, 480.0f);
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 640.0f, UPPER_TIER_Y - 30.0f }, 640.0f, 640.0f);
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 860.0f, 48.0f }, 800.0f, 960.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1100.0f, GROUND_Y - 32.0f }, 1040.0f, 1160.0f);
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1320.0f, UPPER_TIER_Y - 30.0f }, 1320.0f, 1320.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1560.0f, GROUND_Y - 30.0f }, 1500.0f, 1620.0f);
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 1780.0f, 48.0f }, 1720.0f, 1860.0f);
+        m_enemies.emplace_back(EnemyType::BOSS_GLADIATOR, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
+    } else {
+        // =========================================================================
+        // STAGE 1: JERUSALEM OUTSKIRTS & CITADEL APPROACH
+        // =========================================================================
+        // 1. Starting Street Grunt (Patrols open street before Crate 1)
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 150.0f, GROUND_Y - 30.0f }, 90.0f, 205.0f);
+
+        // 2. Upper Balcony Guard
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 420.0f, UPPER_TIER_Y - 30.0f }, 390.0f, 550.0f);
+
+        // 3. Auxiliary Archer on High Aqueduct
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 720.0f, UPPER_TIER_Y - 30.0f }, 720.0f, 720.0f);
+
+        // 4. Ground Heavy Legionary (Guarding lower path before aqueduct crate)
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 680.0f, GROUND_Y - 32.0f }, 620.0f, 750.0f);
+
+        // 5. Midfield Grunt Guard
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 880.0f, GROUND_Y - 30.0f }, 820.0f, 925.0f);
+
+        // 6. Rooftop Terrace Archer (Guarding Basket 3)
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1380.0f, UPPER_TIER_Y - 30.0f }, 1380.0f, 1380.0f);
+
+        // 7. Upper Tier Guard
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1180.0f, UPPER_TIER_Y - 30.0f }, 1100.0f, 1240.0f);
+
+        // 8. Ground Heavy Legionary (Market gate)
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1280.0f, GROUND_Y - 32.0f }, 1220.0f, 1360.0f);
+
+        // 9. Garrison Checkpoint Guard
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1680.0f, GROUND_Y - 30.0f }, 1620.0f, 1780.0f);
+
+        // 10. Heavy Legionary guarding near Basket 4
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1880.0f, GROUND_Y - 32.0f }, 1850.0f, 1935.0f);
+
+        // 11. Rampart Archer before Arena
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 2000.0f, UPPER_TIER_Y - 30.0f }, 2000.0f, 2000.0f);
+
+        // 12. Stage 1 Boss: Centurion Brutus (Ken-Oh equivalent)
+        // Spawns before the gate (at x = 2080.0f) in Phase 1 (takes 2 whip swings, moves into arena)
+        m_enemies.emplace_back(EnemyType::BOSS_GLADIATOR, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
+    }
 }
 
 void EnemyManager::SpawnExplosion(Vector2 pos, Color mainColor) {
@@ -674,7 +1046,7 @@ void EnemyManager::Update(float dt, const Vector2& playerPos, Level& level, bool
         for (auto& enemy : m_enemies) {
             if (enemy.IsActive() && !enemy.IsDefeated()) {
                 // If standard enemy on screen, eliminate!
-                if (enemy.GetType() != EnemyType::BOSS_GLADIATOR) {
+                if (!enemy.IsBoss()) {
                     enemy.OnHit(99, true, true);
                     SpawnExplosion(enemy.GetPosition(), COLOR_ROMAN_CRIMSON);
                 } else {
@@ -690,13 +1062,20 @@ void EnemyManager::Update(float dt, const Vector2& playerPos, Level& level, bool
 
     // 3. Update enemies
     for (auto& enemy : m_enemies) {
-        if (enemy.IsActive() && (!enemy.IsDefeated() || enemy.GetType() == EnemyType::BOSS_GLADIATOR)) {
+        if (enemy.IsActive() && (!enemy.IsDefeated() || enemy.IsBoss())) {
             enemy.Update(dt, playerPos, level);
 
             Vector2 arrowPos;
             float arrowVelX;
             if (enemy.CheckAndClearJustFired(arrowPos, arrowVelX)) {
                 m_arrows.push_back({ arrowPos, arrowVelX, true });
+                AudioManager::PlaySfx(SFX_NAIL_THROW);
+            }
+
+            Vector2 daggerPos;
+            float daggerVelX;
+            if (enemy.CheckAndClearJustThrewDagger(daggerPos, daggerVelX)) {
+                m_daggers.push_back({ daggerPos, daggerVelX, true, 0.0f });
                 AudioManager::PlaySfx(SFX_NAIL_THROW);
             }
         }
@@ -712,6 +1091,18 @@ void EnemyManager::Update(float dt, const Vector2& playerPos, Level& level, bool
         }
     }
     m_arrows.erase(std::remove_if(m_arrows.begin(), m_arrows.end(), [](const EnemyArrow& a) { return !a.active; }), m_arrows.end());
+
+    // 5. Update daggers
+    for (auto& dagger : m_daggers) {
+        if (dagger.active) {
+            dagger.position.x += dagger.velocityX * dt;
+            dagger.spinTimer += dt;
+            if (dagger.position.x < playerPos.x - 260.0f || dagger.position.x > playerPos.x + 260.0f) {
+                dagger.active = false;
+            }
+        }
+    }
+    m_daggers.erase(std::remove_if(m_daggers.begin(), m_daggers.end(), [](const EnemyDagger& d) { return !d.active; }), m_daggers.end());
 }
 
 void EnemyManager::CheckPlayerAttacks(Player& player) {
@@ -728,7 +1119,7 @@ void EnemyManager::CheckPlayerAttacks(Player& player) {
             bool fromBehind = (player.IsFacingLeft() == enemy.IsFacingLeft());
             bool blocked = enemy.OnHit(1, fromBehind, false);
             if (!blocked) {
-                player.AddScore(enemy.GetType() == EnemyType::BOSS_GLADIATOR ? 200 : 100);
+                player.AddScore(enemy.IsBoss() ? 200 : 100);
                 SpawnExplosion(enemy.GetPosition(), COLOR_ROMAN_GOLD);
             } else {
                 SpawnSpark(Vector2{ enemyBox.x + 8.0f, enemyBox.y + 10.0f }, COLOR_ROMAN_GOLD);
@@ -750,7 +1141,7 @@ void EnemyManager::CheckPlayerAttacks(Player& player) {
 
                 bool blocked = enemy.OnHit(1, fromBehind, isHigh);
                 if (!blocked) {
-                    player.AddScore(enemy.GetType() == EnemyType::BOSS_GLADIATOR ? 200 : 100);
+                    player.AddScore(enemy.IsBoss() ? 200 : 100);
                     SpawnExplosion(enemy.GetPosition(), COLOR_ROMAN_GOLD);
                 } else {
                     // Metallic ping deflect spark
@@ -798,6 +1189,18 @@ void EnemyManager::CheckPlayerDamage(Player& player, bool inBossFight) {
             }
         }
     }
+
+    // 3. Enemy projectile daggers (Sicarii throwing daggers)
+    for (auto& dagger : m_daggers) {
+        if (dagger.active) {
+            Rectangle daggerBox = { dagger.position.x - 4.0f, dagger.position.y - 2.0f, 8.0f, 4.0f };
+            if (CheckCollisionRecs(playerBox, daggerBox)) {
+                dagger.active = false;
+                player.TakeDamage(1, inBossFight);
+                return;
+            }
+        }
+    }
 }
 
 float EnemyManager::GetClosestEnemyDistance(const Vector2& playerPos, bool playerFacingLeft, bool& outInFront) const {
@@ -825,7 +1228,7 @@ float EnemyManager::GetClosestEnemyDistance(const Vector2& playerPos, bool playe
 
 bool EnemyManager::IsBossActive() const {
     for (const auto& enemy : m_enemies) {
-        if (enemy.GetType() == EnemyType::BOSS_GLADIATOR && enemy.IsActive() && !enemy.IsDefeated()) {
+        if (enemy.IsBoss() && enemy.IsActive() && !enemy.IsDefeated()) {
             return true;
         }
     }
@@ -834,7 +1237,7 @@ bool EnemyManager::IsBossActive() const {
 
 Enemy* EnemyManager::GetBoss() const {
     for (const auto& enemy : m_enemies) {
-        if (enemy.GetType() == EnemyType::BOSS_GLADIATOR) {
+        if (enemy.IsBoss()) {
             return const_cast<Enemy*>(&enemy);
         }
     }
@@ -862,6 +1265,18 @@ void EnemyManager::Draw() {
             DrawLineEx({ tailX + dir * 8.0f, py }, { headX, py }, 2.0f, Color{ 255, 255, 255, 230 });
 
             GraphicsManager::DrawSprite(SPR_ARROW, arrow.position.x, arrow.position.y, arrow.velocityX < 0);
+        }
+    }
+
+    // Draw spinning daggers
+    for (const auto& dagger : m_daggers) {
+        if (dagger.active) {
+            float dir = dagger.velocityX > 0 ? 1.0f : -1.0f;
+            float tailX = dagger.position.x - dir * 14.0f;
+            float headX = dagger.position.x + dir * 4.0f;
+            DrawLineEx({ tailX, dagger.position.y + 4.0f }, { headX, dagger.position.y + 4.0f }, 2.0f, COLOR_SICARII_BLADE);
+            GraphicsManager::DrawSprite(SPR_SICARII_DAGGER, dagger.position.x - 4.0f, dagger.position.y, dagger.velocityX < 0);
+            GraphicsManager::DrawSpark(dagger.position.x, dagger.position.y + 4.0f, 1.5f, Color{ 255, 255, 255, 220 });
         }
     }
 

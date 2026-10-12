@@ -73,6 +73,14 @@ Enemy::Enemy(EnemyType type, Vector2 pos, float patrolMinX, float patrolMaxX)
             m_whipState = BossWhipState::IDLE;
             m_facingLeft = true;
             break;
+        case EnemyType::BOSS_TRIBUNAL_PRAETOR:
+            m_maxHp = BOSS_MAX_HP;
+            m_hp = BOSS_MAX_HP;
+            m_velocity.x = 0.0f;
+            m_bossPhase = BossPhase::PHASE_2_ARENA;
+            m_whipState = BossWhipState::IDLE;
+            m_facingLeft = true;
+            break;
     }
 }
 
@@ -92,6 +100,7 @@ Rectangle Enemy::GetHurtbox() const {
         case EnemyType::SICARII_ASSASSIN:
             return { m_position.x + 3.0f, m_position.y + 4.0f, 18.0f, 26.0f };
         case EnemyType::BOSS_TEMPLE_COMMANDER:
+        case EnemyType::BOSS_TRIBUNAL_PRAETOR:
             return { m_position.x + 6.0f, m_position.y + 4.0f, 24.0f, 44.0f };
     }
     return { m_position.x, m_position.y, 16.0f, 28.0f };
@@ -115,8 +124,8 @@ bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
         }
     }
 
-    // 2. Boss Armor Logic (Brutus and Commander Malchus)
-    if (m_type == EnemyType::BOSS_GLADIATOR || m_type == EnemyType::BOSS_TEMPLE_COMMANDER) {
+    // 2. Boss Armor Logic (Brutus, Commander Malchus, and Tribunal Praetor)
+    if (m_type == EnemyType::BOSS_GLADIATOR || m_type == EnemyType::BOSS_TEMPLE_COMMANDER || m_type == EnemyType::BOSS_TRIBUNAL_PRAETOR) {
         bool isVulnerable = isHighHit || (damage >= 4) || hitFromBehind;
         if (!isVulnerable) {
             AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
@@ -136,7 +145,7 @@ bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
     if (m_hp < 0) m_hp = 0;
     m_hurtTimer = 0.28f;
 
-    if (m_type == EnemyType::BOSS_GLADIATOR || m_type == EnemyType::BOSS_TEMPLE_COMMANDER) {
+    if (m_type == EnemyType::BOSS_GLADIATOR || m_type == EnemyType::BOSS_TEMPLE_COMMANDER || m_type == EnemyType::BOSS_TRIBUNAL_PRAETOR) {
         AudioManager::PlaySfx(SFX_BOSS_HURT);
         if (m_hp <= 0) {
             m_hp = 0;
@@ -701,6 +710,94 @@ void Enemy::Update(float dt, const Vector2& playerPos, Level& level) {
             }
             break;
         }
+
+        case EnemyType::BOSS_TRIBUNAL_PRAETOR: {
+            m_facingLeft = (playerPos.x < m_position.x);
+
+            if (m_hp <= 0) {
+                m_attackHitboxActive = false;
+                m_whipState = BossWhipState::KNEEL;
+                m_witherTimer += dt;
+                if (m_witherTimer >= 1.2f) {
+                    m_whipState = BossWhipState::WITHERING;
+                }
+                if (m_witherTimer >= 4.0f) {
+                    m_whipState = BossWhipState::DEAD_WITHERED;
+                }
+                break;
+            }
+
+            m_whipTimer += dt;
+            switch (m_whipState) {
+                case BossWhipState::IDLE: {
+                    m_attackHitboxActive = false;
+                    if (m_whipTimer >= 0.65f) {
+                        m_whipState = BossWhipState::WINDUP;
+                        m_whipTimer = 0.0f;
+                    }
+                    break;
+                }
+                case BossWhipState::WINDUP: {
+                    float dir = m_facingLeft ? -1.0f : 1.0f;
+                    m_position.x += dir * 46.0f * dt;
+                    if (m_animTimer >= 0.18f) {
+                        m_animTimer = 0.0f;
+                        m_animFrame = (m_animFrame + 1) % 2;
+                    }
+
+                    float dist = fabsf(playerPos.x - m_position.x);
+                    if (dist < 46.0f || m_whipTimer >= 1.5f) {
+                        // Alternate between broad gladius slash and imperial shield slam
+                        m_whipSwingsCount++;
+                        if (m_whipSwingsCount % 2 == 1) {
+                            m_whipState = BossWhipState::HORIZONTAL_CRACK;
+                            AudioManager::PlaySfx(SFX_WHIP_CRACK);
+                        } else {
+                            m_whipState = BossWhipState::OVERHEAD_SLAM;
+                            AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
+                        }
+                        m_whipTimer = 0.0f;
+                    }
+                    break;
+                }
+                case BossWhipState::HORIZONTAL_CRACK: {
+                    m_attackHitboxActive = true;
+                    float slashX = m_facingLeft ? (m_position.x - 24.0f) : (m_position.x + 24.0f);
+                    m_attackHitbox = { slashX, m_position.y + 8.0f, 30.0f, 28.0f };
+
+                    if (m_whipTimer >= 0.38f) {
+                        m_attackHitboxActive = false;
+                        m_whipState = BossWhipState::RECOVERY;
+                        m_whipTimer = 0.0f;
+                    }
+                    break;
+                }
+                case BossWhipState::OVERHEAD_SLAM: {
+                    m_attackHitboxActive = true;
+                    float slamX = m_facingLeft ? (m_position.x - 26.0f) : (m_position.x + 22.0f);
+                    m_attackHitbox = { slamX, m_position.y + 12.0f, 32.0f, 32.0f };
+
+                    if (m_whipTimer >= 0.44f) {
+                        m_attackHitboxActive = false;
+                        m_whipState = BossWhipState::RECOVERY;
+                        m_whipTimer = 0.0f;
+                    }
+                    break;
+                }
+                case BossWhipState::RECOVERY: {
+                    m_attackHitboxActive = false;
+                    if (m_whipTimer >= 0.65f) {
+                        m_whipState = BossWhipState::IDLE;
+                        m_whipTimer = 0.0f;
+                    }
+                    break;
+                }
+                default:
+                    m_whipState = BossWhipState::IDLE;
+                    break;
+            }
+            break;
+        }
     }
 }
 
@@ -888,6 +985,41 @@ void Enemy::Draw() {
             }
             break;
         }
+
+        case EnemyType::BOSS_TRIBUNAL_PRAETOR: {
+            if (m_whipState == BossWhipState::DEAD_WITHERED) return;
+
+            SpriteId spr = SPR_TRIBUNAL_IDLE;
+            if (m_whipState == BossWhipState::IDLE || m_whipState == BossWhipState::PHASE1_STANDBY || m_whipState == BossWhipState::PHASE1_PAUSE) {
+                spr = (m_animFrame == 0 ? SPR_TRIBUNAL_WALK_0 : SPR_TRIBUNAL_WALK_1);
+            } else if (m_whipState == BossWhipState::WINDUP) {
+                spr = SPR_TRIBUNAL_SLASH;
+            } else if (m_whipState == BossWhipState::HORIZONTAL_CRACK) {
+                spr = SPR_TRIBUNAL_SLASH;
+            } else if (m_whipState == BossWhipState::OVERHEAD_SLAM) {
+                spr = SPR_TRIBUNAL_SLAM;
+            } else if (m_whipState == BossWhipState::KNEEL || m_whipState == BossWhipState::WITHERING) {
+                spr = SPR_TRIBUNAL_KNEEL;
+            }
+
+            if (hurtFlash && m_whipState != BossWhipState::KNEEL && m_whipState != BossWhipState::WITHERING) {
+                spr = SPR_TRIBUNAL_HURT;
+            }
+
+            if (m_whipState != BossWhipState::WITHERING) {
+                GraphicsManager::DrawDropShadow(m_position.x + 22.0f, m_position.y + 53.0f, 32.0f, 7.0f);
+            }
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+
+            // Imperial energy arc on attacks
+            if (m_attackHitboxActive) {
+                float fx = m_facingLeft ? m_position.x - 14.0f : m_position.x + 42.0f;
+                DrawCircleLines(static_cast<int>(fx), static_cast<int>(m_position.y + 22.0f), 18.0f, COLOR_GOLD_BRIGHT);
+                DrawCircleLines(static_cast<int>(fx), static_cast<int>(m_position.y + 22.0f), 12.0f, COLOR_ROMAN_CRIMSON);
+                GraphicsManager::DrawSpark(fx, m_position.y + 18.0f, 3.5f, Color{ 255, 255, 255, 255 });
+            }
+            break;
+        }
     }
 }
 
@@ -950,17 +1082,34 @@ void EnemyManager::SpawnStageEnemies(int stageId) {
         m_enemies.emplace_back(EnemyType::BOSS_TEMPLE_COMMANDER, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
     } else if (stageId == 3) {
         // =========================================================================
-        // STAGE 3: GOLGOTHA / ROMAN FORTRESS ANTONIA
+        // STAGE 3: GOLGOTHA / ROMAN FORTRESS ANTONIA (Shorter, intense ascent)
         // =========================================================================
-        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 260.0f, 48.0f }, 200.0f, 340.0f);
-        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 420.0f, GROUND_Y - 32.0f }, 360.0f, 480.0f);
-        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 640.0f, UPPER_TIER_Y - 30.0f }, 640.0f, 640.0f);
-        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 860.0f, 48.0f }, 800.0f, 960.0f);
-        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1100.0f, GROUND_Y - 32.0f }, 1040.0f, 1160.0f);
-        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1320.0f, UPPER_TIER_Y - 30.0f }, 1320.0f, 1320.0f);
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1560.0f, GROUND_Y - 30.0f }, 1500.0f, 1620.0f);
-        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 1780.0f, 48.0f }, 1720.0f, 1860.0f);
-        m_enemies.emplace_back(EnemyType::BOSS_GLADIATOR, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
+        // 1. Heavy Legionary at the base of the rocky ascent
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 200.0f, GROUND_Y - 32.0f }, 140.0f, 260.0f);
+
+        // 2. Sicarii Shadow Assassin on first high rock pillar
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 300.0f, 48.0f }, 240.0f, 380.0f);
+
+        // 3. Heavy Legionary patrolling below siege ramp
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 490.0f, GROUND_Y - 32.0f }, 430.0f, 550.0f);
+
+        // 4. Archer on high siege ramp battlement
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 580.0f, TEMPLE_TIER_2_Y - 30.0f }, 580.0f, 580.0f);
+
+        // 5. Sicarii Shadow Assassin leaping across crags
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 700.0f, 48.0f }, 640.0f, 780.0f);
+
+        // 6. Sicarii Shadow Assassin on high citadel pillar
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 850.0f, 48.0f }, 800.0f, 920.0f);
+
+        // 7. Patrol Guard on citadel mezzanine approach
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 930.0f, TEMPLE_TIER_1_Y - 30.0f }, 870.0f, 990.0f);
+
+        // 8. Heavy Legionary guarding the Antonia Iron Portcullis
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1040.0f, GROUND_Y - 32.0f }, 980.0f, 1080.0f);
+
+        // 9. Stage 3 Final Boss: Supreme Legatus / Tribunal Praetor Longinus in the Summit Arena
+        m_enemies.emplace_back(EnemyType::BOSS_TRIBUNAL_PRAETOR, Vector2{ 1460.0f, GROUND_Y - 48.0f }, 1160.0f, 1500.0f);
     } else {
         // =========================================================================
         // STAGE 1: JERUSALEM OUTSKIRTS & CITADEL APPROACH

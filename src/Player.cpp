@@ -34,6 +34,9 @@ void Player::Reset(bool resetLives) {
     m_wrathTriggeredWipe = false;
     m_screenFlashAlpha = 0.0f;
 
+    m_isAscendingDiagonal = false;
+    m_ascendToRight = true;
+
     m_nails.clear();
     m_meleeHitbox = { { 0, 0, 0, 0 }, false, 0.0f };
     m_isPerformingMelee = false;
@@ -105,7 +108,7 @@ void Player::RestoreHealth(int pips) {
     m_score += 500;
 }
 
-void Player::Resurrect(bool inBossArena) {
+void Player::Resurrect(bool inBossArena, float bossArenaX) {
     m_hp = PLAYER_MAX_HP;
     m_lives = PLAYER_INITIAL_LIVES;
     m_shatteredHearts = 0;
@@ -121,7 +124,7 @@ void Player::Resurrect(bool inBossArena) {
     m_isPerformingMelee = false;
 
     if (inBossArena) {
-        m_position = { ARENA_MIN_X + 24.0f, GROUND_Y - 30.0f };
+        m_position = { bossArenaX, GROUND_Y - 30.0f };
         m_facingLeft = false;
     } else {
         m_position = { 32.0f, GROUND_Y - 30.0f };
@@ -595,22 +598,29 @@ void Player::Draw() {
     }
 }
 
-void Player::StartAscension() {
+void Player::StartAscension(bool diagonal, bool toRight) {
     m_state = PlayerState::ASCENDING;
     m_stateTimer = 0.0f;
     m_invulnerableTimer = 9999.0f;
     m_velocity = { 0.0f, 0.0f };
-    m_facingLeft = false; // Turn majestically towards heaven
+    m_isAscendingDiagonal = diagonal;
+    m_ascendToRight = toRight;
+    m_facingLeft = !toRight; // Face towards the direction of ascension
 }
 
 void Player::UpdateAscension(float dt) {
     if (m_state != PlayerState::ASCENDING) return;
     m_stateTimer += dt;
     // For first 1.2s: Jesus stands solemnly enveloped in the holy beam
-    // After 1.2s: Jesus smoothly begins ascending upward through the beam
+    // After 1.2s: Jesus begins ascending upward / diagonally into the clouds
     if (m_stateTimer > 1.2f) {
-        float ascendSpeed = 26.0f + (m_stateTimer - 1.2f) * 12.0f;
-        m_position.y -= ascendSpeed * dt;
+        float ascendSpeedY = 26.0f + (m_stateTimer - 1.2f) * 12.0f;
+        m_position.y -= ascendSpeedY * dt;
+
+        if (m_isAscendingDiagonal) {
+            float ascendSpeedX = 40.0f + (m_stateTimer - 1.2f) * 16.0f;
+            m_position.x += (m_ascendToRight ? 1.0f : -1.0f) * ascendSpeedX * dt;
+        }
     }
 }
 

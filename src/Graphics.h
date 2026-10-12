@@ -75,6 +75,15 @@ enum SpriteId {
     SPR_TEMPLE_BOSS_HURT,
     SPR_TEMPLE_BOSS_KNEEL,
 
+    // Stage 3 Boss: Tribunal Praetor Longinus (Golgotha / Citadel Commander)
+    SPR_TRIBUNAL_IDLE,
+    SPR_TRIBUNAL_WALK_0,
+    SPR_TRIBUNAL_WALK_1,
+    SPR_TRIBUNAL_SLASH,
+    SPR_TRIBUNAL_SLAM,
+    SPR_TRIBUNAL_HURT,
+    SPR_TRIBUNAL_KNEEL,
+
     // Projectiles & Items
     SPR_NAIL,
     SPR_ARROW,
@@ -122,6 +131,18 @@ enum TileId {
     TILE_TEMPLE_ALTAR,
     TILE_TEMPLE_INCENSE_BURNER,
 
+    // Stage 3: Golgotha Citadel & Crags Tiles
+    TILE_GOLGOTHA_ROCK_SURFACE,
+    TILE_GOLGOTHA_ROCK_SUB,
+    TILE_GOLGOTHA_LEDGE_1,
+    TILE_GOLGOTHA_LEDGE_2,
+    TILE_GOLGOTHA_COLUMN_HEAD,
+    TILE_GOLGOTHA_COLUMN_MID,
+    TILE_GOLGOTHA_COLUMN_BASE,
+    TILE_GOLGOTHA_BRAZIER,
+    TILE_GOLGOTHA_STANDARD,
+    TILE_GOLGOTHA_WALL_STONE,
+
     TILE_TOTAL_COUNT
 };
 
@@ -152,6 +173,7 @@ public:
     static void DrawStormClouds(float cloudCoverage, float time, bool lightningFlash);
     static void DrawDivineAscensionBeam(float jesusX, float beamIntensity, float cloudsPartAmount, float time);
     static void DrawFinishHimBanner(float time, float alpha);
+    static void DrawRainbow(float alpha, float time);
 
     // External asset hook
     static bool TryLoadExternalSpritesheet(const char* filepath);
@@ -169,6 +191,10 @@ private:
     // Stage 2 Temple Parallax Layers
     static Texture2D s_bgTempleSanctuary;
     static Texture2D s_bgTempleColonnade;
+
+    // Stage 3 Golgotha & Antonia Citadel Parallax Layers
+    static Texture2D s_bgGolgothaSky;
+    static Texture2D s_bgGolgothaCrags;
 
     // Map screen texture
     static Texture2D s_texMissionMap;

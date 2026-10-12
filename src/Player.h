@@ -49,7 +49,7 @@ public:
     void TakeDamage(int damage = 1, bool inBossFight = false);
     void RestoreHealth(int pips = 1);
     void AddScore(int points) { m_score += points; }
-    void Resurrect(bool inBossArena);
+    void Resurrect(bool inBossArena, float bossArenaX = ARENA_MIN_X + 24.0f);
 
     // State queries
     Vector2 GetPosition() const { return m_position; }
@@ -67,7 +67,7 @@ public:
     bool IsDead() const { return m_state == PlayerState::DEAD; }
     bool IsAscending() const { return m_state == PlayerState::ASCENDING; }
 
-    void StartAscension();
+    void StartAscension(bool diagonal = false, bool toRight = true);
     void UpdateAscension(float dt);
     void SetPosition(Vector2 pos) { m_position = pos; m_velocity = { 0, 0 }; }
     void SetFacingLeft(bool facingLeft) { m_facingLeft = facingLeft; }
@@ -90,6 +90,8 @@ private:
     bool m_onGround;
     bool m_onOneWayPlatform;
     float m_dropThroughIgnoreTimer;
+    bool m_isAscendingDiagonal;
+    bool m_ascendToRight;
 
     PlayerState m_state;
     float m_stateTimer;

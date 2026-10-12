@@ -47,7 +47,9 @@ public:
 
     // Map bounds
     float GetLevelWidth() const { return static_cast<float>(LEVEL_PIXEL_WIDTH); }
-    float GetArenaGateX() const { return ARENA_GATE_X; }
+    float GetArenaGateX() const { return m_arenaGateX; }
+    float GetArenaMinX() const { return m_arenaMinX; }
+    float GetArenaMaxX() const { return m_arenaMaxX; }
     const std::vector<Rectangle>& GetCrates() const { return m_crates; }
 
 private:
@@ -61,8 +63,12 @@ private:
     bool m_exitOpen;
     int m_stageId;
     float m_gateOpenOffsetY; // Visual offset for portcullis lifting
+    float m_arenaGateX;
+    float m_arenaMinX;
+    float m_arenaMaxX;
 
     void BuildStreetsOfJerusalem();
     void BuildInsideTheTemple();
+    void BuildGolgothaCitadel();
 };
 

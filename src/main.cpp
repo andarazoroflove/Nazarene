@@ -69,6 +69,7 @@ int main() {
     float cloudsPartAmount = 0.0f;
     float divineBeamIntensity = 0.0f;
     float celestialFadeAlpha = 0.0f;
+    float rainbowAlpha = 0.0f;
 
     auto StartMission = [&](int mission) {
         currentMission = mission;
@@ -91,6 +92,7 @@ int main() {
         cloudsPartAmount = 0.0f;
         divineBeamIntensity = 0.0f;
         celestialFadeAlpha = 0.0f;
+        rainbowAlpha = 0.0f;
     };
 
     auto ResetGame = [&](bool fullReset) {
@@ -191,23 +193,30 @@ int main() {
                     level.UnlockArena();
                 }
 
-                // When entering the Centurion arena:
-                // Jesus starts on the LEFT side of the Centurion fight:
+                // Stage 3: As soon as player finds the boss / approaches the summit gate, clouds of heaven roll in immediately!
+                if (currentMission == 3) {
+                    if (player.GetPosition().x >= (level.GetArenaGateX() - 100.0f) || level.IsArenaLockedDown()) {
+                        cloudCoverage = std::min(1.0f, cloudCoverage + 0.65f * dt);
+                    }
+                }
+
+                // When entering the arena:
+                // Jesus starts on the LEFT side of the boss fight:
                 if (level.IsArenaLockedDown() && !arenaSetupDone) {
                     arenaSetupDone = true;
-                    player.SetPosition({ ARENA_MIN_X + 24.0f, GROUND_Y - 30.0f });
-                    player.SetFacingLeft(false); // Face right towards Brutus
+                    player.SetPosition({ level.GetArenaMinX() + 24.0f, GROUND_Y - 30.0f });
+                    player.SetFacingLeft(false); // Face right towards Boss
 
-                    // Brutus is positioned on the right side of the arena:
+                    // Boss is positioned on the right side of the arena:
                     if (boss) {
-                        boss->SetPosition({ ARENA_MAX_X - 60.0f, GROUND_Y - 48.0f });
+                        boss->SetPosition({ level.GetArenaMaxX() - 60.0f, GROUND_Y - 48.0f });
                         boss->SetFacingLeft(true); // Face left towards Jesus
                         boss->StartArenaCombat();
                     }
-                    camera.target.x = ARENA_MIN_X - 10.0f;
+                    camera.target.x = level.GetArenaMinX() - 10.0f;
                 }
 
-                // Check "FINISH HIM" trigger: when Brutus is down to 1 HP pip ("one square")
+                // Check "FINISH HIM" trigger: when Boss is down to 1 HP pip ("one square")
                 if (boss && boss->GetHp() == 1 && !finishHimTriggered) {
                     finishHimTriggered = true;
                     finishHimBannerTimer = 3.5f;
@@ -216,8 +225,10 @@ int main() {
                 }
 
                 // Update storm clouds and lightning
-                if (finishHimTriggered) {
-                    cloudCoverage = std::min(1.0f, cloudCoverage + 0.85f * dt);
+                if (finishHimTriggered || (currentMission == 3 && cloudCoverage > 0.0f)) {
+                    if (finishHimTriggered) {
+                        cloudCoverage = std::min(1.0f, cloudCoverage + 0.85f * dt);
+                    }
 
                     lightningTimer -= dt;
                     if (lightningTimer <= 0.0f) {
@@ -239,27 +250,34 @@ int main() {
                     ascensionSequenceTimer += dt;
                     AudioManager::StopAllMusic(); // Hushed reverent atmosphere
 
-                    // Brutus withers into the ground; clouds part & divine beam descends
+                    // Boss withers into the ground; clouds part & divine beam descends
                     if (ascensionSequenceTimer >= 1.5f) {
                         cloudsPartAmount = std::min(1.0f, cloudsPartAmount + 0.75f * dt);
                         divineBeamIntensity = std::min(1.0f, divineBeamIntensity + 0.85f * dt);
+
+                        if (currentMission == 3) {
+                            rainbowAlpha = std::min(1.0f, rainbowAlpha + 0.80f * dt);
+                        }
 
                         if (!ascensionStarted) {
                             ascensionStarted = true;
                             AudioManager::PlaySfx(SFX_HOLY_BEAM);
                             AudioManager::PlaySfx(SFX_ANGEL_CHOIR);
-                            player.StartAscension();
+                            // In Stage 3, Jesus ascends diagonally towards opposite side of screen!
+                            bool diagonal = (currentMission == 3);
+                            bool toRight = (player.GetPosition().x < level.GetArenaMinX() + (level.GetArenaMaxX() - level.GetArenaMinX()) * 0.5f);
+                            player.StartAscension(diagonal, toRight);
                         }
                     }
 
                     if (ascensionStarted) {
                         player.UpdateAscension(dt);
 
-                        if (ascensionSequenceTimer >= 5.0f) {
+                        if (ascensionSequenceTimer >= 5.2f) {
                             celestialFadeAlpha = std::min(1.0f, celestialFadeAlpha + 0.75f * dt);
                         }
 
-                        if (ascensionSequenceTimer >= 6.8f || celestialFadeAlpha >= 1.0f) {
+                        if (ascensionSequenceTimer >= 7.2f || celestialFadeAlpha >= 1.0f) {
                             if (currentMission == 1) {
                                 mission1Cleared = true;
                                 currentMission = 2;
@@ -271,16 +289,18 @@ int main() {
                                 gameState = GameState::MISSION_MAP;
                                 missionMapTimer = 0.0f;
                             } else {
+                                // Final Board #3 cleared! Return to splash screen!
                                 mission3Cleared = true;
-                                gameState = GameState::VICTORY;
-                                victoryTimer = 0.0f;
+                                currentMission = 1;
+                                gameState = GameState::TITLE;
+                                coinNoticeTimer = 0.0f;
                             }
                         }
                     }
                 }
 
                 // Gate Warning Notice
-                if (!level.IsArenaUnlocked() && fabsf(player.GetPosition().x - ARENA_GATE_X) < 80.0f) {
+                if (!level.IsArenaUnlocked() && fabsf(player.GetPosition().x - level.GetArenaGateX()) < 80.0f) {
                     gateNoticeTimer = 2.0f;
                 }
                 if (gateNoticeTimer > 0.0f) gateNoticeTimer -= dt;
@@ -289,13 +309,13 @@ int main() {
                 float targetCamX = player.GetPosition().x - (VIRTUAL_WIDTH / 2.0f) + 16.0f;
                 if (!level.IsArenaLockedDown()) {
                     // Before arena lockdown: clamp camera between 0 and gate
-                    float maxCamX = ARENA_GATE_X - VIRTUAL_WIDTH + 60.0f;
+                    float maxCamX = level.GetArenaGateX() - VIRTUAL_WIDTH + 60.0f;
                     if (targetCamX < 0.0f) targetCamX = 0.0f;
                     if (targetCamX > maxCamX) targetCamX = maxCamX;
                 } else {
                     // Inside arena: clamp camera to arena bounds
-                    float minArenaCam = ARENA_MIN_X - 10.0f;
-                    float maxArenaCam = ARENA_MAX_X - VIRTUAL_WIDTH;
+                    float minArenaCam = level.GetArenaMinX() - 10.0f;
+                    float maxArenaCam = level.GetArenaMaxX() - VIRTUAL_WIDTH;
                     if (targetCamX < minArenaCam) targetCamX = minArenaCam;
                     if (targetCamX > maxArenaCam) targetCamX = maxArenaCam;
                 }
@@ -328,10 +348,10 @@ int main() {
                         credits--;
                         AudioManager::PlaySfx(SFX_HOLY_BEAM);
                         bool inBoss = level.IsArenaLockedDown();
-                        player.Resurrect(inBoss);
+                        player.Resurrect(inBoss, level.GetArenaMinX() + 24.0f);
 
                         if (inBoss) {
-                            camera.target.x = ARENA_MIN_X - 10.0f;
+                            camera.target.x = level.GetArenaMinX() - 10.0f;
                             Enemy* b = enemyManager.GetBoss();
                             if (b) {
                                 b->StartArenaCombat();
@@ -451,6 +471,11 @@ int main() {
                 GraphicsManager::DrawDivineAscensionBeam(jesusScreenX, divineBeamIntensity, cloudsPartAmount, GetTime());
             }
 
+            // Rainbow Arc (Stage 3 Finale)
+            if (rainbowAlpha > 0.0f) {
+                GraphicsManager::DrawRainbow(rainbowAlpha, static_cast<float>(GetTime()));
+            }
+
             // 2. World Space Layer (Level, Enemies, Player)
             BeginMode2D(camera);
             level.Draw(camera.target.x);
@@ -509,8 +534,8 @@ int main() {
                 DrawRectangleLines(218, 5, 10, 10, Color{ 80, 75, 70, 255 });
             }
 
-            // Loaves and Fishes Baskets (X/4) / Sacred Censers in Stage 2
-            if (level.GetStage() == 2) {
+            // Loaves and Fishes Baskets (X/4) / Sacred Censers in Stage 2 / Sacred Relics in Stage 3
+            if (level.GetStage() == 2 || level.GetStage() == 3) {
                 GraphicsManager::DrawSprite(SPR_CENSER_GOLD, 244.0f, 2.0f);
             } else {
                 GraphicsManager::DrawSprite(SPR_ICON_BASKET, 246.0f, 2.0f);
@@ -531,7 +556,7 @@ int main() {
                     DrawRectangle(50, VIRTUAL_HEIGHT - 18, VIRTUAL_WIDTH - 100, 14, COLOR_HUD_BG);
                     DrawRectangleLines(50, VIRTUAL_HEIGHT - 18, VIRTUAL_WIDTH - 100, 14, COLOR_ROMAN_CRIMSON);
 
-                    const char* bossName = (level.GetStage() == 2) ? "MALCHUS" : (level.GetStage() == 3 ? "CENTURION" : "BRUTUS");
+                    const char* bossName = (level.GetStage() == 2) ? "MALCHUS" : (level.GetStage() == 3 ? "PRAETOR" : "BRUTUS");
                     DrawText(bossName, 56, VIRTUAL_HEIGHT - 16, 10, COLOR_ROMAN_GOLD);
 
                     int maxBossPips = b->GetMaxHp();
@@ -556,7 +581,9 @@ int main() {
 
             // 6. In-game Alerts & Exit Arrow
             if (gateNoticeTimer > 0.0f && !level.IsArenaUnlocked()) {
-                const char* msg = (level.GetStage() == 2) ? "COLLECT ALL 4 SACRED CENSERS TO UNLOCK VEIL!" : "COLLECT ALL 4 BASKETS TO UNLOCK GATE!";
+                const char* msg = (level.GetStage() == 2) ? "COLLECT ALL 4 SACRED CENSERS TO UNLOCK VEIL!" : 
+                                  (level.GetStage() == 3) ? "COLLECT ALL 4 SACRED RELICS TO UNLOCK PORTCULLIS!" : 
+                                                            "COLLECT ALL 4 BASKETS TO UNLOCK GATE!";
                 int mw = MeasureText(msg, 10);
                 DrawRectangle((VIRTUAL_WIDTH - mw) / 2 - 6, 40, mw + 12, 16, Color{ 20, 15, 25, 230 });
                 DrawRectangleLines((VIRTUAL_WIDTH - mw) / 2 - 6, 40, mw + 12, 16, COLOR_ROMAN_CRIMSON);

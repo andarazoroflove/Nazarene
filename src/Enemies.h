@@ -13,7 +13,8 @@ enum class EnemyType {
     HEAVY_LEGIONARY,
     BOSS_GLADIATOR,
     SICARII_ASSASSIN,
-    BOSS_TEMPLE_COMMANDER
+    BOSS_TEMPLE_COMMANDER,
+    BOSS_TRIBUNAL_PRAETOR
 };
 
 enum class SicariiState {
@@ -90,7 +91,7 @@ public:
 
     bool IsActive() const { return m_active; }
     bool IsBoss() const {
-        return m_type == EnemyType::BOSS_GLADIATOR || m_type == EnemyType::BOSS_TEMPLE_COMMANDER;
+        return m_type == EnemyType::BOSS_GLADIATOR || m_type == EnemyType::BOSS_TEMPLE_COMMANDER || m_type == EnemyType::BOSS_TRIBUNAL_PRAETOR;
     }
     bool IsDefeated() const {
         if (IsBoss()) {

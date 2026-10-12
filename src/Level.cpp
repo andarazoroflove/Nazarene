@@ -20,8 +20,20 @@ void Level::Reset(int stageId) {
     m_baskets.clear();
 
     if (m_stageId == 2) {
+        m_arenaGateX = ARENA_GATE_X; // 2120.0f
+        m_arenaMinX = ARENA_MIN_X;   // 2140.0f
+        m_arenaMaxX = ARENA_MAX_X;   // 2540.0f
         BuildInsideTheTemple();
+    } else if (m_stageId == 3) {
+        // Stage 3: Golgotha Citadel (shorter run to boss, ~3.5 screens)
+        m_arenaGateX = 1120.0f;
+        m_arenaMinX = 1140.0f;
+        m_arenaMaxX = 1540.0f;
+        BuildGolgothaCitadel();
     } else {
+        m_arenaGateX = ARENA_GATE_X;
+        m_arenaMinX = ARENA_MIN_X;
+        m_arenaMaxX = ARENA_MAX_X;
         BuildStreetsOfJerusalem();
     }
 }
@@ -361,7 +373,7 @@ void Level::Update(float dt, const Vector2& playerPos) {
     }
 
     // If player crosses into arena, trigger lockdown!
-    if (m_arenaUnlocked && !m_arenaLockedDown && playerPos.x > (ARENA_GATE_X + 40.0f)) {
+    if (m_arenaUnlocked && !m_arenaLockedDown && playerPos.x > (m_arenaGateX + 40.0f)) {
         TriggerArenaLockdown();
     }
 
@@ -457,8 +469,8 @@ bool Level::CheckWallCollision(const Rectangle& bbox, float& adjustedX, int faci
     }
 
     // Right boundary of arena:
-    if (bbox.x + bbox.width > ARENA_MAX_X) {
-        adjustedX = ARENA_MAX_X - bbox.width - 4.0f;
+    if (bbox.x + bbox.width > m_arenaMaxX) {
+        adjustedX = m_arenaMaxX - bbox.width - 4.0f;
         return true;
     }
 
@@ -486,11 +498,11 @@ bool Level::CheckWallCollision(const Rectangle& bbox, float& adjustedX, int faci
     // Arena gate collision:
     // If gate is NOT open (or locked down), acts as a solid wall
     if (!m_arenaUnlocked || m_arenaLockedDown) {
-        float gateX = ARENA_GATE_X + 16.0f;
+        float gateX = m_arenaGateX + 16.0f;
         if (m_arenaLockedDown) {
             // Player trapped inside arena
-            if (bbox.x < ARENA_MIN_X) {
-                adjustedX = ARENA_MIN_X - 4.0f;
+            if (bbox.x < m_arenaMinX) {
+                adjustedX = m_arenaMinX - 4.0f;
                 return true;
             }
         } else {
@@ -508,11 +520,13 @@ bool Level::CheckWallCollision(const Rectangle& bbox, float& adjustedX, int faci
 void Level::OpenExit() {
     if (!m_exitOpen) {
         m_exitOpen = true;
-        // Open archway at end of arena (Tile 159)
-        m_tilemap[8][159] = TILE_AIR;
-        m_tilemap[9][159] = TILE_AIR;
-        m_tilemap[10][159] = TILE_AIR;
-        m_tilemap[11][159] = TILE_AIR;
+        int exitTile = static_cast<int>(m_arenaMaxX / TILE_SIZE);
+        if (exitTile < LEVEL_TILES_X) {
+            m_tilemap[8][exitTile] = TILE_AIR;
+            m_tilemap[9][exitTile] = TILE_AIR;
+            m_tilemap[10][exitTile] = TILE_AIR;
+            m_tilemap[11][exitTile] = TILE_AIR;
+        }
         AudioManager::PlaySfx(SFX_DING_DING);
     }
 }
@@ -521,7 +535,7 @@ void Level::Draw(float cameraX) {
     int startCol = std::max(0, static_cast<int>(cameraX / TILE_SIZE) - 1);
     int endCol = std::min(LEVEL_TILES_X - 1, static_cast<int>((cameraX + VIRTUAL_WIDTH) / TILE_SIZE) + 2);
 
-    int gateCol = static_cast<int>(ARENA_GATE_X / TILE_SIZE);
+    int gateCol = static_cast<int>(m_arenaGateX / TILE_SIZE);
 
     // Draw background/geometry tiles
     for (int ty = 0; ty < LEVEL_TILES_Y; ++ty) {
@@ -545,7 +559,7 @@ void Level::Draw(float cameraX) {
     for (const auto& b : m_baskets) {
         if (!b.collected) {
             float floatY = sinf(b.floatTimer * 4.0f) * 2.0f;
-            SpriteId pickupSpr = (m_stageId == 2) ? SPR_CENSER_GOLD : SPR_BASKET_LOAVES_FISHES;
+            SpriteId pickupSpr = (m_stageId == 2 || m_stageId == 3) ? SPR_CENSER_GOLD : SPR_BASKET_LOAVES_FISHES;
             GraphicsManager::DrawSprite(pickupSpr, b.position.x, b.position.y + floatY);
 
             // Shimmer gleam
@@ -555,7 +569,139 @@ void Level::Draw(float cameraX) {
             }
         }
     }
+}
 
+void Level::BuildGolgothaCitadel() {
+    // 1. Initialize entire tilemap with air
+    for (int y = 0; y < LEVEL_TILES_Y; ++y) {
+        for (int x = 0; x < LEVEL_TILES_X; ++x) {
+            m_tilemap[y][x] = TILE_AIR;
+        }
+    }
 
+    // 2. Solid Ground Tier (Golgotha Crags & Roman Paved Road up to Antonia)
+    for (int x = 0; x < LEVEL_TILES_X; ++x) {
+        m_tilemap[12][x] = TILE_GOLGOTHA_ROCK_SURFACE;
+        m_tilemap[13][x] = TILE_GOLGOTHA_ROCK_SUB;
+    }
+
+    // Platform helpers
+    auto AddCragLedge = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_GOLGOTHA_LEDGE_1;
+        }
+    };
+
+    auto AddBattlement = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_GOLGOTHA_LEDGE_2;
+        }
+    };
+
+    auto AddRockColumn = [this](int tileX, int topTileY, int groundTileY) {
+        m_tilemap[topTileY][tileX] = TILE_GOLGOTHA_COLUMN_HEAD;
+        for (int ty = topTileY + 1; ty < groundTileY - 1; ++ty) {
+            m_tilemap[ty][tileX] = TILE_GOLGOTHA_COLUMN_MID;
+        }
+        m_tilemap[groundTileY - 1][tileX] = TILE_GOLGOTHA_COLUMN_BASE;
+    };
+
+    auto AddRockBlock = [this](int tileX, int tileY) {
+        m_tilemap[tileY][tileX] = TILE_WOOD_CRATE;
+        m_crates.push_back({ (float)tileX * TILE_SIZE, (float)tileY * TILE_SIZE, (float)TILE_SIZE, (float)TILE_SIZE });
+    };
+
+    // === SECTION 1: Lower Crags of Golgotha (Tiles 0 - 24) ===
+    AddRockColumn(5, 3, 12);
+    AddRockColumn(12, 3, 12);
+    AddRockColumn(20, 3, 12);
+    m_tilemap[11][3] = TILE_GOLGOTHA_BRAZIER;
+    m_tilemap[11][18] = TILE_GOLGOTHA_BRAZIER;
+    m_tilemap[4][8] = TILE_GOLGOTHA_STANDARD;
+
+    // Crag Shelf (Tier 1, Y=9, 144px)
+    AddCragLedge(8, 22, 9);
+    AddRockBlock(6, 11);
+
+    // Sacred Relic #1: on Crag Shelf at tile 15
+    m_baskets.push_back({ { 15.0f * TILE_SIZE, 8.0f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // === SECTION 2: Siege Ramp & Multi-Tier Crags (Tiles 25 - 48) ===
+    AddRockColumn(26, 1, 12);
+    AddRockColumn(34, 1, 12);
+    AddRockColumn(42, 1, 12);
+
+    AddCragLedge(25, 45, 9);     // Tier 1 (144px)
+    AddBattlement(30, 40, 6);    // Tier 2 (96px)
+
+    AddRockBlock(24, 11);        // Step to Tier 1
+    AddRockBlock(29, 8);         // Step from Tier 1 to Tier 2
+
+    m_tilemap[11][28] = TILE_GOLGOTHA_BRAZIER;
+    m_tilemap[11][44] = TILE_GOLGOTHA_BRAZIER;
+    m_tilemap[3][32] = TILE_GOLGOTHA_STANDARD;
+    m_tilemap[3][38] = TILE_GOLGOTHA_STANDARD;
+
+    // Sacred Relic #2: High Tier 2 Parapet at tile 35
+    m_baskets.push_back({ { 35.0f * TILE_SIZE, 5.0f * TILE_SIZE }, false, 0.0f, 2 });
+
+    // === SECTION 3: Fortress Antonia Approach (Tiles 48 - 70) ===
+    AddRockColumn(50, 1, 12);
+    AddRockColumn(58, 1, 12);
+    AddRockColumn(66, 1, 12);
+
+    AddCragLedge(48, 66, 9);     // Tier 1
+    AddBattlement(52, 62, 6);    // Tier 2
+
+    AddRockBlock(47, 11);
+    AddRockBlock(51, 8);
+
+    m_tilemap[11][49] = TILE_GOLGOTHA_BRAZIER;
+    m_tilemap[11][65] = TILE_GOLGOTHA_BRAZIER;
+    m_tilemap[3][54] = TILE_GOLGOTHA_STANDARD;
+    m_tilemap[3][60] = TILE_GOLGOTHA_STANDARD;
+
+    // Sacred Relic #3: Ground level alcove at tile 52
+    m_baskets.push_back({ { 52.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    // Sacred Relic #4: High Tier 2 parapet at tile 57
+    m_baskets.push_back({ { 57.0f * TILE_SIZE, 5.0f * TILE_SIZE }, false, 0.0f, 2 });
+
+    // === SECTION 4: Fortress Antonia Gate / Iron Portcullis (Tiles 70 - 72, X = 1120) ===
+    int gateTileX = static_cast<int>(m_arenaGateX / TILE_SIZE); // 70
+    for (int ty = 2; ty <= 11; ++ty) {
+        m_tilemap[ty][gateTileX] = TILE_GATE_FRAME;
+        m_tilemap[ty][gateTileX + 1] = TILE_GATE_BARS;
+        m_tilemap[ty][gateTileX + 2] = TILE_GATE_FRAME;
+    }
+    m_tilemap[11][gateTileX - 1] = TILE_GOLGOTHA_BRAZIER;
+
+    // === SECTION 5: Summit Arena of Golgotha / Roman High Command (Tiles 73 - 96) ===
+    AddRockColumn(76, 2, 12);
+    AddRockColumn(84, 2, 12);
+    AddRockColumn(92, 2, 12);
+    m_tilemap[11][79] = TILE_GOLGOTHA_BRAZIER;
+    m_tilemap[11][87] = TILE_GOLGOTHA_BRAZIER;
+    m_tilemap[3][76] = TILE_GOLGOTHA_STANDARD;
+    m_tilemap[3][84] = TILE_GOLGOTHA_STANDARD;
+    m_tilemap[3][92] = TILE_GOLGOTHA_STANDARD;
+
+    // Arena back wall at end of summit (Tile 96, X = 1536)
+    int backWallX = static_cast<int>(m_arenaMaxX / TILE_SIZE);
+    if (backWallX < LEVEL_TILES_X) {
+        for (int ty = 0; ty <= 11; ++ty) {
+            m_tilemap[ty][backWallX] = TILE_GATE_FRAME;
+        }
+    }
 }
 

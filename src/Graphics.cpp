@@ -13,6 +13,8 @@ Texture2D GraphicsManager::s_bgMidJerusalemVillas = {};
 Texture2D GraphicsManager::s_bgNearStreetscape = {};
 Texture2D GraphicsManager::s_bgTempleSanctuary = {};
 Texture2D GraphicsManager::s_bgTempleColonnade = {};
+Texture2D GraphicsManager::s_bgGolgothaSky = {};
+Texture2D GraphicsManager::s_bgGolgothaCrags = {};
 Texture2D GraphicsManager::s_texMissionMap = {};
 Texture2D GraphicsManager::s_texTitleSplash = {};
 bool GraphicsManager::s_initialized = false;
@@ -1970,6 +1972,178 @@ void GraphicsManager::GenerateAllProceduralSprites() {
     PaintTempleBoss(tboss.data(), 6);
     s_sprites[SPR_TEMPLE_BOSS_KNEEL] = CreateTextureFromPixels(TBW, TBH, tboss.data());
 
+    // =========================================================================
+    // STAGE 3 FINAL BOSS: SUPREME LEGATUS / TRIBUNAL PRAETOR LONGINUS (44x48)
+    // Dark Burnished Obsidian Plate with Gold Filigree & Flowing Scarlet Cloak
+    // =========================================================================
+    constexpr int TPW = 44, TPH = 48;
+    std::vector<Color> tpraetor(TPW * TPH, BLANK);
+
+    auto PaintTribunalPraetor = [&](Color* p, int pose) {
+        for (int i = 0; i < TPW * TPH; ++i) p[i] = BLANK;
+
+        Color skinMid     = Color{ 195, 145, 105, 255 };
+        Color plateBlack  = Color{  32,  28,  38, 255 };
+        Color plateHi     = Color{  68,  62,  78, 255 };
+        Color goldImp     = COLOR_GOLD_BRIGHT;
+        Color goldMid     = COLOR_ROMAN_GOLD;
+        Color goldDark    = Color{ 160, 115,  20, 255 };
+        Color capeRed     = COLOR_ROMAN_CRIMSON;
+        Color capeDark    = Color{ 110,  15,  22, 255 };
+        Color capeHi      = Color{ 235,  45,  55, 255 };
+        Color steelBlade  = Color{ 245, 248, 255, 255 };
+        Color steelEdge   = Color{ 160, 175, 195, 255 };
+        Color eyeGlow     = Color{ 255,  50,  40, 255 };
+
+        if (pose == 5) { // HURT FLASH
+            plateBlack = Color{ 140, 30, 40, 255 };
+            plateHi = Color{ 220, 70, 80, 255 };
+            goldImp = Color{ 255, 200, 200, 255 };
+        }
+
+        int walkOff = (pose == 1) ? 2 : ((pose == 2) ? -2 : 0);
+
+        // --- FLOWING IMPERIAL SCARLET CAPE (Back Layer) ---
+        if (pose != 6) { // Not kneeling
+            for (int cy = 16; cy <= 44; ++cy) {
+                int cx1 = 4 - (cy - 16) / 5;
+                int cx2 = 14 + (cy - 16) / 3;
+                FillRect(p, TPW, TPH, cx1, cy, cx2 - cx1 + 1, 1, (cy % 3 == 0) ? capeDark : capeRed);
+                Set(p, TPW, TPH, cx1, cy, capeDark);
+                Set(p, TPW, TPH, cx2, cy, capeHi);
+            }
+        }
+
+        // --- IMPERIAL GOLDEN HORNED CREST & HELMET ---
+        if (pose == 6) { // KNEELING
+            FillRect(p, TPW, TPH, 14, 16, 12, 10, plateBlack);
+            HLine(p, TPW, TPH, 14, 25, 16, goldImp);
+            FillCircle(p, TPW, TPH, 20, 18, 5, goldMid);
+            FillRect(p, TPW, TPH, 12, 24, 16, 14, plateBlack);
+            HLine(p, TPW, TPH, 13, 27, 26, goldImp);
+            FillCircle(p, TPW, TPH, 20, 30, 3, goldImp); // Eagle emblem
+            FillRect(p, TPW, TPH, 10, 36, 18, 8, plateBlack);
+            // Sword planted downward in ground
+            VLine(p, TPW, TPH, 28, 22, 45, steelBlade);
+            VLine(p, TPW, TPH, 29, 22, 45, steelEdge);
+            HLine(p, TPW, TPH, 25, 32, 22, goldImp);
+            FillCircle(p, TPW, TPH, 28, 20, 2, goldDark);
+            return;
+        }
+
+        // Standing / Attacking Helm
+        // Majestic Roman Imperial Transverse Crest (Scarlet & Gold)
+        FillRect(p, TPW, TPH, 12, 2, 16, 4, capeRed);
+        HLine(p, TPW, TPH, 13, 26, 2, goldImp);
+        HLine(p, TPW, TPH, 14, 25, 3, capeHi);
+
+        // Golden Helmet Dome
+        FillCircle(p, TPW, TPH, 20, 8, 6, goldMid);
+        FillCircle(p, TPW, TPH, 19, 7, 4, goldImp);
+        // Golden Laurel Wreath around helmet
+        for (int lx = 14; lx <= 25; lx += 2) {
+            Set(p, TPW, TPH, lx, 8, Color{ 255, 245, 140, 255 });
+            Set(p, TPW, TPH, lx + 1, 9, goldDark);
+        }
+
+        // Visor & Piercing Glowing Red Commander Eyes
+        FillRect(p, TPW, TPH, 16, 10, 8, 3, plateBlack);
+        Set(p, TPW, TPH, 18, 11, eyeGlow);
+        Set(p, TPW, TPH, 22, 11, eyeGlow);
+        Set(p, TPW, TPH, 19, 11, Color{ 255, 255, 255, 255 });
+        Set(p, TPW, TPH, 23, 11, Color{ 255, 255, 255, 255 });
+
+        // Chiselled Bronze Cheekplates & Jaw
+        FillRect(p, TPW, TPH, 15, 12, 3, 4, goldDark);
+        FillRect(p, TPW, TPH, 23, 12, 3, 4, goldDark);
+        FillRect(p, TPW, TPH, 18, 13, 4, 3, skinMid);
+
+        // --- OBSIDIAN MUSCLE CUIRASS (Lorica Musculata with Golden Eagle) ---
+        FillRect(p, TPW, TPH, 12, 16, 16, 14, plateBlack);
+        OutlineRect(p, TPW, TPH, 12, 16, 16, 14, plateHi);
+        // Sculpted anatomical pectoral plates
+        FillCircle(p, TPW, TPH, 16, 20, 3, plateHi);
+        FillCircle(p, TPW, TPH, 24, 20, 3, plateHi);
+        // Golden Aquila (Imperial Eagle) embossed across the chest
+        FillCircle(p, TPW, TPH, 20, 21, 2, goldImp);
+        Line(p, TPW, TPH, 17, 19, 23, 19, goldImp);
+        Line(p, TPW, TPH, 16, 20, 24, 20, goldMid);
+        // Heavy Spiked Golden Pauldrons
+        FillCircle(p, TPW, TPH, 10, 18, 4, goldMid);
+        FillCircle(p, TPW, TPH, 10, 18, 2, goldImp);
+        FillCircle(p, TPW, TPH, 30, 18, 4, goldMid);
+        FillCircle(p, TPW, TPH, 30, 18, 2, goldImp);
+
+        // Studded War Belt & Triple-Layered Pteruges
+        FillRect(p, TPW, TPH, 12, 29, 16, 3, Color{ 90, 45, 20, 255 });
+        HLine(p, TPW, TPH, 12, 27, 30, goldImp);
+        FillCircle(p, TPW, TPH, 20, 30, 2, goldImp); // Imperial medusa buckle
+        for (int px = 13; px <= 27; px += 3) {
+            VLine(p, TPW, TPH, px, 32, 37, Color{ 75, 35, 15, 255 });
+            Set(p, TPW, TPH, px, 37, goldImp); // Brass leaf terminal
+        }
+
+        // --- WEAPONS: IMPERIAL GOLDEN SPATHA & SHIELD ---
+        if (pose == 3) { // SLASH POSE: Sweeping Golden Spatha
+            Line(p, TPW, TPH, 28, 20, 42, 14, steelBlade);
+            Line(p, TPW, TPH, 28, 21, 42, 15, steelEdge);
+            Line(p, TPW, TPH, 27, 19, 41, 13, Color{ 255, 255, 255, 255 }); // Gleam
+            FillRect(p, TPW, TPH, 26, 20, 4, 3, goldImp); // Crossguard
+            FillCircle(p, TPW, TPH, 25, 22, 2, goldDark); // Pommel
+            // Radiant slash arc trail
+            Line(p, TPW, TPH, 38, 8, 43, 24, goldImp);
+            Line(p, TPW, TPH, 36, 6, 43, 20, Color{ 255, 255, 255, 220 });
+        } else if (pose == 4) { // SLAM POSE: Overhead Imperial Strike
+            Line(p, TPW, TPH, 26, 18, 38, 4, steelBlade);
+            Line(p, TPW, TPH, 27, 19, 39, 5, steelEdge);
+            Line(p, TPW, TPH, 25, 17, 37, 3, Color{ 255, 255, 255, 255 });
+            FillRect(p, TPW, TPH, 27, 16, 4, 4, goldImp);
+            // Heavy Roman Scutum Shield
+            FillRect(p, TPW, TPH, 30, 16, 10, 18, capeRed);
+            OutlineRect(p, TPW, TPH, 30, 16, 10, 18, goldImp);
+            FillCircle(p, TPW, TPH, 35, 25, 3, goldImp); // Golden shield boss
+        } else { // IDLE / WALK
+            Line(p, TPW, TPH, 28, 22, 38, 38, steelBlade);
+            Line(p, TPW, TPH, 29, 23, 39, 39, steelEdge);
+            FillRect(p, TPW, TPH, 26, 20, 3, 3, goldImp);
+            // Armored Scutum Shield on left arm
+            FillRect(p, TPW, TPH, 6, 20, 6, 15, capeRed);
+            VLine(p, TPW, TPH, 6, 20, 34, goldImp);
+            VLine(p, TPW, TPH, 11, 20, 34, goldImp);
+            Set(p, TPW, TPH, 8, 27, goldImp);
+        }
+
+        // --- GREAVED LEGS & BOOTS ---
+        int leftLegX = 13 + walkOff;
+        int rightLegX = 21 - walkOff;
+        FillRect(p, TPW, TPH, leftLegX, 36, 5, 9, plateBlack);
+        VLine(p, TPW, TPH, leftLegX + 1, 36, 44, plateHi);
+        FillCircle(p, TPW, TPH, leftLegX + 2, 37, 2, goldImp); // Knee boss
+        FillRect(p, TPW, TPH, rightLegX, 36, 5, 9, plateBlack);
+        VLine(p, TPW, TPH, rightLegX + 1, 36, 44, plateHi);
+        FillCircle(p, TPW, TPH, rightLegX + 2, 37, 2, goldImp);
+        // Armored Caligae Boots
+        FillRect(p, TPW, TPH, leftLegX - 1, 45, 7, 3, Color{ 70, 35, 15, 255 });
+        HLine(p, TPW, TPH, leftLegX - 1, leftLegX + 5, 45, goldMid);
+        FillRect(p, TPW, TPH, rightLegX - 1, 45, 7, 3, Color{ 70, 35, 15, 255 });
+        HLine(p, TPW, TPH, rightLegX - 1, rightLegX + 5, 45, goldMid);
+    };
+
+    PaintTribunalPraetor(tpraetor.data(), 0);
+    s_sprites[SPR_TRIBUNAL_IDLE] = CreateTextureFromPixels(TPW, TPH, tpraetor.data());
+    PaintTribunalPraetor(tpraetor.data(), 1);
+    s_sprites[SPR_TRIBUNAL_WALK_0] = CreateTextureFromPixels(TPW, TPH, tpraetor.data());
+    PaintTribunalPraetor(tpraetor.data(), 2);
+    s_sprites[SPR_TRIBUNAL_WALK_1] = CreateTextureFromPixels(TPW, TPH, tpraetor.data());
+    PaintTribunalPraetor(tpraetor.data(), 3);
+    s_sprites[SPR_TRIBUNAL_SLASH] = CreateTextureFromPixels(TPW, TPH, tpraetor.data());
+    PaintTribunalPraetor(tpraetor.data(), 4);
+    s_sprites[SPR_TRIBUNAL_SLAM] = CreateTextureFromPixels(TPW, TPH, tpraetor.data());
+    PaintTribunalPraetor(tpraetor.data(), 5);
+    s_sprites[SPR_TRIBUNAL_HURT] = CreateTextureFromPixels(TPW, TPH, tpraetor.data());
+    PaintTribunalPraetor(tpraetor.data(), 6);
+    s_sprites[SPR_TRIBUNAL_KNEEL] = CreateTextureFromPixels(TPW, TPH, tpraetor.data());
+
     // Sacred Golden Censer Pickup (18x18)
     constexpr int CEN_W = 18, CEN_H = 18;
     std::vector<Color> censer(CEN_W * CEN_H, BLANK);
@@ -2431,6 +2605,111 @@ void GraphicsManager::GenerateAllProceduralTiles() {
     Set(p.data(), TW, TH, 8, 4, Color{ 255, 120, 40, 255 });
     FillCircle(p.data(), TW, TH, 7, 2, 2, Color{ 255, 215, 80, 120 });
     s_tiles[TILE_TEMPLE_INCENSE_BURNER] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // =========================================================================
+    // STAGE 3: GOLGOTHA CITADEL & CRAGS TILES
+    // =========================================================================
+    Color cragDark   = Color{  52,  46,  48, 255 };
+    Color cragMid    = Color{  78,  72,  76, 255 };
+    Color cragHi     = Color{ 115, 108, 114, 255 };
+    Color ironDark   = Color{  28,  26,  32, 255 };
+    Color ironHi     = Color{  65,  62,  75, 255 };
+    Color flameHot   = Color{ 255, 230,  80, 255 };
+    Color flameOrange= Color{ 255, 110,  30, 255 };
+    Color flameRed   = Color{ 200,  30,  20, 255 };
+
+    // 28. TILE_GOLGOTHA_ROCK_SURFACE
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            Color c = ((x + y * 2) % 4 == 0) ? cragHi : cragMid;
+            if (y == 0) c = Color{ 135, 128, 134, 255 };
+            p[y * TW + x] = c;
+        }
+    }
+    s_tiles[TILE_GOLGOTHA_ROCK_SURFACE] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 29. TILE_GOLGOTHA_ROCK_SUB
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            Color c = ((x * 3 + y) % 5 == 0) ? cragDark : cragMid;
+            p[y * TW + x] = c;
+        }
+    }
+    s_tiles[TILE_GOLGOTHA_ROCK_SUB] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 30. TILE_GOLGOTHA_LEDGE_1 (Crag Platform)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 0, 0, TW, 6, cragMid);
+    HLine(p.data(), TW, TH, 0, TW - 1, 0, cragHi);
+    HLine(p.data(), TW, TH, 0, TW - 1, 5, cragDark);
+    for (int x = 2; x < TW; x += 4) Set(p.data(), TW, TH, x, 6, cragDark);
+    s_tiles[TILE_GOLGOTHA_LEDGE_1] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 31. TILE_GOLGOTHA_LEDGE_2 (Fortress Battlement)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 0, 0, TW, 6, ironDark);
+    HLine(p.data(), TW, TH, 0, TW - 1, 0, ironHi);
+    HLine(p.data(), TW, TH, 0, TW - 1, 5, Color{ 15, 12, 18, 255 });
+    Set(p.data(), TW, TH, 4, 3, COLOR_ROMAN_GOLD);
+    Set(p.data(), TW, TH, 11, 3, COLOR_ROMAN_GOLD);
+    s_tiles[TILE_GOLGOTHA_LEDGE_2] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 32. TILE_GOLGOTHA_COLUMN_HEAD
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 2, 2, 12, 14, cragMid);
+    FillRect(p.data(), TW, TH, 1, 0, 14, 4, ironHi);
+    OutlineRect(p.data(), TW, TH, 1, 0, 14, 4, ironDark);
+    HLine(p.data(), TW, TH, 2, 13, 1, Color{ 255, 235, 140, 255 });
+    s_tiles[TILE_GOLGOTHA_COLUMN_HEAD] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 33. TILE_GOLGOTHA_COLUMN_MID
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 3, 0, 10, TH, cragMid);
+    VLine(p.data(), TW, TH, 3, 0, TH - 1, cragHi);
+    VLine(p.data(), TW, TH, 12, 0, TH - 1, cragDark);
+    s_tiles[TILE_GOLGOTHA_COLUMN_MID] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 34. TILE_GOLGOTHA_COLUMN_BASE
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 3, 0, 10, 10, cragMid);
+    FillRect(p.data(), TW, TH, 1, 10, 14, 6, ironDark);
+    HLine(p.data(), TW, TH, 2, 13, 10, ironHi);
+    s_tiles[TILE_GOLGOTHA_COLUMN_BASE] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 35. TILE_GOLGOTHA_BRAZIER (Roaring Fortress Fire)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 3, 8, 10, 5, ironDark);
+    Line(p.data(), TW, TH, 3, 13, 1, 15, ironDark);
+    Line(p.data(), TW, TH, 12, 13, 14, 15, ironDark);
+    FillCircle(p.data(), TW, TH, 8, 5, 4, flameOrange);
+    FillCircle(p.data(), TW, TH, 8, 4, 2, flameHot);
+    Set(p.data(), TW, TH, 6, 2, flameRed);
+    Set(p.data(), TW, TH, 9, 3, flameRed);
+    s_tiles[TILE_GOLGOTHA_BRAZIER] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 36. TILE_GOLGOTHA_STANDARD (Roman Imperial Eagle Standard)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    VLine(p.data(), TW, TH, 8, 0, TH - 1, Color{ 175, 120, 25, 255 });
+    // Golden Eagle Aquila
+    FillCircle(p.data(), TW, TH, 8, 3, 3, COLOR_GOLD_BRIGHT);
+    Line(p.data(), TW, TH, 4, 2, 12, 2, COLOR_GOLD_BRIGHT);
+    // Scarlet SPQR Banner
+    FillRect(p.data(), TW, TH, 4, 6, 8, 9, COLOR_ROMAN_CRIMSON);
+    OutlineRect(p.data(), TW, TH, 4, 6, 8, 9, COLOR_ROMAN_GOLD);
+    Set(p.data(), TW, TH, 6, 9, COLOR_ROMAN_GOLD);
+    Set(p.data(), TW, TH, 9, 9, COLOR_ROMAN_GOLD);
+    s_tiles[TILE_GOLGOTHA_STANDARD] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 37. TILE_GOLGOTHA_WALL_STONE
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            Color c = cragDark;
+            if (x == 0 || y == 0 || y == 8 || (y < 8 && x == 8)) c = Color{ 25, 22, 28, 255 };
+            else if (x == 1 || y == 1 || y == 9 || (y < 8 && x == 9)) c = cragMid;
+            p[y * TW + x] = c;
+        }
+    }
+    s_tiles[TILE_GOLGOTHA_WALL_STONE] = CreateTextureFromPixels(TW, TH, p.data());
 }
 
 // Generate the 3-layer parallax backgrounds
@@ -2867,6 +3146,72 @@ void GraphicsManager::GenerateParallaxBackgrounds() {
         }
     }
     s_bgTempleColonnade = CreateTextureFromPixels(TC_W, TC_H, bgColonnade.data());
+
+    // =========================================================================
+    // STAGE 3: GOLGOTHA CITADEL PARALLAX LAYERS
+    // =========================================================================
+    // 7. Golgotha Sky & Mount Calvary Distant Horizon (320x160, 0.10x scroll)
+    constexpr int GS_W = 320, GS_H = 160;
+    std::vector<Color> bgGolgothaSky(GS_W * GS_H);
+
+    for (int y = 0; y < GS_H; ++y) {
+        float ty = (float)y / (float)GS_H;
+        Color skyCol;
+        if (ty < 0.35f) {
+            float t = ty / 0.35f;
+            skyCol = Color{ (unsigned char)(28 + t * 30), (unsigned char)(22 + t * 24), (unsigned char)(42 + t * 32), 255 };
+        } else if (ty < 0.70f) {
+            float t = (ty - 0.35f) / 0.35f;
+            skyCol = Color{ (unsigned char)(58 + t * 75), (unsigned char)(46 + t * 45), (unsigned char)(74 - t * 20), 255 };
+        } else {
+            float t = (ty - 0.70f) / 0.30f;
+            skyCol = Color{ (unsigned char)(133 + t * 50), (unsigned char)(91 + t * 35), (unsigned char)(54 - t * 15), 255 };
+        }
+
+        for (int x = 0; x < GS_W; ++x) {
+            bgGolgothaSky[y * GS_W + x] = skyCol;
+        }
+    }
+
+    // Distant dark jagged silhouette of Mount Golgotha & Calvary hills
+    for (int x = 0; x < GS_W; ++x) {
+        float peak1 = sinf(x * 0.024f) * 22.0f;
+        float peak2 = sinf(x * 0.065f + 1.2f) * 12.0f;
+        int hillY = static_cast<int>(105 + peak1 + peak2);
+        for (int y = hillY; y < GS_H; ++y) {
+            bgGolgothaSky[y * GS_W + x] = Color{ 36, 30, 42, 255 };
+        }
+    }
+    s_bgGolgothaSky = CreateTextureFromPixels(GS_W, GS_H, bgGolgothaSky.data());
+
+    // 8. Golgotha Near Crags & Fortress Antonia Ramparts (480x160, 0.45x scroll)
+    constexpr int GC_W = 480, GC_H = 160;
+    std::vector<Color> bgGolgothaCrags(GC_W * GC_H, BLANK);
+
+    for (int x = 0; x < GC_W; ++x) {
+        float cragForm = sinf(x * 0.038f) * 28.0f + cosf(x * 0.082f) * 14.0f;
+        int cragTop = static_cast<int>(88 + cragForm);
+        for (int y = cragTop; y < GC_H; ++y) {
+            Color rock = ((x + y * 2) % 6 == 0) ? Color{ 58, 52, 60, 240 } : Color{ 74, 66, 76, 240 };
+            if (y == cragTop) rock = Color{ 105, 96, 110, 255 };
+            bgGolgothaCrags[y * GC_W + x] = rock;
+        }
+
+        // Antonia fortress watchtowers and battlements every 120 pixels
+        if (x % 120 >= 10 && x % 120 <= 46) {
+            for (int y = 52; y < GC_H; ++y) {
+                if (y == 52 && (x % 6 < 3)) continue; // Crenellations
+                bgGolgothaCrags[y * GC_W + x] = ((x ^ y) % 7 == 0) ? Color{ 48, 42, 52, 250 } : Color{ 62, 55, 66, 250 };
+            }
+            // Burning torch / signal brazier atop watchtowers
+            if (x % 120 == 28) {
+                VLine(bgGolgothaCrags.data(), GC_W, GC_H, x, 40, 52, Color{ 30, 26, 34, 255 });
+                FillCircle(bgGolgothaCrags.data(), GC_W, GC_H, x, 39, 3, Color{ 255, 130, 40, 255 });
+                Set(bgGolgothaCrags.data(), GC_W, GC_H, x, 38, Color{ 255, 235, 120, 255 });
+            }
+        }
+    }
+    s_bgGolgothaCrags = CreateTextureFromPixels(GC_W, GC_H, bgGolgothaCrags.data());
 }
 
 void GraphicsManager::GenerateMissionMap() {
@@ -3042,6 +3387,8 @@ void GraphicsManager::Close() {
     if (s_bgNearStreetscape.id > 0) UnloadTexture(s_bgNearStreetscape);
     if (s_bgTempleSanctuary.id > 0) UnloadTexture(s_bgTempleSanctuary);
     if (s_bgTempleColonnade.id > 0) UnloadTexture(s_bgTempleColonnade);
+    if (s_bgGolgothaSky.id > 0) UnloadTexture(s_bgGolgothaSky);
+    if (s_bgGolgothaCrags.id > 0) UnloadTexture(s_bgGolgothaCrags);
     if (s_texMissionMap.id > 0) UnloadTexture(s_texMissionMap);
     if (s_texTitleSplash.id > 0) UnloadTexture(s_texTitleSplash);
 
@@ -3071,7 +3418,7 @@ void GraphicsManager::DrawMissionMap(int currentMission, bool m1Cleared, bool m2
     AreaNode areas[3] = {
         {  42,  64, 46, 44, "AREA 1: VIA DOLOROSA", "ROMAN GARRISON & AQUEDUCT", "CENTURION BRUTUS", m1Cleared },
         { 138,  48, 52, 48, "AREA 2: THE INNER TEMPLE", "SOLOMON'S PORCH & SANCTUARY", "SICARII & MALCHUS", m2Cleared },
-        { 236,  72, 48, 44, "AREA 3: GOLGOTHA CITADEL", "THE CRAGS & UPPER CITADEL", "TRIBUNAL PHANTOM", m3Cleared }
+        { 236,  72, 48, 44, "AREA 3: GOLGOTHA CITADEL", "THE CRAGS & UPPER CITADEL", "TRIBUNAL PRAETOR", m3Cleared }
     };
 
     for (int i = 0; i < 3; ++i) {
@@ -3180,6 +3527,18 @@ void GraphicsManager::DrawParallaxBackground(float cameraX, float time, int stag
         DrawTexture(s_bgTempleColonnade, static_cast<int>(cX), 10, WHITE);
         DrawTexture(s_bgTempleColonnade, static_cast<int>(cX + s_bgTempleColonnade.width), 10, WHITE);
         if (cX > 0) DrawTexture(s_bgTempleColonnade, static_cast<int>(cX - s_bgTempleColonnade.width), 10, WHITE);
+        return;
+    } else if (stageId == 3) {
+        // --- STAGE 3: GOLGOTHA CITADEL & CRAGS ---
+        float gSkyX = -fmodf(cameraX * 0.10f, (float)s_bgGolgothaSky.width);
+        DrawTexture(s_bgGolgothaSky, static_cast<int>(gSkyX), 0, WHITE);
+        DrawTexture(s_bgGolgothaSky, static_cast<int>(gSkyX + s_bgGolgothaSky.width), 0, WHITE);
+        if (gSkyX > 0) DrawTexture(s_bgGolgothaSky, static_cast<int>(gSkyX - s_bgGolgothaSky.width), 0, WHITE);
+
+        float gCragX = -fmodf(cameraX * 0.45f, (float)s_bgGolgothaCrags.width);
+        DrawTexture(s_bgGolgothaCrags, static_cast<int>(gCragX), 14, WHITE);
+        DrawTexture(s_bgGolgothaCrags, static_cast<int>(gCragX + s_bgGolgothaCrags.width), 14, WHITE);
+        if (gCragX > 0) DrawTexture(s_bgGolgothaCrags, static_cast<int>(gCragX - s_bgGolgothaCrags.width), 14, WHITE);
         return;
     }
 
@@ -3415,6 +3774,51 @@ void GraphicsManager::DrawFinishHimBanner(float time, float alpha) {
     // Blinking golden text
     bool blink = (static_cast<int>(time * 8.0f) % 2 == 0);
     DrawText(text, tx, ty, fontSize, blink ? COLOR_GOLD_BRIGHT : Color{ 255, 245, 180, textAlpha });
+}
+
+void GraphicsManager::DrawRainbow(float alpha, float time) {
+    if (alpha <= 0.0f) return;
+    float a = std::clamp(alpha, 0.0f, 1.0f);
+    Vector2 center = { (float)VIRTUAL_WIDTH * 0.5f, 218.0f };
+    float startAngle = 186.0f;
+    float endAngle = 354.0f;
+    int segments = 48;
+
+    struct RainbowBand {
+        float innerR;
+        float outerR;
+        Color col;
+    };
+
+    RainbowBand bands[7] = {
+        { 188.0f, 196.0f, Color{ 255,  55,  65, static_cast<unsigned char>(185 * a) } }, // Red
+        { 180.0f, 188.0f, Color{ 255, 140,  35, static_cast<unsigned char>(190 * a) } }, // Orange
+        { 172.0f, 180.0f, Color{ 255, 230,  45, static_cast<unsigned char>(195 * a) } }, // Yellow
+        { 164.0f, 172.0f, Color{  65, 225,  85, static_cast<unsigned char>(190 * a) } }, // Green
+        { 156.0f, 164.0f, Color{  55, 210, 255, static_cast<unsigned char>(190 * a) } }, // Cyan
+        { 148.0f, 156.0f, Color{  75, 110, 255, static_cast<unsigned char>(185 * a) } }, // Blue
+        { 140.0f, 148.0f, Color{ 180,  65, 245, static_cast<unsigned char>(180 * a) } }  // Violet
+    };
+
+    // 1. Soft glowing outer backdrop aura
+    DrawRing(center, 134.0f, 202.0f, startAngle - 2.0f, endAngle + 2.0f, segments, Color{ 255, 255, 235, static_cast<unsigned char>(70 * a) });
+
+    // 2. Render each luminous spectral band
+    for (int i = 0; i < 7; ++i) {
+        DrawRing(center, bands[i].innerR, bands[i].outerR, startAngle, endAngle, segments, bands[i].col);
+    }
+
+    // 3. Shimmering celestial light motes along the rainbow arc
+    for (int i = 0; i < 18; ++i) {
+        float angleDeg = 190.0f + fmodf(time * 35.0f + i * 9.5f, 160.0f);
+        float rad = angleDeg * (3.14159f / 180.0f);
+        float r = 142.0f + (i * 13 % 52);
+        float px = center.x + cosf(rad) * r;
+        float py = center.y + sinf(rad) * r;
+        float sparkAlpha = (0.5f + 0.5f * sinf(time * 8.0f + i * 1.5f)) * a;
+        unsigned char sa = static_cast<unsigned char>(std::clamp(sparkAlpha * 255.0f, 0.0f, 255.0f));
+        DrawCircle(static_cast<int>(px), static_cast<int>(py), (i % 2 == 0) ? 2.0f : 1.2f, Color{ 255, 255, 255, sa });
+    }
 }
 
 bool GraphicsManager::TryLoadExternalSpritesheet(const char* filepath) {

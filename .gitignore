@@ -1,0 +1,37 @@
+# Build directories
+build/
+bin/
+obj/
+out/
+CMakeFiles/
+CMakeCache.txt
+
+# Executables and libraries
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.pdb
+*.ilk
+
+# GBA build outputs (except final release ROMs if needed, or intermediate build files)
+*.o
+*.elf
+*.map
+
+# Editor and IDE files
+.vscode/
+.vs/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary / Scratch
+scratch/
+*.log
+*.tmp
+*.bak

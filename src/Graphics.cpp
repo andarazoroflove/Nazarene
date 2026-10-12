@@ -1,0 +1,2561 @@
+#include "Graphics.h"
+#include "TitleImageBytes.h"
+#include <cmath>
+#include <cstdlib>
+#include <vector>
+#include <algorithm>
+
+Texture2D GraphicsManager::s_sprites[SPRITE_TOTAL_COUNT] = {};
+Texture2D GraphicsManager::s_tiles[TILE_TOTAL_COUNT] = {};
+Texture2D GraphicsManager::s_bgSkyDistant = {};
+Texture2D GraphicsManager::s_bgTempleOfDavid = {};
+Texture2D GraphicsManager::s_bgMidJerusalemVillas = {};
+Texture2D GraphicsManager::s_bgNearStreetscape = {};
+Texture2D GraphicsManager::s_texTitleSplash = {};
+bool GraphicsManager::s_initialized = false;
+bool GraphicsManager::s_hasExternalTextures = false;
+
+// Helper to create texture from raw pixel array
+Texture2D GraphicsManager::CreateTextureFromPixels(int width, int height, const Color* pixels) {
+    Image img = GenImageColor(width, height, BLANK);
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            Color c = pixels[y * width + x];
+            ImageDrawPixel(&img, x, y, c);
+        }
+    }
+    Texture2D tex = LoadTextureFromImage(img);
+    SetTextureFilter(tex, TEXTURE_FILTER_POINT);
+    UnloadImage(img);
+    return tex;
+}
+
+// Pixel drawing primitives for procedural generation
+namespace PixelArt {
+    inline void Set(Color* p, int w, int h, int x, int y, Color c) {
+        if (x >= 0 && x < w && y >= 0 && y < h && c.a > 0) {
+            p[y * w + x] = c;
+        }
+    }
+
+    inline void Blend(Color* p, int w, int h, int x, int y, Color c) {
+        if (x >= 0 && x < w && y >= 0 && y < h && c.a > 0) {
+            if (c.a == 255) {
+                p[y * w + x] = c;
+            } else {
+                Color existing = p[y * w + x];
+                float a = c.a / 255.0f;
+                float invA = 1.0f - a;
+                Color blended = {
+                    static_cast<unsigned char>(c.r * a + existing.r * invA),
+                    static_cast<unsigned char>(c.g * a + existing.g * invA),
+                    static_cast<unsigned char>(c.b * a + existing.b * invA),
+                    static_cast<unsigned char>(std::max(c.a, existing.a))
+                };
+                p[y * w + x] = blended;
+            }
+        }
+    }
+
+    inline void HLine(Color* p, int w, int h, int x0, int x1, int y, Color c) {
+        if (y < 0 || y >= h) return;
+        int sx = std::max(0, std::min(x0, x1));
+        int ex = std::min(w - 1, std::max(x0, x1));
+        for (int x = sx; x <= ex; ++x) Set(p, w, h, x, y, c);
+    }
+
+    inline void VLine(Color* p, int w, int h, int x, int y0, int y1, Color c) {
+        if (x < 0 || x >= w) return;
+        int sy = std::max(0, std::min(y0, y1));
+        int ey = std::min(h - 1, std::max(y0, y1));
+        for (int y = sy; y <= ey; ++y) Set(p, w, h, x, y, c);
+    }
+
+    inline void Line(Color* p, int w, int h, int x0, int y0, int x1, int y1, Color c) {
+        int dx = std::abs(x1 - x0);
+        int sx = x0 < x1 ? 1 : -1;
+        int dy = -std::abs(y1 - y0);
+        int sy = y0 < y1 ? 1 : -1;
+        int err = dx + dy;
+        int curX = x0;
+        int curY = y0;
+        while (true) {
+            Set(p, w, h, curX, curY, c);
+            if (curX == x1 && curY == y1) break;
+            int e2 = 2 * err;
+            if (e2 >= dy) { err += dy; curX += sx; }
+            if (e2 <= dx) { err += dx; curY += sy; }
+        }
+    }
+
+    inline void FillRect(Color* p, int w, int h, int x, int y, int rw, int rh, Color c) {
+        for (int j = y; j < y + rh; ++j) {
+            HLine(p, w, h, x, x + rw - 1, j, c);
+        }
+    }
+
+    inline void OutlineRect(Color* p, int w, int h, int x, int y, int rw, int rh, Color c) {
+        HLine(p, w, h, x, x + rw - 1, y, c);
+        HLine(p, w, h, x, x + rw - 1, y + rh - 1, c);
+        VLine(p, w, h, x, y, y + rh - 1, c);
+        VLine(p, w, h, x + rw - 1, y, y + rh - 1, c);
+    }
+
+    inline void FillCircle(Color* p, int w, int h, int cx, int cy, int r, Color c) {
+        for (int dy = -r; dy <= r; ++dy) {
+            int y = cy + dy;
+            if (y < 0 || y >= h) continue;
+            int dxMax = static_cast<int>(sqrtf(static_cast<float>(r * r - dy * dy)));
+            HLine(p, w, h, cx - dxMax, cx + dxMax, y, c);
+        }
+    }
+
+    inline void FillEllipse(Color* p, int w, int h, int cx, int cy, int rx, int ry, Color c) {
+        if (rx <= 0 || ry <= 0) return;
+        for (int dy = -ry; dy <= ry; ++dy) {
+            int y = cy + dy;
+            if (y < 0 || y >= h) continue;
+            float fy = static_cast<float>(dy) / static_cast<float>(ry);
+            float term = 1.0f - fy * fy;
+            if (term >= 0.0f) {
+                int dxMax = static_cast<int>(rx * sqrtf(term));
+                HLine(p, w, h, cx - dxMax, cx + dxMax, y, c);
+            }
+        }
+    }
+}
+
+// Generate all procedural sprites
+void GraphicsManager::GenerateAllProceduralSprites() {
+    using namespace PixelArt;
+
+    // 1. Nazarene (The Player) - 28x32 Authentic Sega Arcade Masterpiece
+    constexpr int PW = 28;
+    constexpr int PH = 32;
+
+    auto PaintNazarene = [](Color* p, int frame, bool crouch, bool hurt, bool attackThrow, bool attackMelee) {
+        for (int i = 0; i < PW * PH; ++i) p[i] = BLANK;
+
+        // Palette
+        Color outline   = Color{ 28, 18, 14, 255 };
+        Color hairLight = Color{ 160, 105, 55, 255 };
+        Color hairMid   = Color{ 95, 52, 26, 255 };
+        Color hairDark  = Color{ 45, 22, 12, 255 };
+        Color hairGlint = COLOR_GOLD_BRIGHT;
+
+        Color skinHi    = hurt ? Color{ 255, 195, 195, 255 } : Color{ 255, 225, 190, 255 };
+        Color skinMid   = hurt ? Color{ 245, 145, 145, 255 } : Color{ 230, 168, 120, 255 };
+        Color skinFlush = hurt ? Color{ 245, 120, 120, 255 } : Color{ 210, 138, 95, 255 };
+        Color skinDark  = hurt ? Color{ 200, 100, 100, 255 } : Color{ 165, 105, 68, 255 };
+
+        Color robePure  = Color{ 255, 255, 255, 255 };
+        Color robeLight = hurt ? Color{ 255, 215, 215, 255 } : Color{ 246, 246, 240, 255 };
+        Color robeMid   = hurt ? Color{ 230, 180, 180, 255 } : Color{ 195, 202, 214, 255 };
+        Color robeDark  = hurt ? Color{ 190, 140, 140, 255 } : Color{ 135, 142, 158, 255 };
+        Color robeDeep  = hurt ? Color{ 150, 110, 110, 255 } : Color{  95, 102, 118, 255 };
+
+        Color sashHi    = hurt ? Color{ 255, 90, 100, 255 } : Color{ 245, 65, 75, 255 };
+        Color sashMid   = hurt ? Color{ 220, 40, 50, 255 }  : Color{ 185, 22, 32, 255 };
+        Color sashDark  = hurt ? Color{ 140, 20, 30, 255 }  : Color{ 110, 12, 20, 255 };
+        Color sashGold  = COLOR_ROMAN_GOLD;
+
+        Color sandalHi  = Color{ 165, 115, 70, 255 };
+        Color sandalMid = Color{ 110, 72, 40, 255 };
+        Color sandalSole= Color{ 60, 35, 20, 255 };
+        Color staffWood = Color{ 140, 90, 42, 255 };
+        Color staffGold = COLOR_GOLD_BRIGHT;
+
+        Color tzitzitWhite = Color{ 255, 255, 255, 255 };
+        Color tzitzitBlue  = Color{  45,  95, 185, 255 }; // Tekhelet royal biblical blue
+
+        int headY = crouch ? 12 : 2;
+        int torsoY = headY + 9;
+        int feetY = 31;
+
+        // --- DIVINE AURA / HALO (Subtle warm glow around the head) ---
+        for (int y = headY - 1; y <= headY + 3; ++y) {
+            for (int x = 8; x <= 16; ++x) {
+                float dx = x - 12.0f;
+                float dy = y - (headY + 1.0f);
+                if (dx * dx + dy * dy <= 22.0f) {
+                    Blend(p, PW, PH, x, y, Color{ 255, 235, 140, 75 });
+                }
+            }
+        }
+
+        // --- HEAD & HAIR (Rounded organic cranium & expressive facial profile) ---
+        // Organic rounded cranium base
+        FillCircle(p, PW, PH, 12, headY + 3, 4, hairMid);
+        // Hair top volume & highlights
+        // Hair top volume & golden celestial rim light
+        HLine(p, PW, PH, 10, 14, headY, hairLight);
+        HLine(p, PW, PH, 9, 13, headY - 1, hairMid);
+        Set(p, PW, PH, 11, headY - 1, hairLight);
+        Set(p, PW, PH, 11, headY - 1, hairGlint); // Divine specular rim light on crown
+        Set(p, PW, PH, 12, headY - 1, hairGlint);
+        Set(p, PW, PH, 10, headY, hairGlint);
+        
+        // Cascading back locks
+        for (int y = headY + 1; y <= headY + 9; ++y) {
+            int wave = (y % 3 == 0) ? 1 : 0;
+            Set(p, PW, PH, 8 - wave, y, hairDark);
+            Set(p, PW, PH, 9 - wave, y, hairDark);
+            Set(p, PW, PH, 10 - wave, y, (y % 2 == 0) ? hairLight : hairMid);
+            if (!crouch && y >= headY + 5) Set(p, PW, PH, 7 - wave, y, hairDark);
+        }
+
+        // Face profile
+        // Forehead
+        FillRect(p, PW, PH, 12, headY + 1, 4, 2, skinMid);
+        HLine(p, PW, PH, 13, 15, headY + 1, skinHi);
+        // Brow & Eye
+        Set(p, PW, PH, 12, headY + 3, skinFlush);
+        Set(p, PW, PH, 13, headY + 3, skinMid);
+        Set(p, PW, PH, 14, headY + 3, Color{ 255, 255, 255, 255 }); // Sclera
+        Set(p, PW, PH, 15, headY + 3, outline);                      // Pupil / Iris
+        Set(p, PW, PH, 14, headY + 2, Color{ 255, 255, 255, 220 }); // Pupil specular catchlight
+        Set(p, PW, PH, 15, headY + 2, skinDark);                     // Brow shadow
+        // Nose (Prominent noble bridge)
+        Set(p, PW, PH, 15, headY + 4, skinHi); // Bridge highlight
+        Set(p, PW, PH, 16, headY + 4, skinHi); // Nose tip
+        Set(p, PW, PH, 15, headY + 5, skinDark); // Nostril base
+        // Cheek & Jaw
+        Set(p, PW, PH, 13, headY + 4, skinFlush);
+        Set(p, PW, PH, 14, headY + 4, skinMid);
+        // Mustache
+        HLine(p, PW, PH, 14, 16, headY + 5, hairMid);
+        Set(p, PW, PH, 15, headY + 5, hairLight);
+        // Lips
+        Set(p, PW, PH, 15, headY + 6, Color{ 215, 125, 105, 255 });
+        // Full wavy beard curving around chin
+        FillRect(p, PW, PH, 11, headY + 6, 4, 3, hairDark);
+        HLine(p, PW, PH, 12, 15, headY + 7, hairMid);
+        Set(p, PW, PH, 13, headY + 7, hairLight);
+        HLine(p, PW, PH, 12, 14, headY + 8, hairDark); // Chin taper
+        Set(p, PW, PH, 13, headY + 8, hairMid);
+
+        if (!crouch) {
+            // --- STANDING / WALKING TORSO & FLOWING ROBES ---
+            int walkOffset = 0;
+            if (frame == 1) walkOffset = -2;
+            else if (frame == 3) walkOffset = 2;
+
+            // Neck with collar contour
+            FillRect(p, PW, PH, 11, headY + 9, 3, 2, skinDark);
+            Set(p, PW, PH, 12, headY + 9, skinMid);
+
+            // Robe Body with realistic cloth pleats & drapery
+            // Robe Body with realistic 5-tone cloth pleats & drapery
+            for (int y = torsoY; y <= feetY - 4; ++y) {
+                int progress = y - torsoY;
+                int flare = progress / 3;
+                int leftX = 8 - flare + (walkOffset > 0 ? 1 : 0);
+                int rightX = 17 + flare + (walkOffset < 0 ? -1 : 0);
+
+                for (int x = leftX; x <= rightX; ++x) {
+                    Color c = robeLight;
+                    // Natural curved vertical drapery shadows
+                    if (x == rightX) c = robePure;
+                    else if (x == rightX - 1) c = robeLight;
+                    else if (x == leftX || x == leftX + 1) c = robeMid;
+                    else if (x == 11 && y > torsoY + 4) c = robeDark; // Deep pleat shadow
+                    else if (x == 12 && y > torsoY + 4) c = robeMid;
+                    else if (x == 11 && y > torsoY + 4) c = robeDeep; // Ambient occlusion pleat
+                    else if (x == 12 && y > torsoY + 4) c = robeDark;
+                    else if (x == 13 && y > torsoY + 4) c = robeMid;
+                    else if (x == 14) c = robePure; // Front pleat highlight
+                    Set(p, PW, PH, x, y, c);
+                }
+                // Outlines on garment edges
+                Set(p, PW, PH, leftX - 1, y, outline);
+                Set(p, PW, PH, rightX + 1, y, outline);
+            }
+
+            // Scalloped Hem with realistic cloth ripples
+            // Scalloped Hem with realistic cloth ripples & Tzitzit fringes
+            for (int x = 7; x <= 19; ++x) {
+                Set(p, PW, PH, x, feetY - 4, (x % 3 == 0) ? robeDark : robeLight);
+                Set(p, PW, PH, x, feetY - 3, (x % 2 == 0) ? outline : robeMid);
+            }
+            // Tzitzit (Biblical ritual corner tassels with white & tekhelet threads)
+            Set(p, PW, PH, 7, feetY - 2, tzitzitWhite);
+            Set(p, PW, PH, 7, feetY - 1, tzitzitBlue);
+            Set(p, PW, PH, 7, feetY,     tzitzitWhite);
+            Set(p, PW, PH, 19, feetY - 2, tzitzitWhite);
+            Set(p, PW, PH, 19, feetY - 1, tzitzitBlue);
+            Set(p, PW, PH, 19, feetY,     tzitzitWhite);
+
+            // --- ROYAL CRIMSON HIMATION / SASH ---
+            // Diagonally drapes across chest with gold embroidered trim
+            for (int y = torsoY; y <= feetY - 6; ++y) {
+                int sx = 14 - (y - torsoY) + (walkOffset / 2);
+                if (sx >= 8 && sx <= 18) {
+                    Set(p, PW, PH, sx, y, sashHi);
+                    Set(p, PW, PH, sx + 1, y, sashMid);
+                    Set(p, PW, PH, sx + 2, y, sashDark);
+                    Set(p, PW, PH, sx + 3, y, sashGold); // Gold embroidered border
+                }
+            }
+            // Shoulder knot
+            FillRect(p, PW, PH, 9, torsoY, 3, 3, sashMid);
+            Set(p, PW, PH, 10, torsoY, sashHi);
+            Set(p, PW, PH, 9, torsoY + 1, sashGold);
+
+            // --- ARMS & ATTACKS ---
+            if (attackThrow) {
+                // Dynamic muscular forward throw!
+                // Deltoid & Bicep (3px wide)
+                FillRect(p, PW, PH, 15, torsoY + 1, 4, 3, skinMid);
+                HLine(p, PW, PH, 16, 18, torsoY, skinHi);
+                // Forearm extending forward (3px wide)
+                FillRect(p, PW, PH, 19, torsoY + 1, 5, 2, skinMid);
+                HLine(p, PW, PH, 19, 23, torsoY + 1, skinHi);
+                // Hand releasing spike with fingers & golden spark
+                Set(p, PW, PH, 24, torsoY + 1, skinHi);
+                Set(p, PW, PH, 25, torsoY + 1, skinHi); // Extended fingers
+                Set(p, PW, PH, 24, torsoY + 2, skinMid); // Thumb
+                Set(p, PW, PH, 24, torsoY + 1, Color{ 255, 60, 70, 255 }); // Stigmata spark
+                Set(p, PW, PH, 26, torsoY + 1, staffGold); // Holy launch spark
+                Set(p, PW, PH, 27, torsoY, staffGold);
+            } else if (attackMelee) {
+                // Majestic Palm Strike & Heavy Olive Staff!
+                // Muscular arm thrust
+                FillRect(p, PW, PH, 16, torsoY + 2, 7, 3, skinMid);
+                HLine(p, PW, PH, 17, 22, torsoY + 1, skinHi);
+                // Open Palm emitting divine radiant aura
+                Set(p, PW, PH, 23, torsoY + 1, COLOR_GOLD_BRIGHT);
+                Set(p, PW, PH, 23, torsoY + 2, Color{ 255, 60, 70, 255 }); // Holy stigmata
+                Set(p, PW, PH, 24, torsoY + 2, robePure);
+                Set(p, PW, PH, 24, torsoY + 3, robePure);
+                Set(p, PW, PH, 25, torsoY + 2, COLOR_GOLD_BRIGHT);
+                Set(p, PW, PH, 25, torsoY + 3, COLOR_GOLD_BRIGHT);
+                // Thick 3px Carved Olive-Wood Quarterstaff!
+                for (int sy = torsoY - 8; sy <= feetY - 1; ++sy) {
+                    Set(p, PW, PH, 22, sy, staffWood);
+                    Set(p, PW, PH, 23, sy, Color{ 175, 120, 60, 255 }); // Wood grain highlight
+                }
+                // Brass ferrule caps on top & bottom
+                HLine(p, PW, PH, 22, 23, torsoY - 9, staffGold);
+                HLine(p, PW, PH, 22, 23, torsoY - 8, staffGold);
+                HLine(p, PW, PH, 22, 23, feetY - 2, staffGold);
+                HLine(p, PW, PH, 22, 23, feetY - 1, staffGold);
+            } else {
+                // Relaxed arm draped at side
+                FillRect(p, PW, PH, 10, torsoY + 2, 3, 5, robeMid);
+                Set(p, PW, PH, 11, torsoY + 2, robePure);
+                FillRect(p, PW, PH, 11, torsoY + 7, 2, 2, skinMid); // Hand with fingers
+                Set(p, PW, PH, 12, torsoY + 7, skinHi);
+                Set(p, PW, PH, 11, torsoY + 7, Color{ 255, 60, 70, 255 }); // Holy stigmata
+                Set(p, PW, PH, 12, torsoY + 8, Color{ 255, 235, 120, 255 }); // Subtle golden glow
+            }
+
+            // --- LEGS & JUDEAN SANDALS (Muscular anatomical calves!) ---
+            int leg1X = 10 + walkOffset;
+            int leg2X = 15 - walkOffset;
+            for (int y = feetY - 3; y <= feetY - 1; ++y) {
+                // 3-pixel wide muscular calves (not 1px sticks!)
+                FillRect(p, PW, PH, leg1X - 1, y, 3, 1, skinMid);
+                Set(p, PW, PH, leg1X, y, skinHi);
+                FillRect(p, PW, PH, leg2X - 1, y, 3, 1, skinMid);
+                Set(p, PW, PH, leg2X, y, skinHi);
+                // Criss-cross leather sandal straps
+                if (y % 2 == 0) {
+                    Set(p, PW, PH, leg1X - 1, y, sandalHi);
+                    Set(p, PW, PH, leg2X - 1, y, sandalHi);
+                } else {
+                    Set(p, PW, PH, leg1X + 1, y, sandalMid);
+                    Set(p, PW, PH, leg2X + 1, y, sandalMid);
+                }
+            }
+            // Leather soles & toes
+            HLine(p, PW, PH, leg1X - 1, leg1X + 2, feetY, sandalSole);
+            HLine(p, PW, PH, leg2X - 1, leg2X + 2, feetY, sandalSole);
+            Set(p, PW, PH, leg1X, feetY - 1, sandalHi);
+            Set(p, PW, PH, leg2X, feetY - 1, sandalHi);
+        } else {
+            // --- CROUCHED POSE (Natural anatomical crouch) ---
+            // Bunched Robes over bent thighs
+            for (int y = torsoY; y <= feetY - 3; ++y) {
+                int leftX = 7;
+                int rightX = 19;
+                for (int x = leftX; x <= rightX; ++x) {
+                    Color c = (x > 13) ? robeLight : robeMid;
+                    if (y > torsoY + 5) c = robeDark;
+                    Set(p, PW, PH, x, y, c);
+                }
+                Set(p, PW, PH, leftX - 1, y, outline);
+                Set(p, PW, PH, rightX + 1, y, outline);
+            }
+            // Folded Sash over knees
+            FillRect(p, PW, PH, 10, torsoY + 2, 7, 3, sashMid);
+            HLine(p, PW, PH, 10, 16, torsoY + 1, sashHi);
+            HLine(p, PW, PH, 10, 16, torsoY + 5, sashGold);
+
+            if (attackThrow || attackMelee) {
+                FillRect(p, PW, PH, 16, torsoY + 3, 7, 2, skinMid);
+                HLine(p, PW, PH, 17, 22, torsoY + 2, skinHi);
+                Set(p, PW, PH, 24, torsoY + 3, staffGold);
+            }
+
+            // Tucked sandals along ground
+            HLine(p, PW, PH, 7, 19, feetY - 1, sandalHi);
+            HLine(p, PW, PH, 6, 20, feetY, sandalSole);
+        }
+    };
+
+    std::vector<Color> p(PW * PH);
+
+    // Idle
+    PaintNazarene(p.data(), 0, false, false, false, false);
+    s_sprites[SPR_PLAYER_IDLE] = CreateTextureFromPixels(PW, PH, p.data());
+
+    // Walk 0, 1, 2, 3
+    for (int f = 0; f < 4; ++f) {
+        PaintNazarene(p.data(), f, false, false, false, false);
+        s_sprites[SPR_PLAYER_WALK_0 + f] = CreateTextureFromPixels(PW, PH, p.data());
+    }
+
+    // Crouch
+    PaintNazarene(p.data(), 0, true, false, false, false);
+    s_sprites[SPR_PLAYER_CROUCH] = CreateTextureFromPixels(PW, PH, p.data());
+
+    // Jump
+    PaintNazarene(p.data(), 1, false, false, false, false);
+    s_sprites[SPR_PLAYER_JUMP] = CreateTextureFromPixels(PW, PH, p.data());
+
+    // Somersault Rotation (High Jump) - 28x28
+    constexpr int SW = 28, SH = 28;
+    std::vector<Color> spin(SW * SH);
+    for (int f = 0; f < 4; ++f) {
+        for (int i = 0; i < SW * SH; ++i) spin[i] = BLANK;
+        float angle = f * (3.14159f / 2.0f);
+        float cx = 13.5f, cy = 13.5f;
+
+        for (int y = 0; y < SH; ++y) {
+            for (int x = 0; x < SW; ++x) {
+                float dx = x - cx;
+                float dy = y - cy;
+                float dist = sqrtf(dx * dx + dy * dy);
+                if (dist <= 11.5f && dist >= 3.0f) {
+                    float a = atan2f(dy, dx) + angle;
+                    float s = sinf(a * 2.0f);
+                    if (s > 0.4f) spin[y * SW + x] = COLOR_CRIMSON_BRIGHT;
+                    else if (s > 0.0f) spin[y * SW + x] = COLOR_ROMAN_CRIMSON;
+                    else if (s > -0.4f) spin[y * SW + x] = COLOR_ROBE_WHITE;
+                    else spin[y * SW + x] = COLOR_ROMAN_GOLD;
+                } else if (dist < 3.0f) {
+                    spin[y * SW + x] = COLOR_SKIN;
+                }
+            }
+        }
+        s_sprites[SPR_PLAYER_SOMERSAULT_0 + f] = CreateTextureFromPixels(SW, SH, spin.data());
+    }
+
+    // Attacks & Hurt
+    PaintNazarene(p.data(), 0, false, false, true, false);
+    s_sprites[SPR_PLAYER_ATTACK_STAND] = CreateTextureFromPixels(PW, PH, p.data());
+
+    PaintNazarene(p.data(), 0, true, false, true, false);
+    s_sprites[SPR_PLAYER_ATTACK_CROUCH] = CreateTextureFromPixels(PW, PH, p.data());
+
+    PaintNazarene(p.data(), 0, false, false, false, true);
+    s_sprites[SPR_PLAYER_MELEE_STRIKE] = CreateTextureFromPixels(PW, PH, p.data());
+
+    PaintNazarene(p.data(), 0, false, true, false, false);
+    s_sprites[SPR_PLAYER_HURT] = CreateTextureFromPixels(PW, PH, p.data());
+
+    // Majestic Ascension to Heaven (arms spread wide in blessing, robes billowing)
+    auto PaintAscension = [](Color* p) {
+        for (int i = 0; i < PW * PH; ++i) p[i] = BLANK;
+
+        Color robePure  = COLOR_ROBE_WHITE;
+        Color robeLight = Color{ 235, 238, 245, 255 };
+        Color robeMid   = COLOR_ROBE_SHADOW;
+        Color robeDark  = COLOR_ROBE_DEEP;
+        Color sashHi    = COLOR_CRIMSON_BRIGHT;
+        Color sashMid   = COLOR_ROMAN_CRIMSON;
+        Color sashDark  = COLOR_CRIMSON_DARK;
+        Color sashGold  = COLOR_GOLD_BRIGHT;
+        Color skinHi    = COLOR_SKIN_HIGHLIGHT;
+        Color skinMid   = COLOR_SKIN;
+        Color skinDark  = COLOR_SKIN_DARK;
+        (void)skinDark;
+        Color hairLight = Color{ 145, 95, 55, 255 };
+        Color hairMid   = Color{ 105, 62, 32, 255 };
+        Color hairDark  = Color{  65, 38, 18, 255 };
+        Color haloOuter = Color{ 255, 235, 120, 110 };
+        Color haloCore  = Color{ 255, 255, 220, 180 };
+        Color stigmata  = Color{ 255, 245, 140, 255 };
+
+        // 1. Radiant Nimbus Halo around head
+        FillCircle(p, PW, PH, 13, 5, 6, haloOuter);
+        FillCircle(p, PW, PH, 13, 5, 4, haloCore);
+
+        // 2. Head & flowing hair (gazing upward toward heaven)
+        FillCircle(p, PW, PH, 13, 6, 3, hairMid);
+        HLine(p, PW, PH, 11, 15, 3, hairLight);
+        for (int y = 5; y <= 12; ++y) {
+            Set(p, PW, PH, 9, y, hairDark);
+            Set(p, PW, PH, 10, y, (y % 2 == 0) ? hairLight : hairMid);
+            Set(p, PW, PH, 16, y, (y % 2 == 0) ? hairLight : hairMid);
+            Set(p, PW, PH, 17, y, hairDark);
+        }
+        FillRect(p, PW, PH, 11, 5, 5, 4, skinMid);
+        HLine(p, PW, PH, 12, 14, 5, skinHi);
+        // Peaceful eyes raised toward the heavens
+        Set(p, PW, PH, 12, 5, Color{ 255, 255, 255, 255 });
+        Set(p, PW, PH, 14, 5, Color{ 255, 255, 255, 255 });
+        Set(p, PW, PH, 12, 4, Color{ 40, 25, 20, 255 });
+        Set(p, PW, PH, 14, 4, Color{ 40, 25, 20, 255 });
+        Set(p, PW, PH, 13, 6, skinHi);
+        HLine(p, PW, PH, 12, 14, 8, hairDark);
+        Set(p, PW, PH, 13, 8, hairMid);
+
+        // 3. Torso & Flowing Linen Robes (Billowing gently downwards)
+        for (int y = 10; y <= 27; ++y) {
+            int progress = y - 10;
+            int flare = progress / 3;
+            int lx = 8 - flare;
+            int rx = 18 + flare;
+            for (int x = lx; x <= rx; ++x) {
+                Color c = robeLight;
+                if (x == lx || x == rx) c = robeDark;
+                else if (x == lx + 1 || x == rx - 1) c = robeMid;
+                else if (x == 13 || x == 14) c = robePure;
+                Set(p, PW, PH, x, y, c);
+            }
+        }
+        for (int x = 4; x <= 22; ++x) {
+            Set(p, PW, PH, x, 27, (x % 2 == 0) ? robePure : robeLight);
+            Set(p, PW, PH, x, 28, (x % 3 == 0) ? robeMid : robePure);
+        }
+
+        // 4. Royal Crimson Himation & Golden Border
+        for (int y = 10; y <= 26; ++y) {
+            int sx = 14 - (y - 10) / 2;
+            if (sx >= 6 && sx <= 20) {
+                Set(p, PW, PH, sx, y, sashHi);
+                Set(p, PW, PH, sx + 1, y, sashMid);
+                Set(p, PW, PH, sx + 2, y, sashDark);
+                Set(p, PW, PH, sx + 3, y, sashGold);
+            }
+        }
+
+        // 5. Arms spread wide in divine blessing & majesty
+        FillRect(p, PW, PH, 6, 10, 3, 3, robeMid);
+        FillRect(p, PW, PH, 4, 8, 3, 3, skinMid);
+        FillRect(p, PW, PH, 2, 6, 3, 3, skinHi);
+        Set(p, PW, PH, 1, 5, skinHi);
+        Set(p, PW, PH, 2, 5, skinHi);
+        Set(p, PW, PH, 2, 6, stigmata);
+
+        FillRect(p, PW, PH, 18, 10, 3, 3, robeMid);
+        FillRect(p, PW, PH, 20, 8, 3, 3, skinMid);
+        FillRect(p, PW, PH, 22, 6, 3, 3, skinHi);
+        Set(p, PW, PH, 24, 5, skinHi);
+        Set(p, PW, PH, 25, 5, skinHi);
+        Set(p, PW, PH, 24, 6, stigmata);
+
+        // 6. Bare feet / sandals dangling down gently
+        HLine(p, PW, PH, 10, 12, 29, skinMid);
+        HLine(p, PW, PH, 14, 16, 29, skinMid);
+        HLine(p, PW, PH, 10, 12, 30, Color{ 120, 75, 40, 255 });
+        HLine(p, PW, PH, 14, 16, 30, Color{ 120, 75, 40, 255 });
+    };
+
+    PaintAscension(p.data());
+    s_sprites[SPR_PLAYER_ASCEND] = CreateTextureFromPixels(PW, PH, p.data());
+
+    // 2. Lion of Judah (Divine Wrath Form) - 40x40 Majestic Celestial Lion
+    constexpr int LW = 40, LH = 40;
+    std::vector<Color> lion(LW * LH, BLANK);
+    Color goldPure   = Color{ 255, 255, 220, 255 };
+    Color goldHi     = Color{ 255, 235,  95, 255 };
+    Color goldMid    = Color{ 235, 185,  35, 255 };
+    Color goldDark   = Color{ 175, 115,  15, 255 };
+    Color lionEye    = Color{  80, 210, 255, 255 };
+    Color nimbusHalo = Color{ 255, 245, 160, 200 };
+
+    float lcx = 19.5f, lcy = 19.5f;
+    for (int y = 0; y < LH; ++y) {
+        for (int x = 0; x < LW; ++x) {
+            float dx = x - lcx;
+            float dy = y - lcy;
+            float dist = sqrtf(dx * dx + dy * dy);
+
+            // Cruciform Nimbus & Sunburst Rays
+            if (dist <= 18.0f && dist > 13.0f) {
+                float a = atan2f(dy, dx);
+                float rays = sinf(a * 16.0f);
+                if (rays > 0.3f || (fabsf(dx) < 2.0f) || (fabsf(dy) < 2.0f)) {
+                    lion[y * LW + x] = nimbusHalo;
+                }
+            }
+            // Dense Golden Mane
+            else if (dist <= 13.0f && dist > 7.5f) {
+                float a = atan2f(dy, dx);
+                float tufts = sinf(a * 10.0f);
+                if (tufts > 0.2f) lion[y * LW + x] = goldHi;
+                else if (tufts > -0.3f) lion[y * LW + x] = goldMid;
+                else lion[y * LW + x] = goldDark;
+            }
+            // Inner Noble Face
+            else if (dist <= 7.5f) {
+                lion[y * LW + x] = goldHi;
+            }
+        }
+    }
+    // Muzzle, Eyes, Fangs
+    FillRect(lion.data(), LW, LH, 16, 21, 8, 5, goldDark);
+    HLine(lion.data(), LW, LH, 17, 22, 23, Color{ 60, 20, 10, 255 });
+    Set(lion.data(), LW, LH, 17, 24, goldPure);
+    Set(lion.data(), LW, LH, 22, 24, goldPure);
+    FillRect(lion.data(), LW, LH, 14, 16, 3, 2, lionEye);
+    FillRect(lion.data(), LW, LH, 23, 16, 3, 2, lionEye);
+    Set(lion.data(), LW, LH, 15, 16, Color{ 255, 255, 255, 255 });
+    Set(lion.data(), LW, LH, 24, 16, Color{ 255, 255, 255, 255 });
+    Set(lion.data(), LW, LH, 19, 14, goldPure);
+    Set(lion.data(), LW, LH, 20, 14, goldPure);
+    s_sprites[SPR_LION_OF_JUDAH] = CreateTextureFromPixels(LW, LH, lion.data());
+
+    // 3. Patrol Guard (Roman Legionary) - 28x32
+    std::vector<Color> guard(PW * PH);
+    auto PaintGuard = [](Color* p, int frame, bool attack, bool hurt) {
+        for (int i = 0; i < PW * PH; ++i) p[i] = BLANK;
+
+        Color steelHi    = hurt ? Color{ 255, 210, 210, 255 } : Color{ 240, 245, 255, 255 };
+        Color steelMid   = hurt ? Color{ 255, 140, 140, 255 } : Color{ 175, 185, 200, 255 };
+        Color steelDark  = hurt ? Color{ 180,  80,  80, 255 } : Color{  95, 105, 120, 255 };
+        Color bronzeHi   = Color{ 255, 225, 115, 255 };
+        Color bronzeMid  = Color{ 205, 150,  60, 255 };
+        Color bronzeDark = Color{ 125,  80,  25, 255 };
+        Color crestHi    = Color{ 255,  85,  95, 255 };
+        Color crestMid   = Color{ 235,  32,  42, 255 };
+        Color crestDark  = Color{ 145,  15,  22, 255 };
+        Color tunicRed   = Color{ 185,  25,  32, 255 };
+        Color tunicDark  = Color{ 110,  12,  18, 255 };
+        (void)tunicDark;
+        Color skinHi     = Color{ 252, 215, 180, 255 };
+        Color skinMid    = Color{ 228, 175, 130, 255 };
+        Color skinDark   = Color{ 168, 115,  78, 255 };
+        Color skinFlush  = Color{ 215, 130, 110, 255 };
+        Color leatherHi  = Color{ 150, 100,  55, 255 };
+        Color leatherMid = Color{ 105,  65,  32, 255 };
+        Color leatherDark= Color{  62,  36,  16, 255 };
+        Color woodShaft  = Color{ 115,  72,  35, 255 };
+        Color woodGrain  = Color{ 160, 105,  50, 255 };
+        Color outline    = Color{  28,  20,  16, 255 };
+
+        int walkOff = (frame == 1) ? 2 : -1;
+        if (attack) walkOff = 3;
+
+        // --- GALEA HELMET (Imperial Gallic with Cheek Guards & Horsehair Crest) ---
+        // Flowing Scarlet Horsehair Crest (Curved plume with tufted tips)
+        for (int x = 8; x <= 18; ++x) {
+            Set(p, PW, PH, x, 0, crestHi);
+            Set(p, PW, PH, x, 1, crestMid);
+            Set(p, PW, PH, x, 2, (x < 11 || x > 15) ? crestDark : bronzeHi);
+        }
+        Set(p, PW, PH, 7, 1, crestDark);
+        Set(p, PW, PH, 19, 1, crestHi);
+
+        // Bronze Helmet Skullcap & Brow Peak
+        FillCircle(p, PW, PH, 14, 4, 3, bronzeMid);
+        HLine(p, PW, PH, 11, 17, 3, bronzeHi);
+        HLine(p, PW, PH, 12, 16, 2, bronzeHi);
+        Set(p, PW, PH, 14, 2, Color{ 255, 255, 255, 240 }); // Specular helmet gleam
+        Set(p, PW, PH, 15, 3, Color{ 255, 255, 255, 220 });
+        // Brass Brow Reinforcement Cross
+        HLine(p, PW, PH, 13, 17, 4, bronzeHi);
+        // Neck Guard (Flanged rear flare)
+        Set(p, PW, PH, 9, 5, bronzeDark);
+        Set(p, PW, PH, 9, 6, bronzeMid);
+        Set(p, PW, PH, 10, 6, bronzeDark);
+        // Hinged Cheek Guard (Buccula)
+        VLine(p, PW, PH, 12, 5, 7, bronzeMid);
+        Set(p, PW, PH, 12, 6, bronzeHi); // Rivet
+
+        // --- REALISTIC HUMAN SOLDIER FACE ---
+        // Forehead
+        Set(p, PW, PH, 14, 4, skinMid);
+        Set(p, PW, PH, 15, 4, skinHi);
+        // Brow & Focused Eye
+        Set(p, PW, PH, 14, 5, Color{ 255, 255, 255, 255 }); // Sclera
+        Set(p, PW, PH, 15, 5, outline);                      // Pupil
+        Set(p, PW, PH, 14, 4, skinDark);                     // Brow shadow
+        // Aquiline Roman Nose
+        Set(p, PW, PH, 16, 5, skinHi);  // Bridge
+        Set(p, PW, PH, 17, 5, skinHi);  // Nose tip
+        Set(p, PW, PH, 16, 6, skinDark);// Nostril shadow
+        // Cheek & Jaw
+        Set(p, PW, PH, 13, 6, skinFlush);
+        Set(p, PW, PH, 14, 6, skinMid);
+        Set(p, PW, PH, 15, 6, Color{ 195, 105, 88, 255 });  // Lips
+        Set(p, PW, PH, 13, 7, skinMid);
+        Set(p, PW, PH, 14, 7, skinMid);                      // Chin
+        Set(p, PW, PH, 15, 7, skinDark);
+
+        // Neck & Tunic Collar
+        FillRect(p, PW, PH, 12, 8, 3, 2, skinDark);
+        HLine(p, PW, PH, 11, 16, 9, tunicRed);
+
+        // --- LORICA SEGMENTATA (Overlapping Steel Girth Plates & Hinges) ---
+        // Curved shoulder lames (Humeralia)
+        FillRect(p, PW, PH, 9, 10, 4, 3, steelMid);
+        HLine(p, PW, PH, 9, 12, 10, steelHi);
+        FillRect(p, PW, PH, 16, 10, 4, 3, steelMid);
+        HLine(p, PW, PH, 16, 19, 10, steelHi);
+
+        // Torso steel plates (Horizontal curved plates with 3D bevels)
+        for (int y = 11; y <= 18; ++y) {
+            Color band = (y % 2 == 0) ? steelHi : steelMid;
+            HLine(p, PW, PH, 10, 18, y, band);
+            Set(p, PW, PH, 10, y, steelDark);
+            Set(p, PW, PH, 18, y, steelDark);
+            Set(p, PW, PH, 14, y, steelHi); // Central highlight
+        }
+        // Bronze Hinges & Tie-Rings down sternum
+        Set(p, PW, PH, 13, 12, bronzeHi);
+        Set(p, PW, PH, 15, 12, bronzeHi);
+        Set(p, PW, PH, 13, 15, bronzeHi);
+        Set(p, PW, PH, 15, 15, bronzeHi);
+        Set(p, PW, PH, 13, 17, bronzeHi);
+        Set(p, PW, PH, 15, 17, bronzeHi);
+
+        // Cingulum Militare (Studded War Belt & Hanging Pteruges Apron)
+        HLine(p, PW, PH, 9, 19, 19, bronzeMid);
+        HLine(p, PW, PH, 11, 17, 19, bronzeHi);
+        // Hanging leather apron straps with bronze pendant tips
+        for (int x = 11; x <= 17; x += 2) {
+            VLine(p, PW, PH, x, 20, 22, leatherMid);
+            Set(p, PW, PH, x, 21, bronzeHi);
+            Set(p, PW, PH, x, 22, bronzeHi); // Leaf terminal
+        }
+        // Red woolen tunic skirt
+        FillRect(p, PW, PH, 9, 21, 10, 2, tunicRed);
+        HLine(p, PW, PH, 9, 18, 23, Color{ 240, 195, 60, 255 }); // Gold hem border
+
+        // --- ARMS & PILUM SPEAR ---
+        if (attack) {
+            // Dynamic forward spear lunge!
+            // Arms thrust forward gripping pilum with both hands
+            FillRect(p, PW, PH, 14, 11, 6, 3, skinMid);
+            HLine(p, PW, PH, 15, 19, 11, skinHi);
+            FillRect(p, PW, PH, 20, 11, 4, 3, skinMid);
+            HLine(p, PW, PH, 20, 23, 11, skinHi);
+            // Bronze armlets
+            VLine(p, PW, PH, 16, 11, 13, bronzeHi);
+            VLine(p, PW, PH, 21, 11, 13, bronzeHi);
+
+            // Horizontal Pilum Spear (Long ash shaft, iron shank, leaf head)
+            for (int y = 11; y <= 13; ++y) {
+                HLine(p, PW, PH, 8, 23, y, (y == 12) ? woodGrain : woodShaft);
+            }
+            // Balance weight
+            FillCircle(p, PW, PH, 23, 12, 2, bronzeMid);
+            Set(p, PW, PH, 23, 11, bronzeHi);
+            // Long iron shank & forged leaf-head
+            HLine(p, PW, PH, 24, 27, 12, steelDark);
+            FillRect(p, PW, PH, 25, 11, 3, 3, steelMid);
+            HLine(p, PW, PH, 25, 27, 12, steelHi);
+            Set(p, PW, PH, 27, 12, Color{ 255, 255, 255, 255 }); // Specular gleam!
+
+            // Double wind-slash trail arcs
+            HLine(p, PW, PH, 19, 27, 9, Color{ 255, 255, 255, 180 });
+            HLine(p, PW, PH, 21, 27, 15, Color{ 255, 255, 255, 180 });
+        } else {
+            // Normal Walk: Holds Pilum upright
+            FillRect(p, PW, PH, 15, 11, 3, 6, skinMid);
+            Set(p, PW, PH, 16, 11, skinHi);
+            Set(p, PW, PH, 16, 16, skinHi); // Hand gripping spear
+
+            // Upright Pilum Spear
+            for (int x = 18; x <= 19; ++x) {
+                VLine(p, PW, PH, x, 5, 27, (x == 18) ? woodGrain : woodShaft);
+            }
+            // Bronze pyramid weight
+            FillRect(p, PW, PH, 17, 5, 3, 2, bronzeMid);
+            Set(p, PW, PH, 18, 5, bronzeHi);
+            // Blackened iron shank & Leaf head
+            VLine(p, PW, PH, 18, 1, 4, steelDark);
+            VLine(p, PW, PH, 18, 0, 2, steelHi);
+            Set(p, PW, PH, 17, 1, steelMid);
+            Set(p, PW, PH, 19, 1, steelMid);
+            Set(p, PW, PH, 18, 0, Color{ 255, 255, 255, 255 });
+        }
+
+        // --- MUSCULAR ANATOMICAL LEGS & ROMAN CALIGAE ---
+        int leg1X = 10 - walkOff;
+        int leg2X = 15 + walkOff;
+        for (int y = 24; y <= 29; ++y) {
+            // Muscular 3px thighs and calves
+            FillRect(p, PW, PH, leg1X, y, 3, 1, skinMid);
+            Set(p, PW, PH, leg1X + 1, y, skinHi);
+            FillRect(p, PW, PH, leg2X, y, 3, 1, skinMid);
+            Set(p, PW, PH, leg2X + 1, y, skinHi);
+
+            // Caligae leather strap lattice
+            if (y >= 27) {
+                Set(p, PW, PH, leg1X, y, (y % 2 == 0) ? leatherMid : leatherHi);
+                Set(p, PW, PH, leg2X, y, (y % 2 == 0) ? leatherMid : leatherHi);
+            }
+        }
+        // Hobnailed Leather Soles
+        FillRect(p, PW, PH, leg1X - 1, 30, 4, 2, leatherDark);
+        FillRect(p, PW, PH, leg2X - 1, 30, 4, 2, leatherDark);
+        HLine(p, PW, PH, leg1X - 1, leg1X + 2, 30, leatherMid);
+        HLine(p, PW, PH, leg2X - 1, leg2X + 2, 30, leatherMid);
+        // Iron hobnails along the bottom of the soles
+        Set(p, PW, PH, leg1X - 1, 31, steelHi);
+        Set(p, PW, PH, leg1X + 1, 31, steelHi);
+        Set(p, PW, PH, leg2X - 1, 31, steelHi);
+        Set(p, PW, PH, leg2X + 1, 31, steelHi);
+    };
+
+    PaintGuard(guard.data(), 0, false, false);
+    s_sprites[SPR_GUARD_WALK_0] = CreateTextureFromPixels(PW, PH, guard.data());
+    PaintGuard(guard.data(), 1, false, false);
+    s_sprites[SPR_GUARD_WALK_1] = CreateTextureFromPixels(PW, PH, guard.data());
+    PaintGuard(guard.data(), 0, true, false);
+    s_sprites[SPR_GUARD_ATTACK] = CreateTextureFromPixels(PW, PH, guard.data());
+    PaintGuard(guard.data(), 0, false, true);
+    s_sprites[SPR_GUARD_HURT] = CreateTextureFromPixels(PW, PH, guard.data());
+
+    // 4. Auxiliary Archer - 28x32
+    std::vector<Color> archer(PW * PH);
+    auto PaintArcher = [](Color* p, bool duck, bool fire, bool hurt) {
+        for (int i = 0; i < PW * PH; ++i) p[i] = BLANK;
+
+        Color leatherHi  = hurt ? Color{ 255, 180, 180, 255 } : Color{ 170, 115,  65, 255 };
+        Color leatherMid = hurt ? Color{ 230, 110, 110, 255 } : Color{ 120,  75,  38, 255 };
+        Color leatherDark= hurt ? Color{ 160,  60,  60, 255 } : Color{  72,  42,  18, 255 };
+        Color tunicGreen = Color{  52,  88,  52, 255 };
+        Color tunicDark  = Color{  32,  56,  32, 255 };
+        Color bowWood    = Color{ 145,  85,  38, 255 };
+        Color bowHorn    = Color{  85,  52,  24, 255 };
+        Color bowGrip    = Color{ 210, 190, 150, 255 };
+        Color stringCol  = Color{ 245, 245, 240, 255 };
+        Color sandBag    = Color{ 195, 175, 135, 255 };
+        Color sandDark   = Color{ 125, 105,  70, 255 };
+        Color skinHi     = Color{ 250, 205, 165, 255 };
+        Color skinMid    = Color{ 220, 160, 110, 255 };
+        Color skinDark   = Color{ 160, 105,  68, 255 };
+        Color arrowFeath = Color{ 235,  35,  45, 255 };
+        Color arrowFeathW= Color{ 255, 255, 255, 255 };
+        Color bronzeHi   = Color{ 250, 210,  95, 255 };
+        Color bronzeMid  = Color{ 195, 145,  50, 255 };
+        Color outline    = Color{  28,  20,  16, 255 };
+
+        if (!duck) {
+            // --- STANDING / FIRING ARCHER (Eastern Auxiliary Sagittarius) ---
+            // Conical Bronze Helmet with Mail Aventail
+            FillCircle(p, PW, PH, 14, 4, 3, bronzeMid);
+            HLine(p, PW, PH, 12, 16, 2, bronzeHi);
+            Set(p, PW, PH, 14, 1, bronzeHi); // Spire tip
+            HLine(p, PW, PH, 11, 17, 4, bronzeHi); // Brow rim
+            // Mail aventail protecting neck
+            for (int y = 5; y <= 8; ++y) {
+                Set(p, PW, PH, 10, y, (y % 2 == 0) ? leatherDark : bronzeMid);
+                Set(p, PW, PH, 11, y, (y % 2 == 0) ? bronzeMid : leatherDark);
+            }
+
+            // Realistic Human Face Profile
+            Set(p, PW, PH, 14, 4, skinMid);
+            Set(p, PW, PH, 15, 4, skinHi);
+            // Aiming eye looking forward
+            Set(p, PW, PH, 14, 5, Color{ 255, 255, 255, 255 }); // Sclera
+            Set(p, PW, PH, 15, 5, outline);                      // Pupil
+            Set(p, PW, PH, 14, 4, skinDark);                     // Furrowed brow
+            // Nose & Mustache
+            Set(p, PW, PH, 16, 5, skinHi);  // Nose
+            Set(p, PW, PH, 17, 5, skinMid);
+            Set(p, PW, PH, 15, 6, leatherDark); // Dark mustache
+            Set(p, PW, PH, 16, 6, leatherDark);
+            Set(p, PW, PH, 14, 7, skinMid);     // Chin & trimmed beard
+            Set(p, PW, PH, 15, 7, leatherDark);
+
+            // Neck & Green Tunic Collar
+            FillRect(p, PW, PH, 12, 8, 3, 2, skinDark);
+            HLine(p, PW, PH, 11, 16, 9, tunicGreen);
+
+            // Lorica Squamata (Scale Armor Brigandine)
+            FillRect(p, PW, PH, 10, 10, 8, 9, leatherMid);
+            OutlineRect(p, PW, PH, 10, 10, 8, 9, leatherDark);
+            // Overlapping bronze scale highlights
+            for (int y = 11; y <= 17; y += 2) {
+                for (int x = 11; x <= 16; x += 2) {
+                    Set(p, PW, PH, x, y, bronzeHi);
+                    Set(p, PW, PH, x + 1, y, bronzeMid);
+                }
+            }
+            // Cross-chest quiver baldric
+            for (int y = 10; y <= 18; ++y) {
+                int bx = 16 - (y - 10) * 6 / 8;
+                Set(p, PW, PH, bx, y, leatherDark);
+                Set(p, PW, PH, bx + 1, y, leatherHi);
+            }
+
+            // Quiver on Back with Eagle Feathers
+            FillRect(p, PW, PH, 7, 7, 3, 11, leatherDark);
+            OutlineRect(p, PW, PH, 7, 7, 3, 11, leatherMid);
+            // Distinct red & white fletched arrows protruding
+            Set(p, PW, PH, 6, 5, arrowFeath);
+            Set(p, PW, PH, 7, 4, arrowFeathW);
+            Set(p, PW, PH, 8, 5, arrowFeath);
+            Set(p, PW, PH, 7, 3, arrowFeath);
+
+            // Composite Recurve Bow (Recurved horn limbs, wood core, wrapped grip)
+            if (fire) {
+                // Dynamic archery draw!
+                // Left arm fully extended forward holding bow
+                // Left arm fully extended forward holding bow with protective leather bracer
+                FillRect(p, PW, PH, 16, 12, 5, 2, skinMid);
+                HLine(p, PW, PH, 16, 20, 12, skinHi);
+                FillRect(p, PW, PH, 17, 12, 3, 2, leatherDark); // Archer bracer
+                HLine(p, PW, PH, 17, 19, 12, leatherHi);
+                // Right arm pulled back to the cheek
+                FillRect(p, PW, PH, 12, 11, 3, 3, skinMid);
+                Set(p, PW, PH, 13, 11, skinHi);
+
+                // Recurve Bow under full tension
+                for (int y = 5; y <= 21; ++y) {
+                    int curve = (y >= 10 && y <= 16) ? 3 : (y >= 7 && y <= 19 ? 1 : 0);
+                    Set(p, PW, PH, 21 - curve, y, bowWood);
+                    Set(p, PW, PH, 22 - curve, y, bowHorn);
+                }
+                // Wrapped leather grip at center
+                FillRect(p, PW, PH, 18, 12, 2, 3, bowGrip);
+
+                // Taut bowstring drawn back to cheek
+                DrawLine(13, 12, 22, 5, stringCol);
+                DrawLine(13, 12, 22, 21, stringCol);
+                // Taut bowstring drawn back to cheek (pixel-drawn directly into texture)
+                Line(p, PW, PH, 13, 12, 22, 5, stringCol);
+                Line(p, PW, PH, 13, 12, 22, 21, stringCol);
+
+                // Nocked Arrow with steel bodkin tip!
+                HLine(p, PW, PH, 12, 26, 12, Color{ 240, 240, 230, 255 });
+                HLine(p, PW, PH, 26, 28, 12, COLOR_STEEL_BRIGHT);
+                Set(p, PW, PH, 27, 11, COLOR_STEEL_BRIGHT);
+                Set(p, PW, PH, 27, 13, COLOR_STEEL_BRIGHT);
+                Set(p, PW, PH, 28, 12, Color{ 255, 255, 255, 255 });
+                // Fletchings at nock
+                HLine(p, PW, PH, 11, 13, 11, arrowFeath);
+                HLine(p, PW, PH, 11, 13, 13, arrowFeath);
+            } else {
+                // Standing at Rest
+                FillRect(p, PW, PH, 13, 11, 3, 5, skinMid);
+                Set(p, PW, PH, 14, 11, skinHi);
+                Set(p, PW, PH, 15, 15, skinHi); // Hand
+
+                // Relaxed recurve bow held vertically
+                for (int y = 6; y <= 22; ++y) {
+                    int tip = (y <= 7 || y >= 21) ? 1 : 0;
+                    Set(p, PW, PH, 18 + tip, y, bowWood);
+                    Set(p, PW, PH, 19 + tip, y, bowHorn);
+                }
+                VLine(p, PW, PH, 17, 7, 21, stringCol);
+            }
+
+            // Green Tunic Skirt & Muscular Legs
+            FillRect(p, PW, PH, 10, 19, 8, 4, tunicGreen);
+            HLine(p, PW, PH, 10, 17, 22, tunicDark);
+            // Legs in leather gaiters
+            FillRect(p, PW, PH, 10, 23, 3, 7, skinMid);
+            Set(p, PW, PH, 11, 23, skinHi);
+            FillRect(p, PW, PH, 15, 23, 3, 7, skinMid);
+            Set(p, PW, PH, 16, 23, skinHi);
+            // Archer boots
+            FillRect(p, PW, PH, 9, 30, 4, 2, leatherDark);
+            FillRect(p, PW, PH, 15, 30, 4, 2, leatherDark);
+            HLine(p, PW, PH, 9, 12, 30, leatherMid);
+            HLine(p, PW, PH, 15, 18, 30, leatherMid);
+        } else {
+            // --- DUCKED BEHIND FORTIFIED SANDBAG REVETMENT ---
+            // Peeking soldier head
+            FillCircle(p, PW, PH, 13, 13, 3, bronzeMid);
+            HLine(p, PW, PH, 11, 15, 11, bronzeHi);
+            Set(p, PW, PH, 13, 10, bronzeHi);
+            Set(p, PW, PH, 14, 13, skinHi);
+            Set(p, PW, PH, 15, 13, outline); // Focused aiming eye
+            Set(p, PW, PH, 16, 13, skinHi);  // Nose
+            Set(p, PW, PH, 14, 14, leatherDark); // Mustache
+
+            // Wicker Gabion & Burlap Sandbag Barrier
+            FillRect(p, PW, PH, 13, 15, 14, 17, sandBag);
+            OutlineRect(p, PW, PH, 13, 15, 14, 17, sandDark);
+            // Burlap seams & stitching
+            HLine(p, PW, PH, 14, 26, 20, sandDark);
+            HLine(p, PW, PH, 14, 26, 25, sandDark);
+            VLine(p, PW, PH, 20, 16, 31, sandDark);
+            // Woven wicker cross-hatch texture
+            for (int y = 17; y <= 30; y += 3) {
+                for (int x = 15; x <= 25; x += 3) {
+                    Set(p, PW, PH, x, y, sandDark);
+                    Set(p, PW, PH, x + 1, y, Color{ 225, 205, 165, 255 });
+                }
+            }
+            // Base earth mound
+            HLine(p, PW, PH, 12, 27, 31, Color{ 80, 55, 30, 255 });
+        }
+    };
+
+    PaintArcher(archer.data(), true, false, false);
+    s_sprites[SPR_ARCHER_DUCK] = CreateTextureFromPixels(PW, PH, archer.data());
+    PaintArcher(archer.data(), false, false, false);
+    s_sprites[SPR_ARCHER_STAND] = CreateTextureFromPixels(PW, PH, archer.data());
+    PaintArcher(archer.data(), false, true, false);
+    s_sprites[SPR_ARCHER_FIRE] = CreateTextureFromPixels(PW, PH, archer.data());
+    PaintArcher(archer.data(), false, false, true);
+    s_sprites[SPR_ARCHER_HURT] = CreateTextureFromPixels(PW, PH, archer.data());
+
+    // 5. Heavy Legionary (Tower Scutum Shield) - 32x34
+    constexpr int HW = 32, HH = 34;
+    std::vector<Color> heavy(HW * HH);
+    auto PaintHeavy = [](Color* p, int frame, bool attack, bool hurt) {
+        for (int i = 0; i < HW * HH; ++i) p[i] = BLANK;
+
+        Color scutumRed   = Color{ 190,  24,  30, 255 };
+        Color scutumHi    = Color{ 235,  45,  52, 255 };
+        Color scutumDark  = Color{ 120,  14,  20, 255 };
+        Color goldEagle   = COLOR_GOLD_BRIGHT;
+        Color brassRim    = COLOR_ROMAN_GOLD;
+        Color ironSteel   = hurt ? Color{ 255, 180, 180, 255 } : COLOR_STEEL_BRIGHT;
+        Color ironMid     = hurt ? Color{ 240, 120, 120, 255 } : COLOR_IRON;
+        Color ironDark    = Color{  75,  85, 100, 255 };
+        Color crestRed    = Color{ 235,  30,  40, 255 };
+        Color crestHi     = Color{ 255,  85,  95, 255 };
+        Color skinHi      = Color{ 250, 205, 165, 255 };
+        Color skinMid     = Color{ 220, 160, 110, 255 };
+        Color skinDark    = Color{ 160, 105,  68, 255 };
+        Color outline     = Color{  28,  20,  16, 255 };
+
+        // Transverse Galea Crest visible over shield
+        for (int x = 8; x <= 18; ++x) {
+            Set(p, HW, HH, x, 1, crestHi);
+            Set(p, HW, HH, x, 2, crestRed);
+            Set(p, HW, HH, x, 3, (x < 11 || x > 15) ? Color{ 130, 15, 22, 255 } : brassRim);
+        }
+        // Helmet Bowl & Eyebrows
+        FillRect(p, HW, HH, 8, 4, 10, 4, ironSteel);
+        HLine(p, HW, HH, 9, 17, 4, Color{ 255, 255, 255, 255 });
+        // Fierce human eyes peering fiercely over the shield rim!
+        Set(p, HW, HH, 13, 6, Color{ 255, 255, 255, 255 });
+        Set(p, HW, HH, 14, 6, outline);
+        Set(p, HW, HH, 17, 6, Color{ 255, 255, 255, 255 });
+        Set(p, HW, HH, 18, 6, outline);
+        Set(p, HW, HH, 13, 5, skinDark);
+        Set(p, HW, HH, 17, 5, skinDark);
+
+        if (!attack) {
+            // --- TOWER SCUTUM SHIELD (16x26 Curved Roman Masterpiece!) ---
+            // 2.5D curved surface shading
+            for (int y = 6; y <= 29; ++y) {
+                for (int x = 14; x <= 29; ++x) {
+                    Color c = scutumRed;
+                    if (x >= 20 && x <= 23) c = scutumHi;        // Central curvature highlight
+                    else if (x == 14 || x == 29) c = scutumDark; // Shadowed curved flanks
+                    p[y * HW + x] = c;
+                }
+            }
+            // Polished Brass Rim & Corner Plates
+            OutlineRect(p, HW, HH, 14, 6, 16, 24, brassRim);
+            FillRect(p, HW, HH, 14, 6, 3, 3, brassRim);
+            FillRect(p, HW, HH, 27, 6, 3, 3, brassRim);
+            FillRect(p, HW, HH, 14, 27, 3, 3, brassRim);
+            FillRect(p, HW, HH, 27, 27, 3, 3, brassRim);
+
+            // Imperial Golden Eagle (Aquila) spreading magnificent wings!
+            HLine(p, HW, HH, 16, 27, 11, goldEagle);
+            HLine(p, HW, HH, 17, 26, 12, goldEagle);
+            HLine(p, HW, HH, 19, 24, 13, goldEagle);
+            Set(p, HW, HH, 21, 10, goldEagle); // Eagle head
+            Set(p, HW, HH, 22, 10, Color{ 255, 255, 255, 255 });
+            Set(p, HW, HH, 16, 10, goldEagle); // Wing tips
+            Set(p, HW, HH, 27, 10, goldEagle);
+
+            // Central Heavy Bronze Umbo (Shield Boss) with 3D spherical gleam!
+            FillCircle(p, HW, HH, 21, 18, 3, COLOR_BRONZE);
+            FillCircle(p, HW, HH, 21, 18, 2, brassRim);
+            Set(p, HW, HH, 21, 17, Color{ 255, 255, 220, 255 });
+            Set(p, HW, HH, 20, 18, Color{ 255, 255, 220, 255 });
+
+            // Laurel Wreath (SPQR Corona Triumphalis) embracing the boss
+            Color laurelGreen = Color{ 48, 120, 52, 255 };
+            Color laurelHi    = Color{ 110, 190, 95, 255 };
+            Set(p, HW, HH, 17, 16, laurelHi);
+            Set(p, HW, HH, 16, 17, laurelGreen);
+            Set(p, HW, HH, 16, 19, laurelGreen);
+            Set(p, HW, HH, 17, 20, laurelHi);
+            Set(p, HW, HH, 25, 16, laurelHi);
+            Set(p, HW, HH, 26, 17, laurelGreen);
+            Set(p, HW, HH, 26, 19, laurelGreen);
+            Set(p, HW, HH, 25, 20, laurelHi);
+
+            // Lower Winged Thunderbolts (Fulmina)
+            HLine(p, HW, HH, 17, 26, 23, goldEagle);
+            HLine(p, HW, HH, 18, 25, 24, goldEagle);
+            Set(p, HW, HH, 16, 23, goldEagle);
+            Set(p, HW, HH, 27, 23, goldEagle);
+        } else {
+            // --- GLADIUS SWORD THRUST (Lowers Shield, Lunges Forward!) ---
+            // Shield pulled to flank
+            FillRect(p, HW, HH, 9, 8, 9, 21, scutumRed);
+            OutlineRect(p, HW, HH, 9, 8, 9, 21, brassRim);
+            FillCircle(p, HW, HH, 13, 18, 2, brassRim);
+
+            // Exposed Armored Torso & Muscular Arm with Segmented Manica
+            FillRect(p, HW, HH, 14, 10, 6, 8, ironSteel);
+            // Arm lunging forward in segmented lames
+            FillRect(p, HW, HH, 18, 13, 6, 4, ironSteel);
+            HLine(p, HW, HH, 18, 23, 13, Color{ 255, 255, 255, 255 });
+            // Hand & Brass Gladius Hilt
+            FillRect(p, HW, HH, 23, 13, 2, 4, skinMid);
+            Set(p, HW, HH, 24, 13, skinHi);
+            VLine(p, HW, HH, 24, 12, 17, brassRim); // Guard
+            Set(p, HW, HH, 22, 14, brassRim);      // Round pommel
+
+            // Double-Edged Steel Gladius Blade
+            FillRect(p, HW, HH, 25, 14, 6, 3, ironSteel);
+            HLine(p, HW, HH, 25, 30, 14, Color{ 255, 255, 255, 255 }); // Fuller highlight
+            HLine(p, HW, HH, 25, 30, 16, ironDark);
+            Set(p, HW, HH, 31, 15, Color{ 255, 255, 255, 255 });      // Sharp point!
+
+            // Dynamic silver-white wind slash curve
+            HLine(p, HW, HH, 22, 31, 11, Color{ 255, 255, 255, 200 });
+            HLine(p, HW, HH, 24, 31, 18, Color{ 255, 255, 255, 200 });
+        }
+
+        // Armored Legs with Greaves & Caligae
+        int step = (frame == 1) ? 2 : 0;
+        // Front leg with heavy bronze greave (Ocrea)
+        FillRect(p, HW, HH, 14 + step, 24, 5, 8, brassRim);
+        HLine(p, HW, HH, 15 + step, 17 + step, 25, Color{ 255, 245, 150, 255 });
+        FillRect(p, HW, HH, 14 + step, 32, 5, 2, ironDark);
+        // Rear leg with steel lames
+        FillRect(p, HW, HH, 9 - step, 24, 4, 8, ironMid);
+        FillRect(p, HW, HH, 8 - step, 32, 5, 2, ironDark);
+    };
+
+    PaintHeavy(heavy.data(), 0, false, false);
+    s_sprites[SPR_HEAVY_WALK_0] = CreateTextureFromPixels(HW, HH, heavy.data());
+    PaintHeavy(heavy.data(), 1, false, false);
+    s_sprites[SPR_HEAVY_WALK_1] = CreateTextureFromPixels(HW, HH, heavy.data());
+    PaintHeavy(heavy.data(), 0, true, false);
+    s_sprites[SPR_HEAVY_ATTACK] = CreateTextureFromPixels(HW, HH, heavy.data());
+    PaintHeavy(heavy.data(), 0, false, true);
+    s_sprites[SPR_HEAVY_HURT] = CreateTextureFromPixels(HW, HH, heavy.data());
+
+    // 6. Stage 1 Boss: The Centurion Gladiator (Ken-Oh equivalent) - 46x54 Colossus
+    constexpr int BW = 46, BH = 54;
+    std::vector<Color> boss(BW * BH);
+    auto PaintBoss = [](Color* p, int state, bool hurt) {
+        for (int i = 0; i < BW * BH; ++i) p[i] = BLANK;
+
+        Color bronzeHi   = hurt ? Color{ 255, 210, 210, 255 } : Color{ 255, 225, 110, 255 };
+        Color bronzeMid  = hurt ? Color{ 255, 140, 140, 255 } : Color{ 225, 175,  55, 255 };
+        Color bronzeDark = hurt ? Color{ 180,  80,  80, 255 } : Color{ 140,  95,  25, 255 };
+        Color goldPure   = hurt ? Color{ 255, 230, 230, 255 } : COLOR_GOLD_BRIGHT;
+        Color skinMuscle = hurt ? Color{ 255, 190, 190, 255 } : Color{ 220, 160, 115, 255 };
+        Color skinMid    = skinMuscle;
+        Color skinHi     = hurt ? Color{ 255, 225, 225, 255 } : Color{ 250, 205, 165, 255 };
+        Color skinDark   = hurt ? Color{ 180,  90,  90, 255 } : Color{ 160, 105,  68, 255 };
+        Color crestHi    = Color{ 255,  85,  95, 255 };
+        Color crestMid   = Color{ 235,  30,  40, 255 };
+        Color crestDark  = Color{ 140,  12,  18, 255 };
+        Color eyeGlow    = Color{ 255,  40,  40, 255 };
+        Color leather    = Color{ 110,  65,  35, 255 };
+        Color leatherDark= Color{  65,  38,  18, 255 };
+        Color outline    = Color{  30,  18,  14, 255 };
+        (void)outline;
+
+        if (state == 4) {
+            // --- STATE 4: KNEELING IN DEFEAT (Forced to one knee, clutching wounded cuirass) ---
+            int ky = 10; // Entire figure lowered by 10px
+
+            // Crest tilted forward
+            for (int x = 11; x <= 33; ++x) {
+                Set(p, BW, BH, x, ky - 3, crestHi);
+                Set(p, BW, BH, x, ky - 2, crestMid);
+                Set(p, BW, BH, x, ky - 1, crestDark);
+            }
+            FillRect(p, BW, BH, 17, ky - 1, 10, 2, bronzeMid);
+
+            // Skullcap & face hung low
+            FillCircle(p, BW, BH, 22, ky + 4, 6, bronzeMid);
+            HLine(p, BW, BH, 17, 27, ky + 2, bronzeHi);
+            // Cheek guards
+            VLine(p, BW, BH, 16, ky + 4, ky + 9, bronzeMid);
+            VLine(p, BW, BH, 28, ky + 4, ky + 9, bronzeMid);
+            // Face looking down in pain
+            FillRect(p, BW, BH, 18, ky + 4, 8, 4, skinMid);
+            HLine(p, BW, BH, 19, 25, ky + 5, skinDark);
+            Set(p, BW, BH, 20, ky + 6, Color{ 220, 80, 80, 255 }); // Eyes grimacing shut
+            Set(p, BW, BH, 24, ky + 6, Color{ 220, 80, 80, 255 });
+            HLine(p, BW, BH, 20, 24, ky + 8, Color{ 150, 40, 40, 255 }); // Grimacing mouth
+
+            // Cuirass tilted
+            FillRect(p, BW, BH, 14, ky + 11, 18, 14, bronzeMid);
+            FillCircle(p, BW, BH, 18, ky + 14, 3, bronzeHi);
+            FillCircle(p, BW, BH, 28, ky + 14, 3, bronzeHi);
+            // Shattered lion emblem with fatal wound crack
+            FillCircle(p, BW, BH, 23, ky + 15, 2, goldPure);
+            Set(p, BW, BH, 23, ky + 15, Color{ 255, 60, 40, 255 }); // Glowing wound penetration!
+            Set(p, BW, BH, 24, ky + 16, Color{ 255, 60, 40, 255 });
+
+            // Left hand clutching the wound
+            FillRect(p, BW, BH, 20, ky + 14, 5, 4, skinMuscle);
+            HLine(p, BW, BH, 21, 24, ky + 14, skinHi);
+            // Left arm coming from shoulder
+            FillRect(p, BW, BH, 12, ky + 13, 8, 4, skinMuscle);
+
+            // Right arm limp, fallen to side, whip dropped on floor
+            FillRect(p, BW, BH, 32, ky + 14, 4, 12, skinMuscle);
+            FillRect(p, BW, BH, 33, ky + 26, 3, 3, leatherDark);
+            // Dropped whip on cobblestones
+            HLine(p, BW, BH, 34, 44, 52, leather);
+            Set(p, BW, BH, 45, 52, goldPure);
+
+            // Pteruges & Tunic draped
+            FillRect(p, BW, BH, 14, ky + 25, 18, 3, leatherDark);
+            FillRect(p, BW, BH, 14, ky + 28, 18, 2, Color{ 185, 25, 32, 255 });
+
+            // Bent legs: Left knee firmly on ground, right knee raised
+            FillCircle(p, BW, BH, 16, 44, 3, bronzeHi);
+            FillRect(p, BW, BH, 14, 47, 5, 6, bronzeMid);
+            HLine(p, BW, BH, 13, 19, 53, leatherDark);
+
+            // Left knee touching ground
+            FillRect(p, BW, BH, 24, 46, 8, 6, bronzeMid);
+            HLine(p, BW, BH, 24, 31, 52, bronzeHi); // Greave on ground
+            HLine(p, BW, BH, 23, 32, 53, leatherDark);
+            return;
+        } else if (state == 5) {
+            // --- STATE 5: WITHERING INTO ASH (Cracking magma fissures & disintegrating armor) ---
+            Color ashCharcoal = Color{ 48, 42, 50, 255 };
+            Color ashMid      = Color{ 72, 64, 75, 255 };
+            Color ashLight    = Color{ 105, 95, 110, 255 };
+            Color emberCore   = Color{ 255, 240, 110, 255 };
+            Color emberFire   = Color{ 255, 110,  30, 255 };
+            Color emberDark   = Color{ 180,  40,  15, 255 };
+
+            int wy = 16; // Crumbling downward
+
+            // Crumbling crest dissolving into drifting sparks
+            for (int x = 14; x <= 31; ++x) {
+                if ((x + wy) % 2 == 0) {
+                    Set(p, BW, BH, x, wy - 2, ashMid);
+                    Set(p, BW, BH, x, wy - 1, emberFire);
+                }
+            }
+            // Ascending ember motes
+            Set(p, BW, BH, 16, wy - 6, emberCore);
+            Set(p, BW, BH, 23, wy - 8, emberFire);
+            Set(p, BW, BH, 29, wy - 5, emberCore);
+
+            // Cracked, crumbling skullcap
+            FillCircle(p, BW, BH, 22, wy + 4, 5, ashCharcoal);
+            HLine(p, BW, BH, 18, 26, wy + 3, ashMid);
+            Set(p, BW, BH, 21, wy + 2, emberCore);
+            Set(p, BW, BH, 22, wy + 3, emberFire);
+            Set(p, BW, BH, 23, wy + 4, emberFire);
+
+            // Body disintegrating into stone & ash with deep fissures
+            FillRect(p, BW, BH, 14, wy + 9, 18, 16, ashCharcoal);
+            for (int y = wy + 9; y <= wy + 25; ++y) {
+                for (int x = 14; x <= 31; ++x) {
+                    if ((x ^ y) % 3 == 0) Set(p, BW, BH, x, y, ashMid);
+                    if ((x * y) % 7 == 0) Set(p, BW, BH, x, y, ashLight);
+                }
+            }
+
+            // Jagged glowing fissures of judgment ripping through the torso
+            VLine(p, BW, BH, 22, wy + 10, wy + 24, emberFire);
+            VLine(p, BW, BH, 23, wy + 11, wy + 23, emberCore);
+            HLine(p, BW, BH, 16, 29, wy + 16, emberFire);
+            HLine(p, BW, BH, 18, 27, wy + 17, emberCore);
+            HLine(p, BW, BH, 15, 30, wy + 22, emberDark);
+
+            // Lower collapsed mass settling onto ground
+            FillRect(p, BW, BH, 10, 44, 26, 9, ashCharcoal);
+            for (int x = 10; x <= 35; ++x) {
+                Set(p, BW, BH, x, 52, ((x % 3 == 0) ? emberFire : ashMid));
+                Set(p, BW, BH, x, 53, ashCharcoal);
+            }
+            return;
+        } else if (state == 6) {
+            // --- STATE 6: ASH HEAP & EMBERS (Dissolved completely into the stone floor) ---
+            Color ashCharcoal = Color{ 42, 36, 44, 255 };
+            Color ashDark     = Color{ 60, 52, 62, 255 };
+            Color ashLight    = Color{ 90, 80, 95, 255 };
+            Color emberFire   = Color{ 255, 95, 25, 255 };
+            Color emberGold   = Color{ 255, 215, 70, 255 };
+
+            // Low collapsed mound of ash along ground (y = 44 to 53)
+            FillEllipse(p, BW, BH, 23, 49, 16, 4, ashCharcoal);
+            FillEllipse(p, BW, BH, 23, 48, 12, 3, ashDark);
+            HLine(p, BW, BH, 14, 32, 47, ashLight);
+
+            // Shattered bronze fragments of lion buckle and crest
+            Set(p, BW, BH, 21, 48, COLOR_GOLD_BRIGHT);
+            Set(p, BW, BH, 22, 48, COLOR_ROMAN_GOLD);
+            Set(p, BW, BH, 26, 49, COLOR_BRONZE);
+
+            // Glowing dying embers in the ash mound
+            Set(p, BW, BH, 15, 50, emberFire);
+            Set(p, BW, BH, 19, 49, emberGold);
+            Set(p, BW, BH, 24, 50, emberFire);
+            Set(p, BW, BH, 28, 49, emberGold);
+            Set(p, BW, BH, 31, 51, emberFire);
+
+            // Fading smoke/ember sparks rising into the air
+            Set(p, BW, BH, 18, 41, emberGold);
+            Set(p, BW, BH, 23, 38, emberFire);
+            Set(p, BW, BH, 27, 43, emberGold);
+            return;
+        }
+
+        // --- TRANSVERSE SCARLET HORSEHAIR CREST (Massive arching sideways plume!) ---
+        for (int x = 11; x <= 35; ++x) {
+            Set(p, BW, BH, x, 0, crestHi);
+            Set(p, BW, BH, x, 1, crestHi);
+            Set(p, BW, BH, x, 2, crestMid);
+            Set(p, BW, BH, x, 3, crestMid);
+            Set(p, BW, BH, x, 4, (x >= 17 && x <= 29) ? bronzeHi : crestDark);
+        }
+        // Crest box mount with lion engraving
+        FillRect(p, BW, BH, 17, 4, 12, 2, bronzeMid);
+        HLine(p, BW, BH, 17, 28, 4, bronzeHi);
+
+        // --- CENTURION HELMET & WARRIOR FACE ---
+        // Polished Bronze Helmet Skullcap
+        FillCircle(p, BW, BH, 23, 9, 6, bronzeMid);
+        HLine(p, BW, BH, 17, 29, 6, bronzeHi);
+        HLine(p, BW, BH, 18, 28, 5, bronzeHi);
+        // Brow reinforcement visor band
+        HLine(p, BW, BH, 17, 29, 9, bronzeHi);
+        // Cheek Guards & Neck Flange
+        VLine(p, BW, BH, 16, 9, 14, bronzeMid);
+        VLine(p, BW, BH, 30, 9, 14, bronzeMid);
+        Set(p, BW, BH, 16, 11, bronzeHi); // Rivet
+        Set(p, BW, BH, 30, 11, bronzeHi);
+
+        // Menacing Human Warrior Face
+        // Forehead
+        FillRect(p, BW, BH, 18, 8, 10, 2, skinMid);
+        // Fierce, Burning Warrior Eyes & Furrowed Brow
+        HLine(p, BW, BH, 18, 28, 9, skinDark); // Furrowed brow shadow
+        Set(p, BW, BH, 20, 10, eyeGlow);
+        Set(p, BW, BH, 21, 10, Color{ 255, 255, 255, 255 }); // Intense pupil
+        Set(p, BW, BH, 25, 10, eyeGlow);
+        Set(p, BW, BH, 26, 10, Color{ 255, 255, 255, 255 });
+        // Chiselled Roman Nose & Cheekbones
+        VLine(p, BW, BH, 23, 10, 13, skinHi); // Nose bridge
+        Set(p, BW, BH, 24, 12, skinHi);      // Nose tip
+        Set(p, BW, BH, 19, 12, skinMuscle);  // Cheekbone
+        Set(p, BW, BH, 27, 12, skinMuscle);
+        // War Scar across left cheek
+        Set(p, BW, BH, 20, 12, Color{ 220, 80, 80, 255 });
+        Set(p, BW, BH, 21, 13, Color{ 220, 80, 80, 255 });
+        // Grim Mouth & Strong Chiselled Jaw
+        HLine(p, BW, BH, 21, 25, 13, Color{ 175, 90, 75, 255 });
+        FillRect(p, BW, BH, 20, 14, 7, 2, skinDark);
+        HLine(p, BW, BH, 21, 25, 15, skinMuscle); // Heavy chin
+
+        // --- SCULPTED BRONZE MUSCLE CUIRASS (Lorica Musculata) ---
+        // Anatomical Pectoral Plates
+        FillRect(p, BW, BH, 14, 16, 18, 15, bronzeMid);
+        // Left Pectoral
+        FillCircle(p, BW, BH, 18, 20, 3, bronzeHi);
+        Set(p, BW, BH, 18, 19, goldPure);
+        // Right Pectoral
+        FillCircle(p, BW, BH, 28, 20, 3, bronzeHi);
+        Set(p, BW, BH, 28, 19, goldPure);
+        // Sternum & Epigastric Fossa
+        VLine(p, BW, BH, 23, 17, 30, bronzeDark);
+        HLine(p, BW, BH, 16, 30, 23, bronzeDark);
+
+        // Embossed Golden Roaring Lion Gorgoneion Emblem!
+        FillCircle(p, BW, BH, 23, 21, 2, goldPure);
+        Set(p, BW, BH, 22, 20, Color{ 255, 255, 255, 255 }); // Mane highlight
+        Set(p, BW, BH, 24, 20, Color{ 255, 255, 255, 255 });
+        Set(p, BW, BH, 22, 21, Color{ 255, 40, 40, 255 }); // Ruby eyes on lion
+        Set(p, BW, BH, 24, 21, Color{ 255, 40, 40, 255 });
+        Set(p, BW, BH, 23, 22, bronzeDark); // Roaring mouth
+
+        // Anatomical Rectus Abdominis ("Six-Pack") & Rib Arches
+        FillRect(p, BW, BH, 17, 24, 4, 3, bronzeHi);
+        FillRect(p, BW, BH, 25, 24, 4, 3, bronzeHi);
+        FillRect(p, BW, BH, 17, 28, 4, 3, bronzeHi);
+        FillRect(p, BW, BH, 25, 28, 4, 3, bronzeHi);
+        HLine(p, BW, BH, 16, 30, 27, bronzeDark);
+
+        // Massive Spiked Pauldrons with Lion Bosses
+        FillCircle(p, BW, BH, 13, 18, 4, bronzeMid);
+        FillCircle(p, BW, BH, 13, 18, 2, bronzeHi);
+        Set(p, BW, BH, 13, 17, Color{ 255, 255, 255, 230 }); // Specular reflection
+        Set(p, BW, BH, 10, 15, goldPure); // Spike
+        Set(p, BW, BH, 12, 14, goldPure);
+        Set(p, BW, BH, 14, 13, goldPure);
+        FillCircle(p, BW, BH, 33, 18, 4, bronzeMid);
+        FillCircle(p, BW, BH, 33, 18, 2, bronzeHi);
+        Set(p, BW, BH, 33, 17, Color{ 255, 255, 255, 230 }); // Specular reflection
+        Set(p, BW, BH, 36, 15, goldPure); // Spike
+        Set(p, BW, BH, 34, 14, goldPure);
+        Set(p, BW, BH, 32, 13, goldPure);
+
+        // Studded War Belt (Balteus) with Triple-Layered Pteruges
+        FillRect(p, BW, BH, 13, 31, 20, 4, leatherDark);
+        HLine(p, BW, BH, 13, 32, 32, bronzeHi);
+        FillCircle(p, BW, BH, 23, 33, 2, goldPure); // Lion buckle
+        // Hanging Leather Pteruges with Brass Leaf Terminals
+        for (int x = 14; x <= 32; x += 3) {
+            VLine(p, BW, BH, x, 35, 41, leather);
+            Set(p, BW, BH, x, 40, bronzeMid);
+            Set(p, BW, BH, x, 41, bronzeHi); // Brass terminal leaf
+        }
+        // Red officer tunic skirt showing underneath
+        FillRect(p, BW, BH, 14, 38, 18, 3, Color{ 185, 25, 32, 255 });
+
+        // --- MUSCULAR GREAVED LEGS & COMBAT BOOTS ---
+        // Muscular Thighs
+        FillRect(p, BW, BH, 16, 41, 5, 2, skinMuscle);
+        FillRect(p, BW, BH, 25, 41, 5, 2, skinMuscle);
+        // Heavy Bronze Greaves (Ocreae with anatomical knee plates)
+        FillRect(p, BW, BH, 15, 43, 6, 9, bronzeMid);
+        FillCircle(p, BW, BH, 18, 43, 2, bronzeHi); // Knee plate
+        HLine(p, BW, BH, 16, 19, 45, bronzeHi);     // Shin highlight
+        FillRect(p, BW, BH, 25, 43, 6, 9, bronzeMid);
+        FillCircle(p, BW, BH, 28, 43, 2, bronzeHi);
+        HLine(p, BW, BH, 26, 29, 45, bronzeHi);
+        // Heavy Strapped Combat Boots
+        FillRect(p, BW, BH, 14, 52, 8, 2, leatherDark);
+        FillRect(p, BW, BH, 24, 52, 8, 2, leatherDark);
+        HLine(p, BW, BH, 14, 21, 52, bronzeMid);
+        HLine(p, BW, BH, 24, 31, 52, bronzeMid);
+
+        // --- MUSCULAR ARMS & COMBAT WHIP STATES ---
+        if (state == 0) {
+            // Idle / Walk: Massive arm draped at side, whip coiled
+            FillRect(p, BW, BH, 30, 20, 6, 6, skinMuscle);
+            HLine(p, BW, BH, 31, 35, 20, skinHi);
+            // Spiked leather bracer
+            FillRect(p, BW, BH, 32, 24, 5, 5, leatherDark);
+            Set(p, BW, BH, 34, 25, bronzeHi);
+            // Coiled braided leather whip
+            VLine(p, BW, BH, 35, 26, 36, leather);
+            VLine(p, BW, BH, 36, 28, 38, leatherDark);
+            Set(p, BW, BH, 35, 38, goldPure); // Spiked weight
+        } else if (state == 1) {
+            // Whip Prepare / Windup: Arm raised overhead, flexing bicep!
+            FillRect(p, BW, BH, 28, 8, 7, 7, skinMuscle);
+            HLine(p, BW, BH, 29, 34, 8, skinHi);
+            // Forearm raised high
+            FillRect(p, BW, BH, 32, 2, 5, 8, skinMuscle);
+            FillRect(p, BW, BH, 33, 4, 4, 4, leatherDark);
+            Set(p, BW, BH, 35, 5, bronzeHi); // Spiked knuckle
+            // Whip swirling overhead
+            HLine(p, BW, BH, 24, 42, 2, leather);
+            Set(p, BW, BH, 43, 2, goldPure);
+        } else if (state == 2) {
+            // Whip Horizontal Crack: Arm lunged straight forward at shoulder height!
+            FillRect(p, BW, BH, 30, 18, 14, 5, skinMuscle);
+            HLine(p, BW, BH, 31, 43, 18, skinHi);
+            // Spiked leather gauntlet
+            FillRect(p, BW, BH, 38, 18, 5, 5, leatherDark);
+            Set(p, BW, BH, 40, 19, bronzeHi);
+            Set(p, BW, BH, 44, 20, goldPure); // Whip handle socket
+        } else if (state == 3) {
+            // Whip Overhead Slam: Powerful high leap / downward slam!
+            FillRect(p, BW, BH, 28, 6, 6, 12, skinMuscle);
+            HLine(p, BW, BH, 29, 33, 6, skinHi);
+            VLine(p, BW, BH, 31, 4, 16, leather);
+            Set(p, BW, BH, 31, 3, goldPure);
+        }
+    };
+
+    PaintBoss(boss.data(), 0, false);
+    s_sprites[SPR_BOSS_IDLE] = CreateTextureFromPixels(BW, BH, boss.data());
+    PaintBoss(boss.data(), 0, false);
+    s_sprites[SPR_BOSS_WALK_0] = CreateTextureFromPixels(BW, BH, boss.data());
+    PaintBoss(boss.data(), 0, false);
+    s_sprites[SPR_BOSS_WALK_1] = CreateTextureFromPixels(BW, BH, boss.data());
+    PaintBoss(boss.data(), 1, false);
+    s_sprites[SPR_BOSS_WHIP_PREPARE] = CreateTextureFromPixels(BW, BH, boss.data());
+    PaintBoss(boss.data(), 2, false);
+    s_sprites[SPR_BOSS_WHIP_CRACK] = CreateTextureFromPixels(BW, BH, boss.data());
+    PaintBoss(boss.data(), 3, false);
+    s_sprites[SPR_BOSS_WHIP_SLAM] = CreateTextureFromPixels(BW, BH, boss.data());
+    PaintBoss(boss.data(), 0, true);
+    s_sprites[SPR_BOSS_HURT] = CreateTextureFromPixels(BW, BH, boss.data());
+    PaintBoss(boss.data(), 4, false);
+    s_sprites[SPR_BOSS_KNEEL] = CreateTextureFromPixels(BW, BH, boss.data());
+    PaintBoss(boss.data(), 5, false);
+    s_sprites[SPR_BOSS_WITHER_0] = CreateTextureFromPixels(BW, BH, boss.data());
+    PaintBoss(boss.data(), 6, false);
+    s_sprites[SPR_BOSS_WITHER_1] = CreateTextureFromPixels(BW, BH, boss.data());
+
+    // 7. Projectiles & Collectibles
+    // Iron Roman Spike (18x12 pixels - Thick forged iron with radiant holy aura!)
+    constexpr int NW = 18, NH = 12;
+    std::vector<Color> nail(NW * NH, BLANK);
+    for (int y = 0; y < NH; ++y) {
+        for (int x = 0; x < NW; ++x) {
+            float dx = x - 9.0f;
+            float dy = y - 5.5f;
+            if (dx * dx * 0.4f + dy * dy <= 14.0f) {
+                nail[y * NW + x] = Color{ 255, 230, 90, 140 };
+            }
+        }
+    }
+    FillRect(nail.data(), NW, NH, 3, 4, 9, 4, COLOR_IRON);
+    HLine(nail.data(), NW, NH, 3, 11, 4, Color{ 255, 255, 255, 255 });
+    HLine(nail.data(), NW, NH, 4, 11, 5, COLOR_STEEL_BRIGHT);
+    HLine(nail.data(), NW, NH, 3, 11, 7, Color{ 60, 65, 75, 255 });
+    FillRect(nail.data(), NW, NH, 12, 3, 5, 6, COLOR_STEEL_BRIGHT);
+    OutlineRect(nail.data(), NW, NH, 12, 3, 5, 6, Color{ 60, 65, 75, 255 });
+    Set(nail.data(), NW, NH, 13, 4, Color{ 255, 255, 255, 255 });
+    Set(nail.data(), NW, NH, 2, 5, Color{ 255, 255, 255, 255 });
+    Set(nail.data(), NW, NH, 1, 5, Color{ 255, 255, 255, 255 });
+    Set(nail.data(), NW, NH, 0, 5, Color{ 255, 255, 255, 255 });
+    Set(nail.data(), NW, NH, 2, 6, COLOR_STEEL_BRIGHT);
+    s_sprites[SPR_NAIL] = CreateTextureFromPixels(NW, NH, nail.data());
+
+    // Arrow (20x10 pixels - Highly visible broadhead & scarlet eagle fletchings!)
+    constexpr int AW = 20, AH = 10;
+    std::vector<Color> arrow(AW * AH, BLANK);
+    FillRect(arrow.data(), AW, AH, 4, 4, 10, 2, Color{ 145, 95, 50, 255 });
+    HLine(arrow.data(), AW, AH, 4, 13, 4, Color{ 190, 135, 75, 255 });
+    FillRect(arrow.data(), AW, AH, 14, 3, 4, 4, COLOR_STEEL_BRIGHT);
+    HLine(arrow.data(), AW, AH, 14, 18, 4, Color{ 255, 255, 255, 255 });
+    Set(arrow.data(), AW, AH, 19, 4, Color{ 255, 255, 255, 255 });
+    Set(arrow.data(), AW, AH, 14, 2, COLOR_STEEL_BRIGHT);
+    Set(arrow.data(), AW, AH, 14, 6, COLOR_STEEL_BRIGHT);
+    for (int fx = 0; fx <= 4; ++fx) {
+        Set(arrow.data(), AW, AH, fx, 2, COLOR_ROMAN_CRIMSON);
+        Set(arrow.data(), AW, AH, fx, 3, Color{ 255, 255, 255, 255 });
+        Set(arrow.data(), AW, AH, fx, 6, Color{ 255, 255, 255, 255 });
+        Set(arrow.data(), AW, AH, fx, 7, COLOR_ROMAN_CRIMSON);
+    }
+    s_sprites[SPR_ARROW] = CreateTextureFromPixels(AW, AH, arrow.data());
+
+    // Spiked Whip Head (14x14 pixels - Massive 4-spiked steel morningstar orb!)
+    constexpr int WHW = 14, WHH = 14;
+    std::vector<Color> whipHead(WHW * WHH, BLANK);
+    FillCircle(whipHead.data(), WHW, WHH, 7, 7, 4, COLOR_BRONZE);
+    Set(whipHead.data(), WHW, WHH, 6, 6, Color{ 255, 235, 120, 255 });
+    VLine(whipHead.data(), WHW, WHH, 7, 0, 3, COLOR_STEEL_BRIGHT);
+    VLine(whipHead.data(), WHW, WHH, 7, 10, 13, COLOR_STEEL_BRIGHT);
+    HLine(whipHead.data(), WHW, WHH, 0, 3, 7, COLOR_STEEL_BRIGHT);
+    HLine(whipHead.data(), WHW, WHH, 10, 13, 7, COLOR_STEEL_BRIGHT);
+    Set(whipHead.data(), WHW, WHH, 7, 0, Color{ 255, 255, 255, 255 });
+    Set(whipHead.data(), WHW, WHH, 0, 7, Color{ 255, 255, 255, 255 });
+    Set(whipHead.data(), WHW, WHH, 13, 7, Color{ 255, 255, 255, 255 });
+    Set(whipHead.data(), WHW, WHH, 7, 13, Color{ 255, 255, 255, 255 });
+    s_sprites[SPR_WHIP_HEAD] = CreateTextureFromPixels(WHW, WHH, whipHead.data());
+
+    // Loaves and Fishes Wicker Basket (22x18)
+    constexpr int BSK_W = 22, BSK_H = 18;
+    std::vector<Color> bsk(BSK_W * BSK_H, BLANK);
+    Color wickerHi   = Color{ 215, 165,  90, 255 };
+    Color wickerMid  = Color{ 165, 115,  55, 255 };
+    Color wickerDark = Color{ 110,  70,  30, 255 };
+    Color breadHi    = Color{ 245, 195, 100, 255 };
+    Color breadCrust = Color{ 175, 105,  40, 255 };
+    Color fishSilver = Color{ 190, 220, 235, 255 };
+    Color fishBlue   = Color{ 105, 155, 185, 255 };
+    Color fishEye    = Color{  30,  50,  70, 255 };
+
+    // Woven wicker body with textured cross-weave
+    for (int y = 7; y <= 16; ++y) {
+        int inset = (y >= 14) ? 3 : 1;
+        for (int x = 2 + inset; x <= 19 - inset; ++x) {
+            Color c = ((x + y) % 2 == 0) ? wickerHi : wickerMid;
+            if (y == 16) c = wickerDark;
+            bsk[y * BSK_W + x] = c;
+        }
+    }
+    // Braided rim
+    HLine(bsk.data(), BSK_W, BSK_H, 2, 19, 6, wickerHi);
+    HLine(bsk.data(), BSK_W, BSK_H, 2, 19, 7, wickerDark);
+
+    // Two Silver Fishes with blue sheen
+    HLine(bsk.data(), BSK_W, BSK_H, 4, 12, 5, fishSilver);
+    HLine(bsk.data(), BSK_W, BSK_H, 5, 11, 4, fishBlue);
+    Set(bsk.data(), BSK_W, BSK_H, 11, 5, fishEye); // Eye
+    HLine(bsk.data(), BSK_W, BSK_H, 8, 16, 4, fishSilver);
+    HLine(bsk.data(), BSK_W, BSK_H, 9, 15, 3, fishBlue);
+    Set(bsk.data(), BSK_W, BSK_H, 15, 4, fishEye);
+
+    // Golden Baked Loaves with scored crust
+    FillRect(bsk.data(), BSK_W, BSK_H, 5, 2, 4, 2, breadHi);
+    Set(bsk.data(), BSK_W, BSK_H, 6, 2, breadCrust); // Score mark
+    FillRect(bsk.data(), BSK_W, BSK_H, 12, 2, 4, 2, breadHi);
+    Set(bsk.data(), BSK_W, BSK_H, 13, 2, breadCrust);
+    s_sprites[SPR_BASKET_LOAVES_FISHES] = CreateTextureFromPixels(BSK_W, BSK_H, bsk.data());
+
+    // UI Heart Pip (10x10)
+    constexpr int IW = 10, IH = 10;
+    std::vector<Color> heart(IW * IH, BLANK);
+    Color redRuby = Color{ 245, 35, 45, 255 };
+    FillRect(heart.data(), IW, IH, 2, 2, 3, 2, redRuby);
+    FillRect(heart.data(), IW, IH, 6, 2, 3, 2, redRuby);
+    FillRect(heart.data(), IW, IH, 1, 3, 9, 3, redRuby);
+    FillRect(heart.data(), IW, IH, 2, 6, 7, 2, redRuby);
+    FillRect(heart.data(), IW, IH, 3, 8, 5, 1, redRuby);
+    Set(heart.data(), IW, IH, 5, 9, redRuby);
+    Set(heart.data(), IW, IH, 3, 3, Color{ 255, 180, 180, 255 }); // Highlight
+    s_sprites[SPR_ICON_HEART] = CreateTextureFromPixels(IW, IH, heart.data());
+
+    // UI Wrath Icon (12x12)
+    constexpr int WRI_W = 12, WRI_H = 12;
+    std::vector<Color> wrathIco(WRI_W * WRI_H, BLANK);
+    FillRect(wrathIco.data(), WRI_W, WRI_H, 2, 2, 8, 8, COLOR_GOLD_BRIGHT);
+    OutlineRect(wrathIco.data(), WRI_W, WRI_H, 1, 1, 10, 10, COLOR_ROMAN_CRIMSON);
+    Set(wrathIco.data(), WRI_W, WRI_H, 4, 5, Color{ 60, 20, 10, 255 });
+    Set(wrathIco.data(), WRI_W, WRI_H, 7, 5, Color{ 60, 20, 10, 255 });
+    HLine(wrathIco.data(), WRI_W, WRI_H, 5, 6, 8, Color{ 60, 20, 10, 255 });
+    s_sprites[SPR_ICON_WRATH] = CreateTextureFromPixels(WRI_W, WRI_H, wrathIco.data());
+    s_sprites[SPR_ICON_BASKET] = s_sprites[SPR_BASKET_LOAVES_FISHES];
+}
+
+// Generate all procedural tiles (16x16 pixels each)
+void GraphicsManager::GenerateAllProceduralTiles() {
+    using namespace PixelArt;
+    constexpr int TW = TILE_SIZE;
+    constexpr int TH = TILE_SIZE;
+
+    std::vector<Color> p(TW * TH);
+
+    // 1. TILE_GROUND_SURFACE (Roman Paved Limestone Street)
+    // Multi-shade polygonal limestone flags with mortar and worn texture
+    Color stoneHi   = Color{ 225, 212, 188, 255 };
+    Color stoneMid  = Color{ 195, 182, 158, 255 };
+    Color stoneLow  = Color{ 165, 150, 128, 255 };
+    Color mortar    = Color{  78,  68,  58, 255 };
+
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            Color c = stoneMid;
+            // Stone flag block boundaries
+            if (y == 0 || y == 8 || y == 15 || (y < 8 && x == 8) || (y >= 8 && x == 12) || (y >= 8 && x == 0)) {
+                c = mortar;
+            } else if (y == 1 || y == 9) {
+                c = stoneHi; // Specular top edge of flagstones
+            } else if ((x ^ (y * 3)) % 7 == 0) {
+                c = stoneLow; // Weathered pitting
+            }
+            p[y * TW + x] = c;
+        }
+    }
+    s_tiles[TILE_GROUND_SURFACE] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 2. TILE_GROUND_SUBSURFACE (Ancient Bedrock & Stratified Earth)
+    Color subHi  = Color{ 105, 88, 72, 255 };
+    Color subMid = Color{  82, 68, 55, 255 };
+    Color subLow = Color{  58, 48, 38, 255 };
+
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            Color c = subMid;
+            if (y % 4 == 0 || (x % 8 == 0 && (y % 8 < 4))) c = subLow;
+            else if ((x + y) % 5 == 0) c = subHi;
+            p[y * TW + x] = c;
+        }
+    }
+    s_tiles[TILE_GROUND_SUBSURFACE] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 3. TILE_BALCONY_PLATFORM (Roman Marble Balustrade with Dentil Molding)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    HLine(p.data(), TW, TH, 0, 15, 0, Color{ 255, 255, 250, 255 }); // Polished marble coping
+    HLine(p.data(), TW, TH, 0, 15, 1, Color{ 235, 230, 218, 255 });
+    HLine(p.data(), TW, TH, 0, 15, 2, Color{ 200, 195, 185, 255 });
+    HLine(p.data(), TW, TH, 0, 15, 3, Color{ 140, 135, 125, 255 }); // Architrave shadow
+    // Dentil molding blocks
+    for (int x = 0; x < TW; x += 4) {
+        FillRect(p.data(), TW, TH, x, 4, 2, 2, Color{ 225, 220, 210, 255 });
+        FillRect(p.data(), TW, TH, x + 2, 4, 2, 2, Color{ 90, 85, 80, 255 });
+    }
+    // Baluster pillars
+    for (int x = 1; x < TW; x += 4) {
+        VLine(p.data(), TW, TH, x, 6, 12, Color{ 240, 235, 225, 255 });
+        VLine(p.data(), TW, TH, x + 1, 6, 12, Color{ 175, 170, 160, 255 });
+    }
+    HLine(p.data(), TW, TH, 0, 15, 13, Color{ 210, 205, 195, 255 }); // Plinth
+    s_tiles[TILE_BALCONY_PLATFORM] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 4. TILE_AQUEDUCT_TOP (Water Channel Cornice)
+    Color aquaHi  = Color{ 230, 215, 190, 255 };
+    Color aquaMid = Color{ 190, 175, 150, 255 };
+    Color aquaLow = Color{ 130, 115,  95, 255 };
+
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            Color c = aquaMid;
+            if (y <= 2) c = aquaHi;
+            else if (y == 3) c = aquaLow;
+            else if (y >= 4 && y <= 6) c = Color{ 150, 135, 115, 255 };
+            else if (y == 7) c = Color{ 85, 75, 65, 255 }; // Bottom shadow
+            else c = aquaMid;
+            p[y * TW + x] = c;
+        }
+    }
+    s_tiles[TILE_AQUEDUCT_TOP] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 5. TILE_AQUEDUCT_ARCH_L
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            if (x < 6 || y < 4) {
+                p[y * TW + x] = (x == 5 || y == 3) ? Color{ 120, 105, 85, 255 } : Color{ 185, 170, 145, 255 };
+            } else {
+                p[y * TW + x] = BLANK;
+            }
+        }
+    }
+    s_tiles[TILE_AQUEDUCT_ARCH_L] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 6. TILE_AQUEDUCT_ARCH_R
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            if (x >= 10 || y < 4) {
+                p[y * TW + x] = (x == 10 || y == 3) ? Color{ 120, 105, 85, 255 } : Color{ 185, 170, 145, 255 };
+            } else {
+                p[y * TW + x] = BLANK;
+            }
+        }
+    }
+    s_tiles[TILE_AQUEDUCT_ARCH_R] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 7. TILE_COLUMN_HEAD (Corinthian Capital with Acanthus Volutes)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 1, 0, 14, 3, Color{ 245, 235, 215, 255 }); // Abacus
+    // Acanthus volute scrolls
+    Set(p.data(), TW, TH, 2, 3, Color{ 255, 245, 225, 255 });
+    Set(p.data(), TW, TH, 13, 3, Color{ 255, 245, 225, 255 });
+    FillRect(p.data(), TW, TH, 3, 3, 10, 6, Color{ 215, 200, 175, 255 });
+    Set(p.data(), TW, TH, 5, 5, Color{ 150, 135, 115, 255 });
+    Set(p.data(), TW, TH, 10, 5, Color{ 150, 135, 115, 255 });
+    FillRect(p.data(), TW, TH, 4, 9, 8, 7, Color{ 230, 215, 190, 255 }); // Necking
+    s_tiles[TILE_COLUMN_HEAD] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 8. TILE_COLUMN_MID (Fluted Cylindrical Shaft)
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            if (x >= 4 && x <= 11) {
+                Color c = Color{ 225, 212, 185, 255 };
+                if (x == 4 || x == 7 || x == 10) c = Color{ 165, 150, 130, 255 }; // Flutes
+                else if (x == 5 || x == 8) c = Color{ 250, 240, 220, 255 };      // Specular highlight
+                p[y * TW + x] = c;
+            } else {
+                p[y * TW + x] = BLANK;
+            }
+        }
+    }
+    s_tiles[TILE_COLUMN_MID] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 9. TILE_COLUMN_BASE (Attic Base with Torus Molding)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    FillRect(p.data(), TW, TH, 4, 0, 8, 5, Color{ 225, 210, 185, 255 });
+    FillRect(p.data(), TW, TH, 2, 5, 12, 4, Color{ 240, 225, 200, 255 }); // Torus
+    FillRect(p.data(), TW, TH, 1, 9, 14, 7, Color{ 190, 175, 150, 255 }); // Plinth
+    s_tiles[TILE_COLUMN_BASE] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 10. TILE_WOOD_CRATE (Rich Oak Planks with Iron Brackets)
+    Color oakLight  = Color{ 170, 115,  60, 255 };
+    Color oakMid    = Color{ 135,  85,  40, 255 };
+    Color oakDark   = Color{  95,  55,  25, 255 };
+    Color ironPlate = Color{  65,  70,  80, 255 };
+    Color ironRivet = Color{ 200, 210, 220, 255 };
+
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            Color c = ((y == 0 || y == 15 || x == 0 || x == 15 || x == y || x == (15 - y))) ? oakDark : oakMid;
+            if (y == 1 || x == 1) c = oakLight;
+            // Corner Iron Angle-Irons
+            if ((x <= 3 || x >= 12) && (y <= 3 || y >= 12)) c = ironPlate;
+            p[y * TW + x] = c;
+        }
+    }
+    // Rivets
+    Set(p.data(), TW, TH, 2, 2, ironRivet);
+    Set(p.data(), TW, TH, 13, 2, ironRivet);
+    Set(p.data(), TW, TH, 2, 13, ironRivet);
+    Set(p.data(), TW, TH, 13, 13, ironRivet);
+    s_tiles[TILE_WOOD_CRATE] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 11. TILE_CLAY_JAR (Terracotta Wine Amphora)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    Color terraHi   = Color{ 235, 125,  65, 255 };
+    Color terraMid  = Color{ 195,  95,  45, 255 };
+    Color terraDark = Color{ 135,  55,  25, 255 };
+    FillRect(p.data(), TW, TH, 5, 4, 6, 10, terraMid);
+    HLine(p.data(), TW, TH, 6, 9, 3, terraHi); // Lip
+    HLine(p.data(), TW, TH, 5, 8, 5, terraHi); // Highlight
+    // Handles
+    Set(p.data(), TW, TH, 3, 5, terraDark);
+    Set(p.data(), TW, TH, 3, 6, terraDark);
+    Set(p.data(), TW, TH, 12, 5, terraDark);
+    Set(p.data(), TW, TH, 12, 6, terraDark);
+    s_tiles[TILE_CLAY_JAR] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 12. TILE_GATE_FRAME (Monumental Stone Archway)
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            Color c = (x < 3 || x > 12) ? Color{ 105, 95, 85, 255 } : Color{ 165, 150, 135, 255 };
+            if (y == 0 || y == 15) c = Color{ 80, 70, 60, 255 };
+            p[y * TW + x] = c;
+        }
+    }
+    s_tiles[TILE_GATE_FRAME] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 13. TILE_GATE_BARS (Heavy Spiked Cast-Iron Portcullis)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    for (int x = 2; x < TW; x += 4) {
+        VLine(p.data(), TW, TH, x, 0, 15, COLOR_STEEL_BRIGHT);
+        VLine(p.data(), TW, TH, x + 1, 0, 15, Color{ 70, 75, 85, 255 });
+    }
+    HLine(p.data(), TW, TH, 0, 15, 7, Color{ 90, 95, 105, 255 }); // Crossbar
+    // Bottom Spike points
+    for (int x = 2; x < TW; x += 4) {
+        Set(p.data(), TW, TH, x, 15, COLOR_STEEL_BRIGHT);
+    }
+    s_tiles[TILE_GATE_BARS] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 14. TILE_SPQR_BANNER (Roman Imperial Crimson & Gold Vexillum Banner)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    // Brass Hanging Crossbar with Ball Finials
+    HLine(p.data(), TW, TH, 1, 14, 0, COLOR_ROMAN_GOLD);
+    Set(p.data(), TW, TH, 0, 0, COLOR_GOLD_BRIGHT); // Left finial
+    Set(p.data(), TW, TH, 15, 0, COLOR_GOLD_BRIGHT); // Right finial
+    // Crimson Silk Fabric Body
+    FillRect(p.data(), TW, TH, 2, 1, 12, 13, COLOR_ROMAN_CRIMSON);
+    OutlineRect(p.data(), TW, TH, 2, 1, 12, 13, COLOR_ROMAN_GOLD); // Gold embroidered border
+    HLine(p.data(), TW, TH, 3, 12, 2, Color{ 235, 45, 55, 255 }); // Top fold highlight
+    // Imperial Golden Eagle (Aquila) & SPQR
+    HLine(p.data(), TW, TH, 5, 10, 4, COLOR_GOLD_BRIGHT); // Outspread wings
+    Set(p.data(), TW, TH, 4, 3, COLOR_GOLD_BRIGHT);
+    Set(p.data(), TW, TH, 11, 3, COLOR_GOLD_BRIGHT);
+    Set(p.data(), TW, TH, 7, 3, COLOR_GOLD_BRIGHT); // Eagle head
+    Set(p.data(), TW, TH, 8, 3, COLOR_GOLD_BRIGHT);
+    FillRect(p.data(), TW, TH, 6, 5, 4, 2, COLOR_GOLD_BRIGHT); // Body & wreath
+    // Gold Fringe / Tassels on bottom
+    for (int x = 3; x <= 12; x += 2) {
+        Set(p.data(), TW, TH, x, 14, COLOR_ROMAN_GOLD);
+        Set(p.data(), TW, TH, x, 15, COLOR_GOLD_BRIGHT);
+    }
+    s_tiles[TILE_SPQR_BANNER] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 15. TILE_STONE_WINDOW (Ancient Jerusalem Arched Limestone Window with Warm Lantern Glow)
+    Color winStoneHi  = Color{ 220, 208, 185, 255 };
+    Color winStoneMid = Color{ 185, 172, 148, 255 };
+    Color winStoneDark= Color{ 120, 105,  85, 255 };
+    Color lanternGlow = Color{ 255, 210, 110, 255 };
+    Color lanternCore = Color{ 255, 245, 200, 255 };
+    Color ironGrille  = Color{  50,  45,  40, 255 };
+
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            // Stone wall background
+            p[y * TW + x] = (x == 0 || y == 0 || x == 15 || y == 15) ? winStoneDark : winStoneMid;
+        }
+    }
+    // Arched window cutout
+    for (int y = 3; y <= 13; ++y) {
+        for (int x = 4; x <= 11; ++x) {
+            if (y == 3 && (x == 4 || x == 11)) continue; // Rounded arch corners
+            float distToGlow = sqrtf((x - 7.5f) * (x - 7.5f) + (y - 8.5f) * (y - 8.5f));
+            if (distToGlow <= 2.2f) p[y * TW + x] = lanternCore;
+            else if (distToGlow <= 4.0f) p[y * TW + x] = lanternGlow;
+            else p[y * TW + x] = Color{ 140, 75, 25, 255 }; // Ambient interior shadow
+        }
+    }
+    // Limestone Arched Lintel & Sill
+    HLine(p.data(), TW, TH, 3, 12, 2, winStoneHi);
+    HLine(p.data(), TW, TH, 3, 12, 14, winStoneHi);
+    Set(p.data(), TW, TH, 7, 1, winStoneHi); // Keystone
+    Set(p.data(), TW, TH, 8, 1, winStoneHi);
+    // Decorative Iron Grille
+    VLine(p.data(), TW, TH, 7, 4, 13, ironGrille);
+    HLine(p.data(), TW, TH, 4, 11, 7, ironGrille);
+    HLine(p.data(), TW, TH, 4, 11, 10, ironGrille);
+    s_tiles[TILE_STONE_WINDOW] = CreateTextureFromPixels(TW, TH, p.data());
+
+    // 16. TILE_OIL_LAMP (Ancient Terracotta Oil Lamp / Lucerna on Stone Corbel)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    // Stone Corbel bracket
+    FillRect(p.data(), TW, TH, 4, 11, 8, 4, winStoneMid);
+    HLine(p.data(), TW, TH, 5, 10, 11, winStoneHi);
+    // Terracotta Lamp Dish
+    FillRect(p.data(), TW, TH, 5, 8, 7, 3, Color{ 195, 95, 45, 255 });
+    Set(p.data(), TW, TH, 4, 7, Color{ 135, 55, 25, 255 }); // Handle loop
+    Set(p.data(), TW, TH, 4, 8, Color{ 135, 55, 25, 255 });
+    Set(p.data(), TW, TH, 12, 7, Color{ 220, 115, 55, 255 }); // Spout
+    // Golden Flickering Flame & Halo
+    FillCircle(p.data(), TW, TH, 12, 5, 3, Color{ 255, 215, 90, 160 }); // Light aura
+    Set(p.data(), TW, TH, 12, 5, Color{ 255, 160, 40, 255 });
+    Set(p.data(), TW, TH, 12, 4, Color{ 255, 250, 210, 255 }); // White hot flame tip!
+    s_tiles[TILE_OIL_LAMP] = CreateTextureFromPixels(TW, TH, p.data());
+}
+
+// Generate the 3-layer parallax backgrounds
+void GraphicsManager::GenerateParallaxBackgrounds() {
+    // =========================================================================
+    // 4-LAYER MULTI-DEPTH CINEMATIC PARALLAX BACKGROUND SYSTEM
+    // Featuring The Monumental Temple & Citadel of David (Migdal David)
+    // =========================================================================
+
+    // 1. Far Celestial Sky & Distant Mountains (320x160, 0.05x scroll)
+    constexpr int SKY_W = 320;
+    constexpr int SKY_H = 160;
+    std::vector<Color> bgSky(SKY_W * SKY_H);
+
+    for (int y = 0; y < SKY_H; ++y) {
+        float skyT = static_cast<float>(y) / SKY_H;
+        // Judean twilight sunset gradient
+        Color skyCol;
+        if (skyT < 0.25f) {
+            float t = skyT / 0.25f;
+            skyCol = {
+                static_cast<unsigned char>(32 + t * 46),
+                static_cast<unsigned char>(22 + t * 14),
+                static_cast<unsigned char>(54 + t * 14),
+                255
+            };
+        } else if (skyT < 0.58f) {
+            float t = (skyT - 0.25f) / 0.33f;
+            skyCol = {
+                static_cast<unsigned char>(78 + t * 107),
+                static_cast<unsigned char>(36 + t * 26),
+                static_cast<unsigned char>(68 - t * 20),
+                255
+            };
+        } else {
+            float t = (skyT - 0.58f) / 0.42f;
+            skyCol = {
+                static_cast<unsigned char>(185 + t * 70),
+                static_cast<unsigned char>(62 + t * 133),
+                static_cast<unsigned char>(48 + t * 27),
+                255
+            };
+        }
+
+        for (int x = 0; x < SKY_W; ++x) {
+            // Radiant Golden Setting Sun (Partially dipping behind mountains)
+            float sunDist = sqrtf((x - 110) * (x - 110) + (y - 75) * (y - 75));
+            if (sunDist < 36.0f) {
+                float sunA = 1.0f - (sunDist / 36.0f);
+                skyCol.r = static_cast<unsigned char>(std::min(255.0f, skyCol.r + sunA * 160.0f));
+                skyCol.g = static_cast<unsigned char>(std::min(255.0f, skyCol.g + sunA * 140.0f));
+                skyCol.b = static_cast<unsigned char>(std::min(255.0f, skyCol.b + sunA * 85.0f));
+            }
+
+            // Distant Mountains of Moab silhouette
+            float mtn1 = 104.0f + 16.0f * sinf(x * 0.018f) + 8.0f * cosf(x * 0.045f);
+            float mtn2 = 122.0f + 12.0f * sinf(x * 0.035f + 1.2f);
+
+            // Silhouetted flock of peaceful doves soaring in V-formation
+            bool isDove = ((x == 160 && y == 42) || (x == 168 && y == 46) || (x == 152 && y == 46) ||
+                           (x == 176 && y == 51) || (x == 144 && y == 51));
+
+            if (isDove) {
+                bgSky[y * SKY_W + x] = Color{ 255, 248, 230, 230 };
+            } else if (y >= mtn2) {
+                // Secondary foothills in warm dusty umber
+                bgSky[y * SKY_W + x] = ((x + y) % 4 == 0) ? Color{ 82, 54, 62, 255 } : Color{ 96, 64, 72, 255 };
+            } else if (y >= mtn1) {
+                // Deep twilight purple mountain ridge
+                bgSky[y * SKY_W + x] = ((x + y) % 5 == 0) ? Color{ 62, 42, 68, 255 } : Color{ 74, 50, 78, 255 };
+            } else {
+                bgSky[y * SKY_W + x] = skyCol;
+            }
+        }
+    }
+    s_bgSkyDistant = CreateTextureFromPixels(SKY_W, SKY_H, bgSky.data());
+
+    // 2. The Temple & Citadel of David Panorama (960x160, 0.20x scroll)
+    // Towering at the 3rd and 4th screens (x = 280 to 680 of the 960px texture)
+    constexpr int DAVID_W = 960;
+    constexpr int DAVID_H = 160;
+    std::vector<Color> bgDavid(DAVID_W * DAVID_H, BLANK);
+
+    for (int y = 0; y < DAVID_H; ++y) {
+        for (int x = 0; x < DAVID_W; ++x) {
+            // Palette for Herodian and Davidic stone architecture
+            Color ashlarLight = Color{ 235, 222, 198, 255 };
+            Color ashlarMid   = Color{ 198, 182, 156, 255 };
+            Color ashlarDark  = Color{ 148, 132, 108, 255 };
+            Color ashlarDeep  = Color{ 102,  88,  70, 255 };
+            Color bronzeGold  = Color{ 238, 195,  45, 255 };
+            Color bronzeBright= Color{ 255, 235, 110, 255 };
+            Color royalBlue   = Color{  28,  55, 130, 255 };
+            Color cedarWood   = Color{ 115,  72,  38, 255 };
+
+            // ==============================================================
+            // SECTION B: THE TEMPLE & CITADEL OF DAVID (x = 280 to 680)
+            // 4 Architectural Tiers / Levels:
+            // Tier 1: Stepped Stone Structure Bedrock Foundation (y = 118 to 158)
+            // Tier 2: Fortified Royal Terrace & Gate of Zion (y = 88 to 117)
+            // Tier 3: Palace of King David & Proto-Aeolic Colonnade (y = 56 to 87)
+            // Tier 4: Citadel Keep - Tower of David & Bronze Cupola (y = 18 to 55)
+            // ==============================================================
+            if (x >= 280 && x <= 680) {
+                // TIER 4: Citadel Keep - Tower of David (Migdal David) (x = 430 to 520, y = 18 to 55)
+                bool isCitadelMast   = (x == 475 && y >= 8 && y <= 18);
+                bool isCitadelPennant= (x >= 476 && x <= 494 && y >= 10 && y <= 15);
+                bool isCitadelDome   = (x >= 460 && x <= 490 && y >= 18 && y <= 32);
+                bool isCitadelCornice= (x >= 430 && x <= 520 && y >= 33 && y <= 36);
+                bool isCitadelKeep   = (x >= 435 && x <= 515 && y >= 37 && y <= 55);
+                bool isCitadelCrenel = (isCitadelKeep && y <= 40 && (x % 10 < 6));
+
+                // TIER 3: Palace of King David (Beit David) (x = 340 to 610, y = 56 to 87)
+                bool isPalaceRoof    = (x >= 335 && x <= 615 && y >= 56 && y <= 59);
+                bool isPalaceHall    = (x >= 340 && x <= 610 && y >= 60 && y <= 87);
+                bool isProtoPillar   = (isPalaceHall && (x % 38 >= 8 && x % 38 <= 13));
+                bool isPalaceWindow  = (isPalaceHall && (x % 38 >= 20 && x % 38 <= 26) && y >= 65 && y <= 76);
+                bool isDavidBanner   = (isPalaceHall && (x % 76 >= 32 && x % 76 <= 38) && y >= 62 && y <= 82);
+
+                // TIER 2: Fortified Royal Terrace & Gate of Zion (x = 300 to 650, y = 88 to 117)
+                bool isGateWall      = (x >= 300 && x <= 650 && y >= 88 && y <= 117);
+                bool isTerraceCrenel = (isGateWall && y >= 88 && y <= 92 && (x % 12 < 7));
+                bool isZionGateArch  = (x >= 450 && x <= 500 && y >= 94 && y <= 117);
+                bool isGateInnerDoors= (x >= 458 && x <= 492 && y >= 100 && y <= 117);
+
+                // TIER 1: The Stepped Stone Structure Foundation (x = 280 to 670, y = 118 to 158)
+                bool isSteppedStone  = (x >= 280 && x <= 670 && y >= 118);
+
+                if (isCitadelMast) {
+                    bgDavid[y * DAVID_W + x] = cedarWood;
+                } else if (isCitadelPennant) {
+                    bgDavid[y * DAVID_W + x] = (y == 12 || y == 13) ? bronzeGold : royalBlue;
+                } else if (isCitadelDome) {
+                    // Polished Bronze Cupola catching sunset rays
+                    float dx = x - 475.0f;
+                    float dy = y - 32.0f;
+                    if (dx * dx * 0.55f + dy * dy <= 196.0f) {
+                        bool specular = (fabsf(dx - 5.0f) < 3.0f && y <= 24);
+                        bgDavid[y * DAVID_W + x] = specular ? Color{ 255, 255, 240, 255 } : ((dx < 0) ? bronzeBright : bronzeGold);
+                    }
+                } else if (isCitadelCornice) {
+                    bgDavid[y * DAVID_W + x] = (y == 33) ? ashlarLight : ashlarDark;
+                } else if (isCitadelKeep) {
+                    if (y <= 40 && !isCitadelCrenel) {
+                        // Air between battlements
+                    } else {
+                        // Drafted Herodian ashlar blocks with margin bevels
+                        bool hBevel = (y % 7 == 0);
+                        bool vBevel = ((x + (y / 7) * 9) % 18 == 0);
+                        bgDavid[y * DAVID_W + x] = (hBevel || vBevel) ? ashlarDeep : (((x + y) % 3 == 0) ? ashlarLight : ashlarMid);
+                    }
+                } else if (isDavidBanner) {
+                    // Royal Blue Judean standard with golden Star of David
+                    bgDavid[y * DAVID_W + x] = ((y >= 70 && y <= 74) && (x % 76 >= 34 && x % 76 <= 36)) ? bronzeBright : royalBlue;
+                } else if (isPalaceWindow) {
+                    // Arched window glowing with royal golden candlelight
+                    bgDavid[y * DAVID_W + x] = (y == 65) ? Color{ 255, 240, 150, 255 } : Color{ 245, 185, 60, 255 };
+                } else if (isProtoPillar) {
+                    // Proto-Aeolic fluted stone column
+                    bool volute = (y >= 60 && y <= 63);
+                    bgDavid[y * DAVID_W + x] = volute ? bronzeGold : ((x % 38 == 10) ? ashlarLight : ashlarMid);
+                } else if (isPalaceRoof) {
+                    bgDavid[y * DAVID_W + x] = (y == 56) ? bronzeGold : cedarWood;
+                } else if (isPalaceHall) {
+                    bool hLine = (y % 8 == 0);
+                    bgDavid[y * DAVID_W + x] = hLine ? ashlarDark : ashlarMid;
+                } else if (isGateInnerDoors) {
+                    // Bronze-studded heavy cedar gate
+                    bgDavid[y * DAVID_W + x] = (x == 475) ? Color{ 50, 30, 15, 255 } : (((x + y) % 4 == 0) ? bronzeGold : cedarWood);
+                } else if (isZionGateArch) {
+                    bgDavid[y * DAVID_W + x] = (y <= 97) ? bronzeGold : ashlarDark;
+                } else if (isGateWall) {
+                    if (y <= 92 && !isTerraceCrenel) {
+                        // Battlement opening
+                    } else {
+                        bool hCourse = (y % 6 == 0);
+                        bool vCourse = ((x + (y / 6) * 11) % 20 == 0);
+                        bgDavid[y * DAVID_W + x] = (hCourse || vCourse) ? ashlarDeep : ashlarMid;
+                    }
+                } else if (isSteppedStone) {
+                    // Megalithic stepped stone structure courses
+                    int step = (y - 118) / 5;
+                    bool stepEdge = ((y - 118) % 5 == 0);
+                    bgDavid[y * DAVID_W + x] = stepEdge ? ashlarLight : ((step % 2 == 0) ? ashlarMid : ashlarDark);
+                }
+            }
+            // ==============================================================
+            // SECTION A: Ancient Jerusalem City Walls & Watchtowers (x = 0 to 280)
+            // ==============================================================
+            else if (x < 280) {
+                bool isWall = (y >= 92 && y <= 150);
+                bool isCrenel = (y >= 92 && y <= 96 && (x % 14 < 8));
+                bool isTower = ((x >= 50 && x <= 78) || (x >= 180 && x <= 208)) && (y >= 75);
+                bool isTowerCrenel = (isTower && y >= 75 && y <= 79 && (x % 8 < 5));
+
+                if (isTower) {
+                    if (y <= 79 && !isTowerCrenel) {}
+                    else {
+                        bool hCourse = (y % 7 == 0);
+                        bgDavid[y * DAVID_W + x] = hCourse ? ashlarDeep : ashlarMid;
+                    }
+                } else if (isWall) {
+                    if (y <= 96 && !isCrenel) {}
+                    else {
+                        bool hCourse = (y % 6 == 0);
+                        bgDavid[y * DAVID_W + x] = hCourse ? ashlarDeep : Color{ 175, 160, 138, 255 };
+                    }
+                }
+            }
+            // ==============================================================
+            // SECTION C: Mount Moriah, Second Temple & Antonia Fortress (x = 680 to 960)
+            // ==============================================================
+            else {
+                // Second Temple Colonnade (x = 700 to 820, y = 62 to 140)
+                bool isTemplePortico = (x >= 710 && x <= 810 && y >= 65 && y <= 140);
+                bool isTemplePediment= (x >= 730 && x <= 790 && y >= 52 && y <= 64);
+                bool isTemplePillar  = (isTemplePortico && (x % 14 < 4));
+
+                // Antonia Fortress Garrison (x = 840 to 940, y = 40 to 155)
+                bool isAntonia = (x >= 840 && x <= 940 && y >= 45 && y <= 155);
+                bool isAntoniaTower = (x >= 890 && x <= 930 && y >= 32);
+                bool isAntoniaFlag  = (x == 910 && y >= 16 && y <= 32);
+                bool isSPQRBanner   = (x >= 911 && x <= 928 && y >= 18 && y <= 27);
+
+                if (isAntoniaFlag) {
+                    bgDavid[y * DAVID_W + x] = cedarWood;
+                } else if (isSPQRBanner) {
+                    bgDavid[y * DAVID_W + x] = (y == 22 || y == 23) ? bronzeGold : COLOR_ROMAN_CRIMSON;
+                } else if (isAntoniaTower && y <= 38 && (x % 8 >= 5)) {
+                    // Crenel gap
+                } else if (isAntoniaTower || isAntonia) {
+                    bool hC = (y % 7 == 0);
+                    bgDavid[y * DAVID_W + x] = hC ? Color{ 110, 95, 85, 255 } : Color{ 160, 145, 130, 255 };
+                } else if (isTemplePediment) {
+                    bgDavid[y * DAVID_W + x] = bronzeBright;
+                } else if (isTemplePortico) {
+                    bgDavid[y * DAVID_W + x] = isTemplePillar ? Color{ 245, 240, 230, 255 } : Color{ 145, 115, 95, 255 };
+                }
+            }
+        }
+    }
+    s_bgTempleOfDavid = CreateTextureFromPixels(DAVID_W, DAVID_H, bgDavid.data());
+
+    // 3. Midground Ancient Jerusalem Villas & Aqueducts (640x160, 0.45x scroll)
+    constexpr int MID_W = 640;
+    constexpr int MID_H = 160;
+    std::vector<Color> bgMid(MID_W * MID_H, BLANK);
+
+    for (int y = 0; y < MID_H; ++y) {
+        for (int x = 0; x < MID_W; ++x) {
+            // Residential Villas with flat rooftops, pergolas & windows
+            int houseX = x % 160;
+            bool isHouse1 = (houseX >= 10 && houseX <= 64 && y >= 92 && y <= 155);
+            bool isHouse2 = (houseX >= 94 && houseX <= 150 && y >= 82 && y <= 155);
+
+            if (isHouse1 || isHouse2) {
+                int roofY = isHouse1 ? 92 : 82;
+                if (y == roofY || y == roofY + 1) {
+                    bgMid[y * MID_W + x] = Color{ 185, 170, 148, 240 };
+                } else {
+                    bgMid[y * MID_W + x] = ((x ^ (y * 2)) % 8 == 0) ? Color{ 142, 126, 110, 235 } : Color{ 165, 150, 132, 235 };
+                }
+
+                // Arched stone windows glowing with warm interior candlelight
+                int winY1 = roofY + 14;
+                int winY2 = roofY + 34;
+                int winX1 = isHouse1 ? 26 : 110;
+                int winX2 = isHouse1 ? 48 : 134;
+                if ((abs(houseX - winX1) <= 3 && y >= winY1 && y <= winY1 + 7) ||
+                    (abs(houseX - winX2) <= 3 && y >= winY1 && y <= winY1 + 7) ||
+                    (abs(houseX - winX1) <= 3 && y >= winY2 && y <= winY2 + 7)) {
+                    bgMid[y * MID_W + x] = (y == winY1 || y == winY2) ? Color{ 255, 230, 120, 255 } : Color{ 245, 175, 55, 255 };
+                }
+            }
+
+            // Roman Aqueduct Arches spanning valley between buildings
+            int archSpan = x % 80;
+            if (y >= 74 && y <= 84 && !isHouse1 && !isHouse2) {
+                bgMid[y * MID_W + x] = (y == 74) ? Color{ 195, 180, 160, 230 } : Color{ 155, 140, 120, 230 };
+            } else if (y > 84 && y < 144 && !isHouse1 && !isHouse2) {
+                if (archSpan < 14 || archSpan > 66) {
+                    bgMid[y * MID_W + x] = Color{ 142, 126, 108, 230 }; // Massive arch pillar
+                } else {
+                    float archY = 84.0f + 28.0f * sinf((archSpan - 14) / 52.0f * 3.14159f);
+                    if (y <= archY) {
+                        bgMid[y * MID_W + x] = Color{ 148, 132, 112, 230 };
+                    }
+                }
+            }
+
+            // Mediterranean Cypress Trees (Deep forest green spires)
+            int treeX = x % 100;
+            if (treeX >= 76 && treeX <= 84 && y >= 85 && y <= 152) {
+                int dist = abs(treeX - 80);
+                int maxW = (152 - y) / 10 + 1;
+                if (dist <= maxW) {
+                    bgMid[y * MID_W + x] = ((x + y) % 3 == 0) ? Color{ 48, 82, 48, 245 } : Color{ 32, 58, 32, 245 };
+                }
+            }
+        }
+    }
+    s_bgMidJerusalemVillas = CreateTextureFromPixels(MID_W, MID_H, bgMid.data());
+
+    // 4. Near Streetscape Columns, Tapestries & Braziers (480x160, 0.70x scroll)
+    constexpr int NEAR_W = 480;
+    constexpr int NEAR_H = 160;
+    std::vector<Color> bgNear(NEAR_W * NEAR_H, BLANK);
+
+    for (int y = 0; y < NEAR_H; ++y) {
+        for (int x = 0; x < NEAR_W; ++x) {
+            // Classical Corinthian Portico Columns every 120px
+            int colSpan = x % 120;
+            if (colSpan >= 10 && colSpan <= 22 && y >= 35 && y <= 155) {
+                if (y <= 42) {
+                    // Carved Acanthus Capital
+                    bgNear[y * NEAR_W + x] = Color{ 235, 225, 205, 230 };
+                } else {
+                    // Fluted shaft
+                    bool flute = (colSpan % 3 == 0);
+                    bgNear[y * NEAR_W + x] = flute ? Color{ 165, 150, 132, 220 } : Color{ 205, 192, 172, 220 };
+                }
+            }
+
+            // Hanging Roman SPQR Banner
+            if (colSpan >= 55 && colSpan <= 67 && y >= 45 && y <= 85) {
+                bgNear[y * NEAR_W + x] = (y <= 47 || y >= 83) ? COLOR_ROMAN_GOLD : COLOR_ROMAN_CRIMSON;
+                if (y >= 58 && y <= 64 && colSpan >= 58 && colSpan <= 64) {
+                    bgNear[y * NEAR_W + x] = COLOR_GOLD_BRIGHT; // SPQR Eagle
+                }
+            }
+
+            // Bronze Street Braziers with crackling fire flames
+            if (colSpan >= 88 && colSpan <= 96 && y >= 115 && y <= 145) {
+                if (y >= 132) {
+                    // Tripod stand
+                    bgNear[y * NEAR_W + x] = Color{ 80, 50, 25, 240 };
+                } else if (y >= 126) {
+                    // Bronze bowl
+                    bgNear[y * NEAR_W + x] = Color{ 190, 135, 50, 255 };
+                } else {
+                    // Crackling fire
+                    bgNear[y * NEAR_W + x] = (y <= 120) ? Color{ 255, 235, 110, 255 } : Color{ 245, 95, 25, 255 };
+                }
+            }
+        }
+    }
+    s_bgNearStreetscape = CreateTextureFromPixels(NEAR_W, NEAR_H, bgNear.data());
+}
+
+void GraphicsManager::Init() {
+    if (s_initialized) return;
+
+    GenerateAllProceduralSprites();
+    GenerateAllProceduralTiles();
+    GenerateParallaxBackgrounds();
+
+    // Load Title Splash Screen (from file or embedded bytes)
+    Image splashImg{};
+    if (FileExists("assets/title.jpg")) {
+        splashImg = LoadImage("assets/title.jpg");
+    } else if (FileExists("title.jpg")) {
+        splashImg = LoadImage("title.jpg");
+    } else {
+        splashImg = LoadImageFromMemory(".jpg", TITLE_IMAGE_DATA, TITLE_IMAGE_SIZE);
+    }
+
+    if (splashImg.data != nullptr) {
+        s_texTitleSplash = LoadTextureFromImage(splashImg);
+        SetTextureFilter(s_texTitleSplash, TEXTURE_FILTER_BILINEAR);
+        UnloadImage(splashImg);
+    }
+
+    s_initialized = true;
+}
+
+void GraphicsManager::Close() {
+    if (!s_initialized) return;
+
+    for (int i = 0; i < SPRITE_TOTAL_COUNT; ++i) {
+        if (s_sprites[i].id > 0) UnloadTexture(s_sprites[i]);
+    }
+    for (int i = 0; i < TILE_TOTAL_COUNT; ++i) {
+        if (s_tiles[i].id > 0) UnloadTexture(s_tiles[i]);
+    }
+
+    if (s_bgSkyDistant.id > 0) UnloadTexture(s_bgSkyDistant);
+    if (s_bgTempleOfDavid.id > 0) UnloadTexture(s_bgTempleOfDavid);
+    if (s_bgMidJerusalemVillas.id > 0) UnloadTexture(s_bgMidJerusalemVillas);
+    if (s_bgNearStreetscape.id > 0) UnloadTexture(s_bgNearStreetscape);
+    if (s_texTitleSplash.id > 0) UnloadTexture(s_texTitleSplash);
+
+    s_initialized = false;
+}
+
+void GraphicsManager::DrawTitleSplash(int destWidth, int destHeight) {
+    if (s_texTitleSplash.id == 0) return;
+    Rectangle src = { 0, 0, (float)s_texTitleSplash.width, (float)s_texTitleSplash.height };
+    Rectangle dst = { 0, 0, (float)destWidth, (float)destHeight };
+    DrawTexturePro(s_texTitleSplash, src, dst, { 0, 0 }, 0.0f, WHITE);
+}
+
+void GraphicsManager::DrawSprite(SpriteId id, float x, float y, bool flipH, Color tint) {
+    if (id < 0 || id >= SPRITE_TOTAL_COUNT) return;
+    Texture2D tex = s_sprites[id];
+    if (tex.id == 0) return;
+
+    Rectangle src = { 0, 0, (float)tex.width * (flipH ? -1.0f : 1.0f), (float)tex.height };
+    Rectangle dst = { x, y, (float)tex.width, (float)tex.height };
+    DrawTexturePro(tex, src, dst, { 0, 0 }, 0.0f, tint);
+}
+
+void GraphicsManager::DrawTile(TileId id, float x, float y, Color tint) {
+    if (id <= TILE_AIR || id >= TILE_TOTAL_COUNT) return;
+    Texture2D tex = s_tiles[id];
+    if (tex.id == 0) return;
+
+    DrawTexture(tex, static_cast<int>(x), static_cast<int>(y), tint);
+}
+
+void GraphicsManager::DrawParallaxBackground(float cameraX, float time) {
+    // 1. Layer 1: Far Sky & Sunset (0.05x parallax)
+    float skyX = -fmodf(cameraX * 0.05f, (float)s_bgSkyDistant.width);
+    DrawTexture(s_bgSkyDistant, static_cast<int>(skyX), 0, WHITE);
+    DrawTexture(s_bgSkyDistant, static_cast<int>(skyX + s_bgSkyDistant.width), 0, WHITE);
+    if (skyX > 0) DrawTexture(s_bgSkyDistant, static_cast<int>(skyX - s_bgSkyDistant.width), 0, WHITE);
+
+    // 2. Layer 2: The Temple & Citadel of David Panorama (0.20x parallax, 960px wide)
+    // As Jesus traverses screens 3-4 (x ~ 800 - 1400), the Temple of David scrolls majestically across the screen!
+    float davidX = -fmodf(cameraX * 0.20f, (float)s_bgTempleOfDavid.width);
+    DrawTexture(s_bgTempleOfDavid, static_cast<int>(davidX), 8, WHITE);
+    DrawTexture(s_bgTempleOfDavid, static_cast<int>(davidX + s_bgTempleOfDavid.width), 8, WHITE);
+    if (davidX > 0) DrawTexture(s_bgTempleOfDavid, static_cast<int>(davidX - s_bgTempleOfDavid.width), 8, WHITE);
+
+    // 3. Layer 3: Midground Ancient Jerusalem Villas & Aqueducts (0.45x parallax, 640px wide)
+    float midX = -fmodf(cameraX * 0.45f, (float)s_bgMidJerusalemVillas.width);
+    DrawTexture(s_bgMidJerusalemVillas, static_cast<int>(midX), 18, WHITE);
+    DrawTexture(s_bgMidJerusalemVillas, static_cast<int>(midX + s_bgMidJerusalemVillas.width), 18, WHITE);
+    if (midX > 0) DrawTexture(s_bgMidJerusalemVillas, static_cast<int>(midX - s_bgMidJerusalemVillas.width), 18, WHITE);
+
+    // 4. Layer 4: Near Streetscape Columns & Braziers (0.70x parallax, 480px wide)
+    float nearX = -fmodf(cameraX * 0.70f, (float)s_bgNearStreetscape.width);
+    DrawTexture(s_bgNearStreetscape, static_cast<int>(nearX), 24, WHITE);
+    DrawTexture(s_bgNearStreetscape, static_cast<int>(nearX + s_bgNearStreetscape.width), 24, WHITE);
+    if (nearX > 0) DrawTexture(s_bgNearStreetscape, static_cast<int>(nearX - s_bgNearStreetscape.width), 24, WHITE);
+}
+
+void GraphicsManager::DrawDropShadow(float x, float y, float width, float height) {
+    DrawEllipse(static_cast<int>(x), static_cast<int>(y), width * 0.5f, height * 0.5f, Color{ 14, 12, 18, 120 });
+    DrawEllipse(static_cast<int>(x), static_cast<int>(y), width * 0.35f, height * 0.35f, Color{ 8, 6, 12, 80 });
+}
+
+void GraphicsManager::DrawDivineBeam(float targetX, float alpha) {
+    unsigned char a = static_cast<unsigned char>(std::clamp(alpha * 240.0f, 0.0f, 240.0f));
+    Color beamCore = Color{ 255, 255, 255, a };
+    Color beamGlow = Color{ 255, 235, 120, static_cast<unsigned char>(a * 0.65f) };
+    Color beamOuter = Color{ 255, 210,  60, static_cast<unsigned char>(a * 0.35f) };
+
+    // Outer holy halo
+    DrawRectangle(static_cast<int>(targetX - 28), 0, 56, VIRTUAL_HEIGHT, beamOuter);
+    DrawRectangle(static_cast<int>(targetX - 18), 0, 36, VIRTUAL_HEIGHT, beamGlow);
+    // Core brilliant beam
+    DrawRectangle(static_cast<int>(targetX - 8), 0, 16, VIRTUAL_HEIGHT, beamCore);
+}
+
+void GraphicsManager::DrawDivineLionAura(float x, float y, float timer) {
+    float pulse = 1.0f + 0.18f * sinf(timer * 16.0f);
+    int radius = static_cast<int>(22.0f * pulse);
+    DrawCircleLines(static_cast<int>(x), static_cast<int>(y), static_cast<float>(radius), COLOR_GOLD_BRIGHT);
+    DrawCircleLines(static_cast<int>(x), static_cast<int>(y), static_cast<float>(radius + 4), Color{ 255, 255, 255, 190 });
+    DrawCircleLines(static_cast<int>(x), static_cast<int>(y), static_cast<float>(radius + 8), Color{ 255, 220, 90, 120 });
+}
+
+void GraphicsManager::DrawMeleeSlashEffect(float x, float y, bool flipH, float progress) {
+    float arcAngle = progress * 170.0f;
+    Color outerGlow = Color{ 255, 215, 60, static_cast<unsigned char>((1.0f - progress) * 200) };
+    Color innerCore = Color{ 255, 255, 255, static_cast<unsigned char>((1.0f - progress) * 255) };
+    float offsetX = flipH ? -16.0f : 16.0f;
+    float startA = flipH ? 130.0f - arcAngle : -50.0f + arcAngle;
+    float endA   = flipH ? 190.0f : 10.0f;
+
+    // Radiant double-layered crescent energy wave
+    DrawCircleSector({ x + offsetX, y }, 26.0f, startA, endA, 12, outerGlow);
+    DrawCircleSector({ x + offsetX, y }, 20.0f, startA, endA, 12, innerCore);
+
+    // Dynamic holy sparks
+    DrawCircle(static_cast<int>(x + offsetX * 1.3f), static_cast<int>(y - 6.0f), 3.0f, COLOR_GOLD_BRIGHT);
+    DrawCircle(static_cast<int>(x + offsetX * 1.5f), static_cast<int>(y + 6.0f), 2.5f, Color{ 255, 255, 255, 220 });
+}
+
+void GraphicsManager::DrawSpark(float x, float y, float radius, Color color) {
+    DrawCircle(static_cast<int>(x), static_cast<int>(y), radius, color);
+}
+
+void GraphicsManager::DrawStormClouds(float cloudCoverage, float time, bool lightningFlash) {
+    if (cloudCoverage <= 0.0f) return;
+
+    float cov = std::clamp(cloudCoverage, 0.0f, 1.0f);
+    unsigned char baseAlpha = static_cast<unsigned char>(cov * 230.0f);
+    unsigned char darkAlpha = static_cast<unsigned char>(cov * 140.0f);
+
+    // Deep stormy ambient darkening vignette
+    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 15, 12, 28, darkAlpha });
+
+    // Layer 1: Distant dark rolling thunderheads (y = 0 to 60)
+    for (int x = -20; x < VIRTUAL_WIDTH + 40; x += 36) {
+        float wave1 = sinf(time * 0.8f + x * 0.04f) * 8.0f;
+        int cy = static_cast<int>(25.0f + wave1);
+        DrawCircle(x, cy, 32.0f, Color{ 28, 22, 42, baseAlpha });
+        DrawCircle(x + 18, cy + 4, 26.0f, Color{ 38, 30, 56, baseAlpha });
+    }
+
+    // Layer 2: Heavy mid-level storm billows (y = 20 to 95)
+    for (int x = -30; x < VIRTUAL_WIDTH + 50; x += 44) {
+        float wave2 = sinf(time * 1.2f + x * 0.03f) * 10.0f;
+        int cy = static_cast<int>(55.0f + wave2);
+        Color cloudBody = lightningFlash ? Color{ 180, 195, 230, baseAlpha } : Color{ 48, 38, 68, baseAlpha };
+        Color cloudEdge = lightningFlash ? Color{ 255, 255, 255, 255 } : Color{ 68, 55, 92, static_cast<unsigned char>(baseAlpha * 0.9f) };
+        DrawCircle(x, cy, 30.0f, cloudBody);
+        DrawCircleLines(x, cy, 30.0f, cloudEdge);
+        DrawCircle(x + 22, cy - 6, 24.0f, cloudBody);
+    }
+
+    // Layer 3: Low rolling fog clouds
+    for (int x = -10; x < VIRTUAL_WIDTH + 30; x += 50) {
+        float wave3 = cosf(time * 1.5f + x * 0.05f) * 6.0f;
+        int cy = static_cast<int>(80.0f + wave3);
+        DrawCircle(x, cy, 28.0f, Color{ 20, 16, 32, static_cast<unsigned char>(baseAlpha * 0.95f) });
+    }
+
+    // Dynamic Lightning Strike when lightningFlash is active
+    if (lightningFlash) {
+        int startX = VIRTUAL_WIDTH / 2 + static_cast<int>(sinf(time * 30.0f) * 70.0f);
+        Vector2 p0 = { (float)startX, 10.0f };
+        Vector2 p1 = { (float)(startX - 18), 45.0f };
+        Vector2 p2 = { (float)(startX + 14), 85.0f };
+        Vector2 p3 = { (float)(startX - 8), 125.0f };
+        Vector2 p4 = { (float)(startX + 6), 165.0f };
+
+        // Outer electric blue aura
+        DrawLineEx(p0, p1, 5.0f, Color{ 120, 190, 255, 200 });
+        DrawLineEx(p1, p2, 5.0f, Color{ 120, 190, 255, 200 });
+        DrawLineEx(p2, p3, 5.0f, Color{ 120, 190, 255, 200 });
+        DrawLineEx(p3, p4, 5.0f, Color{ 120, 190, 255, 200 });
+
+        // Inner pure white electric core
+        DrawLineEx(p0, p1, 2.0f, WHITE);
+        DrawLineEx(p1, p2, 2.0f, WHITE);
+        DrawLineEx(p2, p3, 2.0f, WHITE);
+        DrawLineEx(p3, p4, 2.0f, WHITE);
+
+        // Flash burst at impact
+        DrawCircleGradient(static_cast<int>(p4.x), static_cast<int>(p4.y), 32.0f, Color{ 255, 255, 255, 220 }, Color{ 140, 200, 255, 0 });
+    }
+}
+
+void GraphicsManager::DrawDivineAscensionBeam(float jesusX, float beamIntensity, float cloudsPartAmount, float time) {
+    if (beamIntensity <= 0.0f && cloudsPartAmount <= 0.0f) return;
+
+    // 1. Clouds Parting Opening: radiant golden heavens revealed in the rift
+    if (cloudsPartAmount > 0.0f) {
+        float riftX = jesusX;
+        unsigned char riftAlpha = static_cast<unsigned char>(std::clamp(cloudsPartAmount * 255.0f, 0.0f, 255.0f));
+        DrawCircleGradient(static_cast<int>(riftX), -10, 65.0f, Color{ 255, 245, 180, riftAlpha }, Color{ 255, 215, 60, 0 });
+
+        // Crepuscular Angled God Rays spreading out from the rift
+        for (int r = -3; r <= 3; ++r) {
+            float angleDeg = r * 14.0f + sinf(time * 2.0f + r) * 3.0f;
+            float rad = angleDeg * (3.14159f / 180.0f);
+            Vector2 topP = { riftX + r * 6.0f, 0.0f };
+            Vector2 botP = { riftX + sinf(rad) * 220.0f, 224.0f };
+            float rayAlpha = (0.25f + 0.15f * sinf(time * 3.0f + r * 1.5f)) * cloudsPartAmount;
+            unsigned char ra = static_cast<unsigned char>(std::clamp(rayAlpha * 255.0f, 0.0f, 255.0f));
+            DrawLineEx(topP, botP, 12.0f, Color{ 255, 235, 140, ra });
+            DrawLineEx(topP, botP, 4.0f, Color{ 255, 255, 255, static_cast<unsigned char>(ra * 0.8f) });
+        }
+    }
+
+    // 2. Direct Divine Ascension Pillar centered over Jesus
+    if (beamIntensity > 0.0f) {
+        float bi = std::clamp(beamIntensity, 0.0f, 1.0f);
+        float pulse = 1.0f + 0.08f * sinf(time * 8.0f);
+
+        unsigned char outerA = static_cast<unsigned char>(bi * 110.0f);
+        unsigned char midA   = static_cast<unsigned char>(bi * 170.0f);
+        unsigned char coreA  = static_cast<unsigned char>(bi * 240.0f);
+
+        int outerW = static_cast<int>(60.0f * pulse);
+        int midW   = static_cast<int>(32.0f * pulse);
+        int coreW  = static_cast<int>(14.0f * pulse);
+
+        // Outer soft golden holy aura
+        DrawRectangle(static_cast<int>(jesusX - outerW / 2), 0, outerW, VIRTUAL_HEIGHT, Color{ 255, 215, 60, outerA });
+        // Mid brilliant warm beam
+        DrawRectangle(static_cast<int>(jesusX - midW / 2), 0, midW, VIRTUAL_HEIGHT, Color{ 255, 240, 130, midA });
+        // Core pure celestial white pillar
+        DrawRectangle(static_cast<int>(jesusX - coreW / 2), 0, coreW, VIRTUAL_HEIGHT, Color{ 255, 255, 255, coreA });
+
+        // Ascending sacred light motes drifting up into heaven
+        for (int i = 0; i < 14; ++i) {
+            float moteSpeed = 45.0f + (i * 7 % 25);
+            float moteY = fmodf(VIRTUAL_HEIGHT - (time * moteSpeed + i * 22.0f), (float)VIRTUAL_HEIGHT);
+            if (moteY < 0.0f) moteY += VIRTUAL_HEIGHT;
+            float moteOffsetX = sinf(time * 3.0f + i) * 16.0f;
+            float moteX = jesusX + moteOffsetX;
+            float moteAlpha = sinf(moteY / VIRTUAL_HEIGHT * 3.14159f) * bi;
+            unsigned char ma = static_cast<unsigned char>(std::clamp(moteAlpha * 255.0f, 0.0f, 255.0f));
+
+            DrawCircle(static_cast<int>(moteX), static_cast<int>(moteY), (i % 2 == 0) ? 2.5f : 1.5f, Color{ 255, 255, 200, ma });
+            DrawCircleLines(static_cast<int>(moteX), static_cast<int>(moteY), 3.5f, Color{ 255, 220, 80, static_cast<unsigned char>(ma * 0.6f) });
+        }
+    }
+}
+
+void GraphicsManager::DrawFinishHimBanner(float time, float alpha) {
+    if (alpha <= 0.0f) return;
+
+    float a = std::clamp(alpha, 0.0f, 1.0f);
+    unsigned char bgAlpha = static_cast<unsigned char>(a * 220.0f);
+    unsigned char textAlpha = static_cast<unsigned char>(a * 255.0f);
+
+    const char* text = "FINISH HIM!";
+    int fontSize = 20;
+    int tw = MeasureText(text, fontSize);
+    int bw = tw + 40;
+    int bh = 32;
+    int bx = (VIRTUAL_WIDTH - bw) / 2;
+    int by = 60;
+
+    // Dramatic pulsing border
+    float pulse = 0.85f + 0.15f * sinf(time * 14.0f);
+    Color goldBorder = ColorAlpha(COLOR_GOLD_BRIGHT, a * pulse);
+    Color crimsonBorder = ColorAlpha(COLOR_ROMAN_CRIMSON, a);
+
+    // Beveled background box
+    DrawRectangle(bx, by, bw, bh, Color{ 15, 8, 14, bgAlpha });
+    DrawRectangleLines(bx - 1, by - 1, bw + 2, bh + 2, crimsonBorder);
+    DrawRectangleLines(bx - 3, by - 3, bw + 6, bh + 6, goldBorder);
+
+    // Corner Roman studs
+    DrawRectangle(bx - 4, by - 4, 3, 3, COLOR_GOLD_BRIGHT);
+    DrawRectangle(bx + bw + 1, by - 4, 3, 3, COLOR_GOLD_BRIGHT);
+    DrawRectangle(bx - 4, by + bh + 1, 3, 3, COLOR_GOLD_BRIGHT);
+    DrawRectangle(bx + bw + 1, by + bh + 1, 3, 3, COLOR_GOLD_BRIGHT);
+
+    // Text with deep drop shadow
+    int tx = (VIRTUAL_WIDTH - tw) / 2;
+    int ty = by + 6;
+    DrawText(text, tx + 2, ty + 2, fontSize, Color{ 0, 0, 0, textAlpha });
+    DrawText(text, tx + 1, ty + 1, fontSize, Color{ 120, 15, 20, textAlpha });
+    // Blinking golden text
+    bool blink = (static_cast<int>(time * 8.0f) % 2 == 0);
+    DrawText(text, tx, ty, fontSize, blink ? COLOR_GOLD_BRIGHT : Color{ 255, 245, 180, textAlpha });
+}
+
+bool GraphicsManager::TryLoadExternalSpritesheet(const char* filepath) {
+    if (FileExists(filepath)) {
+        Texture2D sheet = LoadTexture(filepath);
+        if (sheet.id > 0) {
+            s_hasExternalTextures = true;
+            return true;
+        }
+    }
+    return false;
+}

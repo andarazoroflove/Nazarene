@@ -1,66 +1,52 @@
+<p align="center">
+  <img src="title.jpg" alt="The Nazarene: Way of the Cross" width="760">
+</p>
+
 # The Nazarene: Way of the Cross
 
-A 2D arcade action platformer heavily inspired by the original 1987 Sega arcade mechanics of *Shinobi*, set in 1st-century Roman-occupied Judea.
+> A 16-bit 2D arcade action platformer heavily inspired by the original 1987 Sega arcade classic *Shinobi*, set in 1st-century Roman-occupied Judea.
 
 ---
 
-## 🎮 Arcade Mechanics & Campaign Overview
+### 🌟 Game Highlights
 
-- **Internal Resolution:** 320x224 (authentic Sega arcade resolution), rendered to an off-screen render texture with integer / aspect-ratio preserved scaling to 1280x896 (or fullscreen with `FLAG_VSYNC_HINT`).
-- **Tactical Jerusalem Mission Map:** Authentic *Shinobi*-style map tracking player progression across 3 distinct campaign areas, with pulsing mission targeting reticles and red Roman `[DEFEATED]` stamps.
-- **Three Unique Campaign Stages:**
-  - **Stage 1: Via Dolorosa & Roman Garrison** &mdash; Paved stone streets, aqueducts, Roman balconies, and 4 Loaves & Fishes baskets unlocking the Colosseum gate to fight **Centurion Brutus**.
-  - **Stage 2: The Inner Temple** &mdash; Vaulted cedar sanctuary, checkered marble floors, menorahs, and multi-tier mezzanines. Collect 4 Sacred Golden Censers while dodging pillar-crawling **Sicarii Shadow Assassins** to confront **Temple Commander Malchus**.
-  - **Stage 3: Golgotha Citadel & Fortress Antonia** &mdash; Atmospheric dusk cliffs, Roman standards, roaring iron braziers, and 4 Sacred Relics. Approaching the summit gate causes dark storm clouds to gather and thunder to crash as you face **Tribunal Praetor Longinus**.
-- **Dual-Plane & Multi-Tier Platforming:**
-  - **Super-Leap (High Jump):** Holding **Up + Jump** executes a high-arc somersault leap enabling the Nazarene to ascend directly between tiers.
-  - **Drop-Through:** Holding **Down + Jump** allows dropping down through one-way ledges to return to lower levels.
-- **Dynamic Combat System:**
-  - **Ranged Spike Toss:** Throws high-velocity iron spikes/nails across the screen.
-  - **Automatic Close-Range Melee:** When an enemy is within close proximity (< 24 pixels), attacking automatically triggers an immediate short-range staff strike or palm strike instead of firing a projectile.
-  - **Crouch Attacks & Dodging:** Low attacks eliminate ducked archers; crouching ducks underneath spinning Sicarii daggers.
-  - **Headshot Jump Challenge:** Bosses feature heavy body armor deflecting frontal shots; defeat them with jump headshots, rear flank attacks, or Divine Wrath.
-  - **"FINISH HIM!":** Reaching 1 HP pip on boss battles darkens the sky with apocalyptic lightning and a deep reverberating voice prompt.
-  - **Divine Wrath (Ninjutsu Equivalent - 1 use per life):** Freezes the screen, calls down a celestial beam of holy light, manifests the radiant glowing **Lion of Judah**, unleashes a screen-wide white flash, plays a thunderous roar, and eliminates all visible regular enemies on screen (while inflicting heavy damage on the Stage Boss).
-  - **Grand Finale & Ascension:** Defeating the Tribunal Praetor parts the storm clouds, reveals a vibrant 7-band celestial rainbow, sings angelic choirs, and ascends Jesus diagonally into the clouds.
+- **Jerusalem Campaign Map:** Authentic arcade parchment map tracking 3 distinct mission areas with active pulsing target reticles and crimson Roman `[DEFEATED]` stamps.
+- **Three Unique Stages & Bosses:**
+  - **Stage 1 (Via Dolorosa):** Roman streets and aqueducts &bull; Boss: **Centurion Brutus** with barbed combat whip.
+  - **Stage 2 (The Inner Temple):** Vaulted sanctuary and multi-tier mezzanines &bull; Wall-crawling **Sicarii Shadow Assassins** &bull; Boss: **Temple Commander Malchus**.
+  - **Stage 3 (Golgotha Citadel):** Mountain crags and fortress battlements &bull; Dynamic storm clouds &bull; Boss: **Tribunal Praetor Longinus**.
+- **Arcade Combat & Dual-Plane Traversal:**
+  - High-velocity iron spike throws, automatic close-range palm/staff strikes (< 24px), low crouch attacks, and somersault super-leaps (`Up + Jump`) between upper and lower tiers.
+  - Tactical boss armor deflections requiring jump headshots, rear attacks, or Divine Wrath.
+  - Dramatic **"FINISH HIM!"** lightning showdown when bosses reach 1 HP.
+- **Divine Wrath & Ascension Finale:** Screen-clearing Lion of Judah ninjutsu; upon final victory, the storm clouds part, a vibrant 7-band rainbow appears, angelic choirs sing, and Jesus ascends diagonally into heaven.
 
 ---
 
-## 🕹 Controls
+### 💻 System Compatibility & Requirements
 
-| Action | Keyboard | Gamepad (XInput / DirectInput / @Play / Generic) |
-|---|---|---|
-| **Move Left / Right** | Arrow Keys / `A` / `D` | D-Pad Left/Right, Left Stick, or Hat Axes |
-| **Crouch** | Down Arrow / `S` | D-Pad Down, Left Stick Down, or Hat Down |
-| **Look Up** | Up Arrow / `W` | D-Pad Up, Left Stick Up, or Hat Up |
-| **Jump** | `Spacebar` | Button `A` or Button `B` (Face Down / Right) |
-| **Dual-Plane High Jump** | `Up` + `Spacebar` | `Up` + Button `A` / `B` |
-| **Drop Through Ledge** | `Down` + `Spacebar` | `Down` + Button `A` / `B` |
-| **Attack (Melee < 24px / Ranged)** | `J` or `Z` | Button `X` (Face Left), Right Bumper (`RB`), or Right Trigger (`RT`) |
-| **Divine Wrath (1 per life)** | `K` or `X` | Button `Y` (Face Up), Left Bumper (`LB`), or Left Trigger (`LT`) |
-| **Pause / Start** | `Enter` / `Escape` | `Start` / `Select` / `Mode` Button |
-| **Toggle Fullscreen** | `F11` / `Alt` + `Enter` | - |
-| **Quick Restart** | `R` | - |
+| Platform / Target | Compatibility & Details |
+| :--- | :--- |
+| **Windows Desktop** | **Windows 10 & 11 (64-bit)**<br>&bull; Standalone portable executable (`Nazarene.exe`) with **zero runtime dependencies** or external DLLs.<br>&bull; Locked 60 FPS internal 320x224 rendering with clean integer scaling up to 1280x896 or borderless fullscreen (`F11` / `Alt+Enter`). |
+| **Controllers & Gamepads** | **Plug & Play Support**:<br>&bull; **XInput / DirectInput**: Xbox Wireless, DualShock 4, DualSense, 8BitDo, Switch Pro, @Play arcade sticks, and generic USB gamepads.<br>&bull; Full keyboard support (Arrows / `WASD` + `Space` / `J` / `K`). |
+| **Game Boy Advance** | **Real Hardware & Emulators**:<br>&bull; Native 60 FPS Mode 4 GBA binary (`Nazarene.gba`).<br>&bull; Includes 4MB `0xFF`-padded and header-signed ROM (`Nazarene-padded.gba`) compatible with **SuperCard (SD/CF/MiniSD/Lite)**, EZ-Flash, EverDrive, and emulators (mGBA, RetroArch, VBA). |
 
 ---
 
-## 🛠 Technology & Build Instructions
+### 📥 Downloads
 
-- **Engine & Library:** Raylib 5.5 (statically linked for a standalone portable executable).
-- **Language Standard:** C++20.
-- **Platform:** Windows x64.
-- **Audio & Graphics:** 100% procedural wave audio synthesis and procedural pixel art generator built directly into C++ code—runs out of the box with zero external assets required.
+- 🎮 **Windows (Latest v2.0):** [Download `Nazarene-v2.0-windows-x64.zip`](https://github.com/andarazoroflove/Nazarene/releases/download/2.0/Nazarene-v2.0-windows-x64.zip) or [Direct `Nazarene.exe`](https://github.com/andarazoroflove/Nazarene/releases/download/2.0/Nazarene.exe)
+- 🕹️ **Game Boy Advance:** [Download `Nazarene-padded.zip` (SuperCard)](https://github.com/andarazoroflove/Nazarene/releases/download/1.0gba/Nazarene-padded.zip) or [Direct `Nazarene.gba`](https://github.com/andarazoroflove/Nazarene/releases/download/1.0gba/Nazarene.gba)
 
-### Quick Build & Run
+---
 
-To compile and build `Nazarene.exe`, simply execute:
-```bat
-build.bat
-```
-This automatically invokes CMake and Ninja / MinGW, statically compiles Raylib and the game files, and places `Nazarene.exe` in the root project folder.
+### 🕹️ Controls Quick Reference
 
-To run the game:
-```bat
-Nazarene.exe
-```
-
+| Action | Keyboard | Gamepad |
+| :--- | :--- | :--- |
+| **Move / Crouch** | Arrow Keys / `WASD` | D-Pad / Left Stick |
+| **Jump / Super-Leap** | `Space` / `Up + Space` | Button `A` or `B` / `Up + A` |
+| **Drop Through Ledge** | `Down + Space` | `Down + Button A` |
+| **Attack (Melee / Spike)** | `J` or `Z` | Button `X` / `RB` / `RT` |
+| **Divine Wrath (Ninjutsu)**| `K` or `X` | Button `Y` / `LB` / `LT` |
+| **Insert Coin / Start** | `C` / `Enter` | `Select` / `Start` |

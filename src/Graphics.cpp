@@ -1,6 +1,7 @@
 #include "Graphics.h"
 #include "Mission2Graphics.h"
 #include "Mission3Graphics.h"
+#include "Mission4Graphics.h"
 #include "TitleImageBytes.h"
 #include <cmath>
 #include <cstdlib>
@@ -31,6 +32,12 @@ Texture2D GraphicsManager::s_bgCaiaphasSky = {};
 Texture2D GraphicsManager::s_bgCaiaphasPalace = {};
 Texture2D GraphicsManager::s_bgCenacleSky = {};
 Texture2D GraphicsManager::s_bgCenacleChamber = {};
+Texture2D GraphicsManager::s_bgDolorosaSky = {};
+Texture2D GraphicsManager::s_bgDolorosaStreet = {};
+Texture2D GraphicsManager::s_bgCourtSky = {};
+Texture2D GraphicsManager::s_bgCourtBasilica = {};
+Texture2D GraphicsManager::s_bgThroneSky = {};
+Texture2D GraphicsManager::s_bgThronePalace = {};
 Texture2D GraphicsManager::s_texMissionMap = {};
 Texture2D GraphicsManager::s_texTitleSplash = {};
 bool GraphicsManager::s_initialized = false;
@@ -3388,6 +3395,15 @@ void GraphicsManager::Init() {
         s_bgCenacleChamber
     );
 
+    Mission4Graphics::GenerateAll(
+        s_bgDolorosaSky,
+        s_bgDolorosaStreet,
+        s_bgCourtSky,
+        s_bgCourtBasilica,
+        s_bgThroneSky,
+        s_bgThronePalace
+    );
+
     // Load Title Splash Screen (from file or embedded bytes)
     Image splashImg{};
     if (FileExists("assets/title.jpg")) {
@@ -3439,6 +3455,12 @@ void GraphicsManager::Close() {
     if (s_bgCaiaphasPalace.id > 0) UnloadTexture(s_bgCaiaphasPalace);
     if (s_bgCenacleSky.id > 0) UnloadTexture(s_bgCenacleSky);
     if (s_bgCenacleChamber.id > 0) UnloadTexture(s_bgCenacleChamber);
+    if (s_bgDolorosaSky.id > 0) UnloadTexture(s_bgDolorosaSky);
+    if (s_bgDolorosaStreet.id > 0) UnloadTexture(s_bgDolorosaStreet);
+    if (s_bgCourtSky.id > 0) UnloadTexture(s_bgCourtSky);
+    if (s_bgCourtBasilica.id > 0) UnloadTexture(s_bgCourtBasilica);
+    if (s_bgThroneSky.id > 0) UnloadTexture(s_bgThroneSky);
+    if (s_bgThronePalace.id > 0) UnloadTexture(s_bgThronePalace);
     if (s_texMissionMap.id > 0) UnloadTexture(s_texMissionMap);
     if (s_texTitleSplash.id > 0) UnloadTexture(s_texTitleSplash);
 
@@ -3466,7 +3488,11 @@ void GraphicsManager::DrawMissionMap(int missionNumber, int currentArea, bool a1
     };
 
     AreaNode areas[3];
-    if (missionNumber == 3) {
+    if (missionNumber == 4) {
+        areas[0] = {  42,  64, 46, 44, "AREA 1: VIA DOLOROSA", "THE STREETS OF JUDGMENT", "PREFECT QUINTUS", a1Cleared };
+        areas[1] = { 138,  48, 52, 48, "AREA 2: THE GABBATHA", "LITHOSTROTOS TRIBUNAL", "ADVOCATE TERTULLUS", a2Cleared };
+        areas[2] = { 236,  72, 48, 44, "AREA 3: THE PRAETORIUM", "THE THRONE ROOM & BEMA", "PONTIUS PILATE", a3Cleared };
+    } else if (missionNumber == 3) {
         areas[0] = {  42,  64, 46, 44, "AREA 1: SILOAM BAZAAR", "THE OLD CITY & AQUEDUCTS", "BARABBAS THE ZEALOT", a1Cleared };
         areas[1] = { 138,  48, 52, 48, "AREA 2: PALACE OF CAIAPHAS", "MOUNT ZION AUDIENCE HALL", "HIGH PRIEST CAIAPHAS", a2Cleared };
         areas[2] = { 236,  72, 48, 44, "AREA 3: THE UPPER ROOM", "THE CENACLE & LAST SUPPER", "JUDAS ISCARIOT", a3Cleared };
@@ -3528,8 +3554,9 @@ void GraphicsManager::DrawMissionMap(int missionNumber, int currentArea, bool a1
         }
     }
 
-    const char* topTitle = (missionNumber == 3) ? "MISSION 3: THE PASSION & CENACLE" :
-                          ((missionNumber == 2) ? "MISSION 2: GETHSEMANE OUTSKIRTS" : "MISSION 1: JERUSALEM CAMPAIGN");
+    const char* topTitle = (missionNumber == 4) ? "MISSION 4: THE TRIAL BEFORE PILATE" :
+                          ((missionNumber == 3) ? "MISSION 3: THE PASSION & CENACLE" :
+                          ((missionNumber == 2) ? "MISSION 2: GETHSEMANE OUTSKIRTS" : "MISSION 1: JERUSALEM CAMPAIGN"));
     int ttw = MeasureText(topTitle, 10);
     DrawRectangle((VIRTUAL_WIDTH - ttw) / 2 - 10, 12, ttw + 20, 15, Color{ 24, 18, 22, 230 });
     DrawRectangleLines((VIRTUAL_WIDTH - ttw) / 2 - 10, 12, ttw + 20, 15, COLOR_GOLD_BRIGHT);
@@ -3680,6 +3707,42 @@ void GraphicsManager::DrawParallaxBackground(float cameraX, float time, int stag
         DrawTexture(s_bgCenacleChamber, static_cast<int>(ceChambX), 8, WHITE);
         DrawTexture(s_bgCenacleChamber, static_cast<int>(ceChambX + s_bgCenacleChamber.width), 8, WHITE);
         if (ceChambX > 0) DrawTexture(s_bgCenacleChamber, static_cast<int>(ceChambX - s_bgCenacleChamber.width), 8, WHITE);
+        return;
+    } else if (stageId == 10) {
+        // --- STAGE 10: VIA DOLOROSA & STREETS OF JUDGMENT ---
+        float doSkyX = -fmodf(cameraX * 0.08f, (float)s_bgDolorosaSky.width);
+        DrawTexture(s_bgDolorosaSky, static_cast<int>(doSkyX), 0, WHITE);
+        DrawTexture(s_bgDolorosaSky, static_cast<int>(doSkyX + s_bgDolorosaSky.width), 0, WHITE);
+        if (doSkyX > 0) DrawTexture(s_bgDolorosaSky, static_cast<int>(doSkyX - s_bgDolorosaSky.width), 0, WHITE);
+
+        float doStX = -fmodf(cameraX * 0.45f, (float)s_bgDolorosaStreet.width);
+        DrawTexture(s_bgDolorosaStreet, static_cast<int>(doStX), 12, WHITE);
+        DrawTexture(s_bgDolorosaStreet, static_cast<int>(doStX + s_bgDolorosaStreet.width), 12, WHITE);
+        if (doStX > 0) DrawTexture(s_bgDolorosaStreet, static_cast<int>(doStX - s_bgDolorosaStreet.width), 12, WHITE);
+        return;
+    } else if (stageId == 11) {
+        // --- STAGE 11: THE GABBATHA COURT & LITHOSTROTOS TRIBUNAL ---
+        float coSkyX = -fmodf(cameraX * 0.06f, (float)s_bgCourtSky.width);
+        DrawTexture(s_bgCourtSky, static_cast<int>(coSkyX), 0, WHITE);
+        DrawTexture(s_bgCourtSky, static_cast<int>(coSkyX + s_bgCourtSky.width), 0, WHITE);
+        if (coSkyX > 0) DrawTexture(s_bgCourtSky, static_cast<int>(coSkyX - s_bgCourtSky.width), 0, WHITE);
+
+        float coBasX = -fmodf(cameraX * 0.40f, (float)s_bgCourtBasilica.width);
+        DrawTexture(s_bgCourtBasilica, static_cast<int>(coBasX), 10, WHITE);
+        DrawTexture(s_bgCourtBasilica, static_cast<int>(coBasX + s_bgCourtBasilica.width), 10, WHITE);
+        if (coBasX > 0) DrawTexture(s_bgCourtBasilica, static_cast<int>(coBasX - s_bgCourtBasilica.width), 10, WHITE);
+        return;
+    } else if (stageId == 12) {
+        // --- STAGE 12: THE PRAETORIUM THRONE ROOM & BEMA OF PILATE ---
+        float thSkyX = -fmodf(cameraX * 0.04f, (float)s_bgThroneSky.width);
+        DrawTexture(s_bgThroneSky, static_cast<int>(thSkyX), 0, WHITE);
+        DrawTexture(s_bgThroneSky, static_cast<int>(thSkyX + s_bgThroneSky.width), 0, WHITE);
+        if (thSkyX > 0) DrawTexture(s_bgThroneSky, static_cast<int>(thSkyX - s_bgThroneSky.width), 0, WHITE);
+
+        float thPalX = -fmodf(cameraX * 0.35f, (float)s_bgThronePalace.width);
+        DrawTexture(s_bgThronePalace, static_cast<int>(thPalX), 8, WHITE);
+        DrawTexture(s_bgThronePalace, static_cast<int>(thPalX + s_bgThronePalace.width), 8, WHITE);
+        if (thPalX > 0) DrawTexture(s_bgThronePalace, static_cast<int>(thPalX - s_bgThronePalace.width), 8, WHITE);
         return;
     }
 

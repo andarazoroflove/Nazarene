@@ -180,6 +180,60 @@ enum SpriteId {
     SPR_PASSOVER_MATZOT,
     SPR_HOLY_GRAIL,
 
+    // Mission 4: The Judgment of Pontius Pilate
+    // Standard Bearer (Signifer)
+    SPR_SIGNIFER_WALK_0,
+    SPR_SIGNIFER_WALK_1,
+    SPR_SIGNIFER_ATTACK,
+    SPR_SIGNIFER_HURT,
+
+    // Praetorian Guard (Scutum Shield & Spatha)
+    SPR_PRAETORIAN_WALK_0,
+    SPR_PRAETORIAN_WALK_1,
+    SPR_PRAETORIAN_SHIELD_BASH,
+    SPR_PRAETORIAN_HURT,
+
+    // Imperial Lictor (Fasces Rods & Axe)
+    SPR_LICTOR_WALK_0,
+    SPR_LICTOR_WALK_1,
+    SPR_LICTOR_FASCES_SWING,
+    SPR_LICTOR_HURT,
+
+    // Stage 10 Boss: Praetor Prefect Quintus
+    SPR_PREFECT_IDLE,
+    SPR_PREFECT_WALK_0,
+    SPR_PREFECT_WALK_1,
+    SPR_PREFECT_SLASH,
+    SPR_PREFECT_SHIELD_RUSH,
+    SPR_PREFECT_HURT,
+    SPR_PREFECT_KNEEL,
+
+    // Stage 11 Boss: Imperial Advocate Tertullus
+    SPR_ADVOCATE_IDLE,
+    SPR_ADVOCATE_CAST,
+    SPR_ADVOCATE_SHOUT,
+    SPR_ADVOCATE_HURT,
+    SPR_ADVOCATE_KNEEL,
+    SPR_SHOUT_WAVE,
+
+    // Stage 12 Final Boss: Pontius Pilate (Prefect of Judaea)
+    SPR_PILATE_IDLE,
+    SPR_PILATE_WALK_0,
+    SPR_PILATE_WALK_1,
+    SPR_PILATE_SLASH,
+    SPR_PILATE_BASIN_SPLASH,
+    SPR_PILATE_STYLUS_BEAM,
+    SPR_PILATE_TELEPORT,
+    SPR_PILATE_HURT,
+    SPR_PILATE_KNEEL_WASH,
+
+    // Mission 4 Projectiles & Pickups
+    SPR_WATER_DROPLET,
+    SPR_GOLDEN_STYLUS_BLADE,
+    SPR_ROMAN_SCROLL,
+    SPR_CAESAR_SEAL,
+    SPR_PILATE_EWER,
+
     // Projectiles & Items
     SPR_NAIL,
     SPR_ARROW,
@@ -298,6 +352,36 @@ enum TileId {
     TILE_CENACLE_WINDOW_MOON,
     TILE_CENACLE_STONE_WALL,
 
+    // Stage 10: Via Dolorosa / Streets of Judgment Tiles
+    TILE_DOLOROSA_STONE_SURFACE,
+    TILE_DOLOROSA_STONE_SUB,
+    TILE_DOLOROSA_BARRICADE,
+    TILE_DOLOROSA_ARCH_ECCE,
+    TILE_DOLOROSA_EAGLE_BANNER,
+    TILE_DOLOROSA_TORCH_BRACKET,
+    TILE_DOLOROSA_BALCONY,
+    TILE_DOLOROSA_GATE,
+
+    // Stage 11: The Gabbatha Courtroom (Lithostrotos) Tiles
+    TILE_COURT_MOSAIC_SURFACE,
+    TILE_COURT_MOSAIC_SUB,
+    TILE_COURT_BENCH_WOOD,
+    TILE_COURT_BALUSTRADE,
+    TILE_COURT_COLUMN_HEAD,
+    TILE_COURT_COLUMN_MID,
+    TILE_COURT_COLUMN_BASE,
+    TILE_COURT_EAGLE_PEDESTAL,
+
+    // Stage 12: Praetorium Throne Room Tiles
+    TILE_THRONE_MARBLE_SURFACE,
+    TILE_THRONE_MARBLE_SUB,
+    TILE_THRONE_VELVET_CANOPY,
+    TILE_THRONE_BASIN_PEDESTAL,
+    TILE_THRONE_GOLD_EAGLE,
+    TILE_THRONE_PILLAR_ARCH,
+    TILE_THRONE_CANDELABRA,
+    TILE_THRONE_DAIS_STEP,
+
     TILE_TOTAL_COUNT
 };
 
@@ -374,6 +458,14 @@ private:
     static Texture2D s_bgCaiaphasPalace;
     static Texture2D s_bgCenacleSky;
     static Texture2D s_bgCenacleChamber;
+
+    // Mission 4 Parallax Layers
+    static Texture2D s_bgDolorosaSky;
+    static Texture2D s_bgDolorosaStreet;
+    static Texture2D s_bgCourtSky;
+    static Texture2D s_bgCourtBasilica;
+    static Texture2D s_bgThroneSky;
+    static Texture2D s_bgThronePalace;
 
     // Map screen texture
     static Texture2D s_texMissionMap;

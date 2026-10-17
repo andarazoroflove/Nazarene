@@ -7,10 +7,12 @@ Sound AudioManager::s_sounds[SFX_COUNT] = {};
 Sound AudioManager::s_stageMusicM1 = {};
 Sound AudioManager::s_stageMusicM2 = {};
 Sound AudioManager::s_stageMusicM3 = {};
+Sound AudioManager::s_stageMusicM4 = {};
 Sound AudioManager::s_bonusMusic = {};
 Sound AudioManager::s_bossMusic = {};
 Sound AudioManager::s_evilCloneMusic = {};
 Sound AudioManager::s_judasBossMusic = {};
+Sound AudioManager::s_pilateBossMusic = {};
 Sound AudioManager::s_continueMusic = {};
 bool AudioManager::s_musicEnabled = true;
 bool AudioManager::s_initialized = false;
@@ -58,6 +60,10 @@ Wave AudioManager::GenerateSfxWave(SoundEffect sfx) {
         case SFX_SILVER_SCATTER: duration = 0.45f; break;
         case SFX_COIN_RICOCHET: duration = 0.22f; break;
         case SFX_TRAITOR_DASH: duration = 0.28f; break;
+        case SFX_ROMAN_HORN: duration = 0.70f; break;
+        case SFX_WATER_SPLASH: duration = 0.35f; break;
+        case SFX_FASCES_STRIKE: duration = 0.30f; break;
+        case SFX_PILATE_JUDGMENT: duration = 0.85f; break;
         default: duration = 0.2f; break;
     }
 
@@ -430,6 +436,52 @@ Wave AudioManager::GenerateSfxWave(SoundEffect sfx) {
                 float whoosh = sinf(PI2 * freq * t + phaseMod) * 0.5f;
                 float wind = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.35f * env;
                 sample = (whoosh + wind) * env;
+                break;
+            }
+            case SFX_ROMAN_HORN: {
+                // Imperial Roman Cornu / Tuba brass fanfare blast
+                float env = (progress < 0.12f) ? (progress / 0.12f) : (1.0f - (progress - 0.12f) / 0.88f);
+                float f1 = 220.0f; // A3
+                float f2 = 330.0f; // E4 (perfect fifth)
+                float f3 = 440.0f; // A4 (octave)
+                float f0 = 110.0f; // A2 (deep drone)
+                float vib = 1.0f + 0.008f * sinf(PI2 * 5.0f * t);
+                float tone1 = sinf(PI2 * f1 * vib * t);
+                float tone2 = sinf(PI2 * f2 * vib * t) * 0.7f;
+                float tone3 = sinf(PI2 * f3 * vib * t) * 0.4f;
+                float drone = sinf(PI2 * f0 * t) * 0.5f;
+                float brassBuzz = (fmodf(t * f1, 1.0f) - 0.5f) * 0.3f;
+                sample = (tone1 + tone2 + tone3 + drone + brassBuzz) * env * 0.8f;
+                break;
+            }
+            case SFX_WATER_SPLASH: {
+                // Caustic water splash / Pilate basin washing
+                float env = expf(-progress * 9.0f);
+                float noise = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f);
+                float drop1 = sinf(PI2 * (850.0f - 400.0f * progress) * t) * 0.4f;
+                float drop2 = sinf(PI2 * (600.0f - 300.0f * progress) * t) * 0.3f;
+                float bubbleMod = 1.0f + 0.4f * sinf(PI2 * 35.0f * t);
+                sample = (noise * 0.45f + drop1 + drop2) * bubbleMod * env * 0.9f;
+                break;
+            }
+            case SFX_FASCES_STRIKE: {
+                // Heavy bundle of wooden lictor rods strike
+                float env = expf(-progress * 18.0f);
+                float impact = sinf(PI2 * (150.0f - 70.0f * progress) * t) * 0.7f;
+                float woodClick = sinf(PI2 * 780.0f * t) * 0.5f * expf(-progress * 35.0f);
+                float rattle = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.35f * expf(-progress * 22.0f);
+                sample = (impact + woodClick + rattle) * env;
+                break;
+            }
+            case SFX_PILATE_JUDGMENT: {
+                // Piercing golden stylus decree beam / imperial condemnation
+                float env = (progress < 0.08f) ? (progress / 0.08f) : expf(-(progress - 0.08f) * 4.5f);
+                float sweepFreq = 1600.0f - 900.0f * (progress * progress);
+                float beam = sinf(PI2 * sweepFreq * t);
+                float subThrum = sinf(PI2 * 65.0f * t) * 0.6f;
+                float holyRing = sinf(PI2 * 2100.0f * t) * 0.3f * expf(-progress * 8.0f);
+                float buzz = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.2f * env;
+                sample = (beam * 0.55f + subThrum + holyRing + buzz) * env * 0.95f;
                 break;
             }
             default:
@@ -1015,6 +1067,194 @@ Wave AudioManager::GenerateJudasBossMusicWave() {
     return wave;
 }
 
+// Procedural Stage 4 track (126 BPM Roman Imperial Procession / Military March)
+Wave AudioManager::GenerateStage4MusicWave() {
+    constexpr unsigned int sampleRate = 44100;
+    constexpr float bpm = 126.0f;
+    constexpr float beatSec = 60.0f / bpm;
+    constexpr int totalBeats = 16; // 4 bars of 4/4
+    float totalDuration = totalBeats * beatSec;
+    unsigned int frameCount = static_cast<unsigned int>(sampleRate * totalDuration);
+
+    short* buffer = (short*)malloc(frameCount * sizeof(short));
+    constexpr float PI2 = 6.28318530718f;
+
+    // D minor / Dorian brass frequencies
+    constexpr float D2  = 73.42f;
+    constexpr float E2  = 82.41f;
+    constexpr float F2  = 87.31f;
+    constexpr float G2  = 98.00f;
+    constexpr float A2  = 110.00f;
+    constexpr float Bb2 = 116.54f;
+    constexpr float C3  = 130.81f;
+    constexpr float D3  = 146.83f;
+
+    constexpr float D4  = 293.66f;
+    constexpr float F4  = 349.23f;
+    constexpr float G4  = 392.00f;
+    constexpr float A4  = 440.00f;
+    constexpr float Bb4 = 466.16f;
+    constexpr float C5  = 523.25f;
+    constexpr float D5  = 587.33f;
+
+    float bassNotes[16] = {
+        D2, D2, F2, G2,    A2, A2, Bb2, A2,
+        G2, G2, F2, E2,    D2, F2, A2, D3
+    };
+
+    float leadNotes[16] = {
+        D4, F4, A4, D5,    C5, A4, G4, A4,
+        Bb4, A4, G4, F4,   G4, A4, F4, D4
+    };
+
+    for (unsigned int i = 0; i < frameCount; ++i) {
+        float t = static_cast<float>(i) / sampleRate;
+        float beatProgress = fmodf(t, beatSec) / beatSec;
+        int currentBeat = static_cast<int>(t / beatSec) % totalBeats;
+
+        // 1. Heavy Roman legionary march timpani / field kick on 0 and 2
+        float kick = 0.0f;
+        if (currentBeat % 2 == 0) {
+            float kEnv = expf(-beatProgress * 14.0f);
+            float kFreq = 85.0f - 40.0f * beatProgress;
+            kick = sinf(PI2 * kFreq * beatProgress * beatSec) * kEnv * 0.75f;
+        }
+
+        // 2. Military snare drum cadence with 16th-note rolls
+        float sub16 = fmodf(t, beatSec / 4.0f) / (beatSec / 4.0f);
+        int subStep = static_cast<int>(fmodf(t, beatSec) / (beatSec / 4.0f));
+        float snare = 0.0f;
+        if (currentBeat % 2 == 1 || subStep == 2 || subStep == 3) {
+            float sEnv = expf(-sub16 * 18.0f);
+            float noise = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f);
+            float sVol = (currentBeat % 2 == 1) ? 0.45f : 0.22f;
+            snare = noise * sEnv * sVol;
+        }
+
+        // 3. Legionary bronze shield cadence & crash
+        float shieldClick = 0.0f;
+        if (currentBeat % 4 == 0 && beatProgress < 0.15f) {
+            float cEnv = expf(-beatProgress * 28.0f);
+            shieldClick = (sinf(PI2 * 2400.0f * t) + 0.4f * sinf(PI2 * 3400.0f * t)) * cEnv * 0.20f;
+        }
+
+        // 4. Low Roman brass tuba/cornu ostinato
+        float bFreq = bassNotes[currentBeat];
+        float bPhase = fmodf(t * bFreq, 1.0f);
+        float bWave = (bPhase * 2.0f - 1.0f) * 0.32f * (1.0f - beatProgress * 0.4f);
+
+        // 5. Stoic Roman trumpet lead melody
+        float lFreq = leadNotes[currentBeat];
+        float vib = sinf(PI2 * 5.2f * t) * 3.5f;
+        float leadPhase = fmodf(t * (lFreq + vib), 1.0f);
+        float leadWave = (leadPhase < 0.5f ? 1.0f : -1.0f) * 0.25f + sinf(PI2 * (lFreq + vib) * t) * 0.15f;
+        float lead = leadWave * sinf(beatProgress * 3.14159f);
+
+        float mix = (kick + snare + shieldClick + bWave + lead) * 0.65f;
+        mix = ClampFloat(mix, -1.0f, 1.0f);
+        buffer[i] = static_cast<short>(mix * 26000.0f);
+    }
+
+    Wave wave = {};
+    wave.frameCount = frameCount;
+    wave.sampleRate = sampleRate;
+    wave.sampleSize = 16;
+    wave.channels = 1;
+    wave.data = buffer;
+    return wave;
+}
+
+// Procedural Pontius Pilate Boss track (160 BPM Imperial Judgment & Tribunal Climax)
+Wave AudioManager::GeneratePilateBossMusicWave() {
+    constexpr unsigned int sampleRate = 44100;
+    constexpr float bpm = 160.0f;
+    constexpr float beatSec = 60.0f / bpm;
+    constexpr int totalBeats = 16;
+    float totalDuration = totalBeats * beatSec;
+    unsigned int frameCount = static_cast<unsigned int>(sampleRate * totalDuration);
+
+    short* buffer = (short*)malloc(frameCount * sizeof(short));
+    constexpr float PI2 = 6.28318530718f;
+
+    // Dark C minor / Phrygian tension frequencies
+    constexpr float C2  = 65.41f;
+    constexpr float Eb2 = 77.78f;
+    constexpr float F2  = 87.31f;
+    constexpr float G2  = 98.00f;
+    constexpr float Ab2 = 103.83f;
+    constexpr float Bb2 = 116.54f;
+    constexpr float C3  = 130.81f;
+
+    constexpr float C4  = 261.63f;
+    constexpr float Eb4 = 311.13f;
+    constexpr float F4  = 349.23f;
+    constexpr float G4  = 392.00f;
+    constexpr float Ab4 = 415.30f;
+    constexpr float Bb4 = 466.16f;
+    constexpr float C5  = 523.25f;
+    constexpr float D5  = 587.33f;
+
+    float bassNotes[16] = {
+        C2, C2, Eb2, F2,    G2, Ab2, G2, F2,
+        Eb2, Eb2, F2, G2,   Ab2, G2, F2, C2
+    };
+
+    float leadNotes[16] = {
+        C4, Eb4, G4, C5,    Ab4, G4, F4, G4,
+        Eb4, F4, G4, Bb4,   Ab4, G4, Eb4, C4
+    };
+
+    for (unsigned int i = 0; i < frameCount; ++i) {
+        float t = static_cast<float>(i) / sampleRate;
+        float beatProgress = fmodf(t, beatSec) / beatSec;
+        int currentBeat = static_cast<int>(t / beatSec) % totalBeats;
+
+        // 1. Driving four-on-the-floor imperial kick + sub drop
+        float kEnv = expf(-beatProgress * 22.0f);
+        float kick = sinf(PI2 * (160.0f - 110.0f * beatProgress) * beatProgress * beatSec) * kEnv * 0.70f;
+
+        // 2. High-intensity military snare on beats 1, 3, 5, 7, 9, 11, 13, 15
+        float snare = 0.0f;
+        if (currentBeat % 2 == 1) {
+            float sEnv = expf(-beatProgress * 15.0f);
+            float noise = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f);
+            snare = noise * sEnv * 0.48f;
+        }
+
+        // 3. Washing Basin water splash shimmer on beat 3 of each 4-beat measure
+        float sub16 = fmodf(t, beatSec / 4.0f) / (beatSec / 4.0f);
+        float waterShimmer = 0.0f;
+        if (currentBeat % 4 == 3) {
+            float wEnv = expf(-sub16 * 14.0f);
+            float dropFreq = 2600.0f + 600.0f * sinf(PI2 * 24.0f * t);
+            waterShimmer = sinf(PI2 * dropFreq * t) * wEnv * 0.22f;
+        }
+
+        // 4. Aggressive saw bass
+        float bFreq = bassNotes[currentBeat];
+        float bPhase = fmodf(t * bFreq, 1.0f);
+        float bass = (bPhase * 2.0f - 1.0f) * 0.36f * (1.0f - beatProgress * 0.45f);
+
+        // 5. Sharp imperial judgment brass synth lead
+        float lFreq = leadNotes[currentBeat];
+        float vib = sinf(PI2 * 5.8f * t) * 4.0f;
+        float leadPhase = fmodf(t * (lFreq + vib), 1.0f);
+        float lead = (leadPhase < 0.5f ? 1.0f : -1.0f) * 0.28f * (1.0f - beatProgress * 0.35f);
+
+        float mix = (kick + snare + waterShimmer + bass + lead) * 0.65f;
+        mix = ClampFloat(mix, -1.0f, 1.0f);
+        buffer[i] = static_cast<short>(mix * 27000.0f);
+    }
+
+    Wave wave = {};
+    wave.frameCount = frameCount;
+    wave.sampleRate = sampleRate;
+    wave.sampleSize = 16;
+    wave.channels = 1;
+    wave.data = buffer;
+    return wave;
+}
+
 // Procedural Bonus Stage track (Upbeat, fast 148 BPM Sega arcade FM synth style)
 Wave AudioManager::GenerateBonusMusicWave() {
     constexpr unsigned int sampleRate = 44100;
@@ -1205,6 +1445,10 @@ void AudioManager::Init() {
     s_stageMusicM3 = LoadSoundFromWave(m3Wave);
     UnloadWave(m3Wave);
 
+    Wave m4Wave = GenerateStage4MusicWave();
+    s_stageMusicM4 = LoadSoundFromWave(m4Wave);
+    UnloadWave(m4Wave);
+
     Wave bonusWave = GenerateBonusMusicWave();
     s_bonusMusic = LoadSoundFromWave(bonusWave);
     UnloadWave(bonusWave);
@@ -1221,6 +1465,10 @@ void AudioManager::Init() {
     s_judasBossMusic = LoadSoundFromWave(judasWave);
     UnloadWave(judasWave);
 
+    Wave pilateWave = GeneratePilateBossMusicWave();
+    s_pilateBossMusic = LoadSoundFromWave(pilateWave);
+    UnloadWave(pilateWave);
+
     Wave continueMusicWave = GenerateContinueMusicWave();
     s_continueMusic = LoadSoundFromWave(continueMusicWave);
     UnloadWave(continueMusicWave);
@@ -1229,10 +1477,12 @@ void AudioManager::Init() {
     SetSoundVolume(s_stageMusicM1, 0.45f);
     SetSoundVolume(s_stageMusicM2, 0.48f);
     SetSoundVolume(s_stageMusicM3, 0.48f);
+    SetSoundVolume(s_stageMusicM4, 0.50f);
     SetSoundVolume(s_bonusMusic, 0.50f);
     SetSoundVolume(s_bossMusic, 0.55f);
     SetSoundVolume(s_evilCloneMusic, 0.58f);
     SetSoundVolume(s_judasBossMusic, 0.58f);
+    SetSoundVolume(s_pilateBossMusic, 0.60f);
     SetSoundVolume(s_continueMusic, 0.55f);
 
     s_initialized = true;
@@ -1251,10 +1501,12 @@ void AudioManager::Close() {
     if (s_stageMusicM1.frameCount > 0) UnloadSound(s_stageMusicM1);
     if (s_stageMusicM2.frameCount > 0) UnloadSound(s_stageMusicM2);
     if (s_stageMusicM3.frameCount > 0) UnloadSound(s_stageMusicM3);
+    if (s_stageMusicM4.frameCount > 0) UnloadSound(s_stageMusicM4);
     if (s_bonusMusic.frameCount > 0) UnloadSound(s_bonusMusic);
     if (s_bossMusic.frameCount > 0) UnloadSound(s_bossMusic);
     if (s_evilCloneMusic.frameCount > 0) UnloadSound(s_evilCloneMusic);
     if (s_judasBossMusic.frameCount > 0) UnloadSound(s_judasBossMusic);
+    if (s_pilateBossMusic.frameCount > 0) UnloadSound(s_pilateBossMusic);
     if (s_continueMusic.frameCount > 0) UnloadSound(s_continueMusic);
 
     CloseAudioDevice();
@@ -1284,10 +1536,12 @@ void AudioManager::StopAllMusic() {
     if (IsSoundPlaying(s_stageMusicM1)) StopSound(s_stageMusicM1);
     if (IsSoundPlaying(s_stageMusicM2)) StopSound(s_stageMusicM2);
     if (IsSoundPlaying(s_stageMusicM3)) StopSound(s_stageMusicM3);
+    if (IsSoundPlaying(s_stageMusicM4)) StopSound(s_stageMusicM4);
     if (IsSoundPlaying(s_bonusMusic)) StopSound(s_bonusMusic);
     if (IsSoundPlaying(s_bossMusic)) StopSound(s_bossMusic);
     if (IsSoundPlaying(s_evilCloneMusic)) StopSound(s_evilCloneMusic);
     if (IsSoundPlaying(s_judasBossMusic)) StopSound(s_judasBossMusic);
+    if (IsSoundPlaying(s_pilateBossMusic)) StopSound(s_pilateBossMusic);
     if (IsSoundPlaying(s_continueMusic)) StopSound(s_continueMusic);
 }
 
@@ -1303,10 +1557,12 @@ void AudioManager::Update(bool inBossArena, bool isGameOver, bool isVictory, int
         if (IsSoundPlaying(s_stageMusicM1)) StopSound(s_stageMusicM1);
         if (IsSoundPlaying(s_stageMusicM2)) StopSound(s_stageMusicM2);
         if (IsSoundPlaying(s_stageMusicM3)) StopSound(s_stageMusicM3);
+        if (IsSoundPlaying(s_stageMusicM4)) StopSound(s_stageMusicM4);
         if (IsSoundPlaying(s_bonusMusic)) StopSound(s_bonusMusic);
         if (IsSoundPlaying(s_bossMusic)) StopSound(s_bossMusic);
         if (IsSoundPlaying(s_evilCloneMusic)) StopSound(s_evilCloneMusic);
         if (IsSoundPlaying(s_judasBossMusic)) StopSound(s_judasBossMusic);
+        if (IsSoundPlaying(s_pilateBossMusic)) StopSound(s_pilateBossMusic);
 
         if (!IsSoundPlaying(s_continueMusic)) {
             PlaySound(s_continueMusic);
@@ -1323,9 +1579,11 @@ void AudioManager::Update(bool inBossArena, bool isGameOver, bool isVictory, int
         if (IsSoundPlaying(s_stageMusicM1)) StopSound(s_stageMusicM1);
         if (IsSoundPlaying(s_stageMusicM2)) StopSound(s_stageMusicM2);
         if (IsSoundPlaying(s_stageMusicM3)) StopSound(s_stageMusicM3);
+        if (IsSoundPlaying(s_stageMusicM4)) StopSound(s_stageMusicM4);
         if (IsSoundPlaying(s_bossMusic)) StopSound(s_bossMusic);
         if (IsSoundPlaying(s_evilCloneMusic)) StopSound(s_evilCloneMusic);
         if (IsSoundPlaying(s_judasBossMusic)) StopSound(s_judasBossMusic);
+        if (IsSoundPlaying(s_pilateBossMusic)) StopSound(s_pilateBossMusic);
 
         if (!IsSoundPlaying(s_bonusMusic)) {
             PlaySound(s_bonusMusic);
@@ -1343,11 +1601,21 @@ void AudioManager::Update(bool inBossArena, bool isGameOver, bool isVictory, int
         if (IsSoundPlaying(s_stageMusicM1)) StopSound(s_stageMusicM1);
         if (IsSoundPlaying(s_stageMusicM2)) StopSound(s_stageMusicM2);
         if (IsSoundPlaying(s_stageMusicM3)) StopSound(s_stageMusicM3);
+        if (IsSoundPlaying(s_stageMusicM4)) StopSound(s_stageMusicM4);
 
-        if (stageId == 9) {
+        if (stageId == 12) {
+            // Pontius Pilate final boss theme!
+            if (IsSoundPlaying(s_bossMusic)) StopSound(s_bossMusic);
+            if (IsSoundPlaying(s_evilCloneMusic)) StopSound(s_evilCloneMusic);
+            if (IsSoundPlaying(s_judasBossMusic)) StopSound(s_judasBossMusic);
+            if (!IsSoundPlaying(s_pilateBossMusic)) {
+                PlaySound(s_pilateBossMusic);
+            }
+        } else if (stageId == 9) {
             // Judas Iscariot final boss theme!
             if (IsSoundPlaying(s_bossMusic)) StopSound(s_bossMusic);
             if (IsSoundPlaying(s_evilCloneMusic)) StopSound(s_evilCloneMusic);
+            if (IsSoundPlaying(s_pilateBossMusic)) StopSound(s_pilateBossMusic);
             if (!IsSoundPlaying(s_judasBossMusic)) {
                 PlaySound(s_judasBossMusic);
             }
@@ -1355,12 +1623,14 @@ void AudioManager::Update(bool inBossArena, bool isGameOver, bool isVictory, int
             // Evil Clone final boss theme!
             if (IsSoundPlaying(s_bossMusic)) StopSound(s_bossMusic);
             if (IsSoundPlaying(s_judasBossMusic)) StopSound(s_judasBossMusic);
+            if (IsSoundPlaying(s_pilateBossMusic)) StopSound(s_pilateBossMusic);
             if (!IsSoundPlaying(s_evilCloneMusic)) {
                 PlaySound(s_evilCloneMusic);
             }
         } else {
             if (IsSoundPlaying(s_evilCloneMusic)) StopSound(s_evilCloneMusic);
             if (IsSoundPlaying(s_judasBossMusic)) StopSound(s_judasBossMusic);
+            if (IsSoundPlaying(s_pilateBossMusic)) StopSound(s_pilateBossMusic);
             if (!IsSoundPlaying(s_bossMusic)) {
                 PlaySound(s_bossMusic);
             }
@@ -1369,11 +1639,21 @@ void AudioManager::Update(bool inBossArena, bool isGameOver, bool isVictory, int
         if (IsSoundPlaying(s_bossMusic)) StopSound(s_bossMusic);
         if (IsSoundPlaying(s_evilCloneMusic)) StopSound(s_evilCloneMusic);
         if (IsSoundPlaying(s_judasBossMusic)) StopSound(s_judasBossMusic);
+        if (IsSoundPlaying(s_pilateBossMusic)) StopSound(s_pilateBossMusic);
 
-        if (stageId >= 7) {
+        if (stageId >= 10) {
+            // Mission 4 Stage theme
+            if (IsSoundPlaying(s_stageMusicM1)) StopSound(s_stageMusicM1);
+            if (IsSoundPlaying(s_stageMusicM2)) StopSound(s_stageMusicM2);
+            if (IsSoundPlaying(s_stageMusicM3)) StopSound(s_stageMusicM3);
+            if (!IsSoundPlaying(s_stageMusicM4)) {
+                PlaySound(s_stageMusicM4);
+            }
+        } else if (stageId >= 7) {
             // Mission 3 Stage theme
             if (IsSoundPlaying(s_stageMusicM1)) StopSound(s_stageMusicM1);
             if (IsSoundPlaying(s_stageMusicM2)) StopSound(s_stageMusicM2);
+            if (IsSoundPlaying(s_stageMusicM4)) StopSound(s_stageMusicM4);
             if (!IsSoundPlaying(s_stageMusicM3)) {
                 PlaySound(s_stageMusicM3);
             }
@@ -1381,6 +1661,7 @@ void AudioManager::Update(bool inBossArena, bool isGameOver, bool isVictory, int
             // Mission 2 Stage theme
             if (IsSoundPlaying(s_stageMusicM1)) StopSound(s_stageMusicM1);
             if (IsSoundPlaying(s_stageMusicM3)) StopSound(s_stageMusicM3);
+            if (IsSoundPlaying(s_stageMusicM4)) StopSound(s_stageMusicM4);
             if (!IsSoundPlaying(s_stageMusicM2)) {
                 PlaySound(s_stageMusicM2);
             }
@@ -1388,6 +1669,7 @@ void AudioManager::Update(bool inBossArena, bool isGameOver, bool isVictory, int
             // Mission 1 Stage theme
             if (IsSoundPlaying(s_stageMusicM2)) StopSound(s_stageMusicM2);
             if (IsSoundPlaying(s_stageMusicM3)) StopSound(s_stageMusicM3);
+            if (IsSoundPlaying(s_stageMusicM4)) StopSound(s_stageMusicM4);
             if (!IsSoundPlaying(s_stageMusicM1)) {
                 PlaySound(s_stageMusicM1);
             }

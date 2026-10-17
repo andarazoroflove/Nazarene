@@ -41,7 +41,10 @@ static const SecretStageEntry SECRET_STAGES[] = {
     { 2, 3, false, "M2-3", "GARDEN OF GETHSEMANE",     "CHRISTUS TENEBRIS",     Color{ 45, 160, 75, 255 } },
     { 3, 1, false, "M3-1", "SILOAM BAZAAR & AQUEDUCT", "BARABBAS THE ZEALOT",   Color{ 160, 80, 220, 255 } },
     { 3, 2, false, "M3-2", "PALACE OF CAIAPHAS",       "HIGH PRIEST CAIAPHAS",  Color{ 160, 80, 220, 255 } },
-    { 3, 3, false, "M3-3", "THE CENACLE / LAST SUPPER", "JUDAS ISCARIOT",       Color{ 210, 180, 60, 255 } }
+    { 3, 3, false, "M3-3", "THE CENACLE / LAST SUPPER", "JUDAS ISCARIOT",       Color{ 210, 180, 60, 255 } },
+    { 4, 1, false, "M4-1", "VIA DOLOROSA STREETS",     "PREFECT QUINTUS",       COLOR_PRAETORIUM_PURPLE },
+    { 4, 2, false, "M4-2", "THE GABBATHA COURT",       "ADVOCATE TERTULLUS",    COLOR_PRAETORIUM_PURPLE },
+    { 4, 3, false, "M4-3", "THE PRAETORIUM THRONE",    "PONTIUS PILATE",        COLOR_PILATE_CRIMSON }
 };
 static constexpr int SECRET_STAGES_COUNT = sizeof(SECRET_STAGES) / sizeof(SECRET_STAGES[0]);
 
@@ -81,7 +84,7 @@ int main() {
     bool area2Cleared = false;
     bool area3Cleared = false;
     float missionMapTimer = 0.0f;
-    int secretMenuIndex = 7; // Default to Mission 3-1 for quick access
+    int secretMenuIndex = 10; // Default to Mission 4-1 for quick access
 
     float gateNoticeTimer = 0.0f;
     float victoryTimer = 0.0f;
@@ -102,7 +105,10 @@ int main() {
     float rainbowAlpha = 0.0f;
 
     auto GetCurrentStageId = [&]() {
-        return (missionNumber == 1) ? currentArea : ((missionNumber == 2) ? (3 + currentArea) : (6 + currentArea));
+        if (missionNumber == 1) return currentArea;
+        if (missionNumber == 2) return 3 + currentArea;
+        if (missionNumber == 3) return 6 + currentArea;
+        return 9 + currentArea;
     };
 
     auto StartMission = [&](int mNum, int aNum) {
@@ -225,14 +231,16 @@ int main() {
 
                 // Left / Right quick-jump between Mission blocks
                 if (input.leftPressed) {
-                    if (secretMenuIndex >= 7) secretMenuIndex = 4;
+                    if (secretMenuIndex >= 10) secretMenuIndex = 7;
+                    else if (secretMenuIndex >= 7) secretMenuIndex = 4;
                     else if (secretMenuIndex >= 4) secretMenuIndex = 0;
-                    else secretMenuIndex = 7;
+                    else secretMenuIndex = 10;
                     AudioManager::PlaySfx(SFX_COIN_RICOCHET);
                 }
                 if (input.rightPressed) {
                     if (secretMenuIndex < 4) secretMenuIndex = 4;
                     else if (secretMenuIndex < 7) secretMenuIndex = 7;
+                    else if (secretMenuIndex < 10) secretMenuIndex = 10;
                     else secretMenuIndex = 0;
                     AudioManager::PlaySfx(SFX_COIN_RICOCHET);
                 }
@@ -305,8 +313,8 @@ int main() {
                     level.UnlockArena();
                 }
 
-                // Stage 3, Stage 6, & Stage 9: As soon as player finds the boss / approaches gate, clouds of heaven roll in!
-                if (currentStage == 3 || currentStage == 6 || currentStage == 9) {
+                // Stage 3, Stage 6, Stage 9, & Stage 12: As soon as player finds the boss / approaches gate, clouds of heaven roll in!
+                if (currentStage == 3 || currentStage == 6 || currentStage == 9 || currentStage == 12) {
                     if (player.GetPosition().x >= (level.GetArenaGateX() - 100.0f) || level.IsArenaLockedDown()) {
                         cloudCoverage = std::min(1.0f, cloudCoverage + 0.65f * dt);
                     }
@@ -337,7 +345,7 @@ int main() {
                 }
 
                 // Update storm clouds and lightning
-                if (finishHimTriggered || ((currentStage == 3 || currentStage == 6 || currentStage == 9) && cloudCoverage > 0.0f)) {
+                if (finishHimTriggered || ((currentStage == 3 || currentStage == 6 || currentStage == 9 || currentStage == 12) && cloudCoverage > 0.0f)) {
                     if (finishHimTriggered) {
                         cloudCoverage = std::min(1.0f, cloudCoverage + 0.85f * dt);
                     }
@@ -367,7 +375,7 @@ int main() {
                         cloudsPartAmount = std::min(1.0f, cloudsPartAmount + 0.75f * dt);
                         divineBeamIntensity = std::min(1.0f, divineBeamIntensity + 0.85f * dt);
 
-                        if (currentStage == 3 || currentStage == 6 || currentStage == 9) {
+                        if (currentStage == 3 || currentStage == 6 || currentStage == 9 || currentStage == 12) {
                             rainbowAlpha = std::min(1.0f, rainbowAlpha + 0.80f * dt);
                         }
 
@@ -375,8 +383,8 @@ int main() {
                             ascensionStarted = true;
                             AudioManager::PlaySfx(SFX_HOLY_BEAM);
                             AudioManager::PlaySfx(SFX_ANGEL_CHOIR);
-                            // In Stage 3, Stage 6, & Stage 9, Jesus ascends diagonally towards opposite side of screen!
-                            bool diagonal = (currentStage == 3 || currentStage == 6 || currentStage == 9);
+                            // In Stage 3, Stage 6, Stage 9, & Stage 12, Jesus ascends diagonally towards opposite side of screen!
+                            bool diagonal = (currentStage == 3 || currentStage == 6 || currentStage == 9 || currentStage == 12);
                             bool toRight = (player.GetPosition().x < level.GetArenaMinX() + (level.GetArenaMaxX() - level.GetArenaMinX()) * 0.5f);
                             player.StartAscension(diagonal, toRight);
                         }
@@ -429,7 +437,7 @@ int main() {
                                     gameState = GameState::MISSION_MAP;
                                     missionMapTimer = 0.0f;
                                 }
-                            } else {
+                            } else if (missionNumber == 3) {
                                 // Mission 3: Journey to the Upper Room & The Last Supper
                                 if (currentArea == 1) {
                                     area1Cleared = true;
@@ -442,7 +450,29 @@ int main() {
                                     gameState = GameState::MISSION_MAP;
                                     missionMapTimer = 0.0f;
                                 } else {
-                                    // Stage 9 cleared! Judas Iscariot defeated and redeemed at the Last Supper!
+                                    // Stage 9 cleared! Advance to Mission 4: The Judgment of Pilate!
+                                    missionNumber = 4;
+                                    currentArea = 1;
+                                    area1Cleared = false;
+                                    area2Cleared = false;
+                                    area3Cleared = false;
+                                    gameState = GameState::MISSION_MAP;
+                                    missionMapTimer = 0.0f;
+                                }
+                            } else {
+                                // Mission 4: The Trial and Judgment before Pontius Pilate
+                                if (currentArea == 1) {
+                                    area1Cleared = true;
+                                    currentArea = 2;
+                                    gameState = GameState::MISSION_MAP;
+                                    missionMapTimer = 0.0f;
+                                } else if (currentArea == 2) {
+                                    area2Cleared = true;
+                                    currentArea = 3;
+                                    gameState = GameState::MISSION_MAP;
+                                    missionMapTimer = 0.0f;
+                                } else {
+                                    // Stage 12 cleared! Pontius Pilate defeated and remorseful at the Bema!
                                     area3Cleared = true;
                                     gameState = GameState::VICTORY;
                                     victoryTimer = 0.0f;
@@ -638,61 +668,61 @@ int main() {
             DrawRectangleLines(5, 5, VIRTUAL_WIDTH - 10, VIRTUAL_HEIGHT - 10, Color{ 60, 45, 20, 255 });
 
             // Header Banner
-            DrawRectangle(7, 7, VIRTUAL_WIDTH - 14, 25, Color{ 28, 18, 38, 240 });
-            DrawLine(7, 32, VIRTUAL_WIDTH - 7, 32, COLOR_ROMAN_GOLD);
+            DrawRectangle(7, 6, VIRTUAL_WIDTH - 14, 21, Color{ 28, 18, 38, 240 });
+            DrawLine(7, 27, VIRTUAL_WIDTH - 7, 27, COLOR_ROMAN_GOLD);
 
             const char* secTitle = "SECRET MISSION SELECT";
             int tw = MeasureText(secTitle, 10);
-            DrawText(secTitle, (VIRTUAL_WIDTH - tw) / 2, 11, 10, COLOR_GOLD_BRIGHT);
+            DrawText(secTitle, (VIRTUAL_WIDTH - tw) / 2, 8, 10, COLOR_GOLD_BRIGHT);
 
             const char* secSub = "- DIVINE DISPENSATION ARCHIVE -";
             int sw = MeasureText(secSub, 10);
-            DrawText(secSub, (VIRTUAL_WIDTH - sw) / 2, 22, 10, COLOR_ROMAN_STONE);
+            DrawText(secSub, (VIRTUAL_WIDTH - sw) / 2, 17, 10, COLOR_ROMAN_STONE);
 
-            // List of 10 stages
+            // List of 13 stages
             for (int i = 0; i < SECRET_STAGES_COUNT; ++i) {
-                int ry = 36 + i * 14;
+                int ry = 29 + i * 11;
                 bool isSel = (i == secretMenuIndex);
 
                 if (isSel) {
                     float pulse = 0.5f + 0.5f * sinf(static_cast<float>(GetTime()) * 8.0f);
                     Color barCol = Color{ 75, 50, 15, static_cast<unsigned char>(180 + pulse * 60) };
-                    DrawRectangle(10, ry, VIRTUAL_WIDTH - 20, 13, barCol);
-                    DrawRectangleLines(10, ry, VIRTUAL_WIDTH - 20, 13, COLOR_GOLD_BRIGHT);
-                    DrawText(">", 13, ry + 2, 10, COLOR_GOLD_BRIGHT);
+                    DrawRectangle(10, ry, VIRTUAL_WIDTH - 20, 11, barCol);
+                    DrawRectangleLines(10, ry, VIRTUAL_WIDTH - 20, 11, COLOR_GOLD_BRIGHT);
+                    DrawText(">", 13, ry + 1, 10, COLOR_GOLD_BRIGHT);
                 } else if (i % 2 == 1) {
-                    DrawRectangle(10, ry, VIRTUAL_WIDTH - 20, 13, Color{ 20, 15, 26, 140 });
+                    DrawRectangle(10, ry, VIRTUAL_WIDTH - 20, 11, Color{ 20, 15, 26, 140 });
                 }
 
-                // Tag [M1-1], [BONUS], [M3-3]
+                // Tag [M1-1], [BONUS], [M4-3]
                 Color tagCol = isSel ? WHITE : SECRET_STAGES[i].tagColor;
-                DrawText(SECRET_STAGES[i].tag, 22, ry + 2, 10, tagCol);
+                DrawText(SECRET_STAGES[i].tag, 22, ry + 1, 10, tagCol);
 
                 // Title
                 Color titleCol = isSel ? COLOR_GOLD_BRIGHT : Color{ 215, 210, 225, 255 };
-                DrawText(SECRET_STAGES[i].title, 64, ry + 2, 10, titleCol);
+                DrawText(SECRET_STAGES[i].title, 64, ry + 1, 10, titleCol);
 
                 // Boss / Target
                 Color bossCol = isSel ? COLOR_ROBE_WHITE : Color{ 160, 150, 175, 255 };
                 int bw = MeasureText(SECRET_STAGES[i].bossOrDesc, 10);
-                DrawText(SECRET_STAGES[i].bossOrDesc, VIRTUAL_WIDTH - 15 - bw, ry + 2, 10, bossCol);
+                DrawText(SECRET_STAGES[i].bossOrDesc, VIRTUAL_WIDTH - 15 - bw, ry + 1, 10, bossCol);
             }
 
             // Bottom Navigation Footer
-            DrawLine(7, 180, VIRTUAL_WIDTH - 7, 180, COLOR_ROMAN_GOLD);
-            DrawRectangle(7, 181, VIRTUAL_WIDTH - 14, 38, Color{ 14, 10, 20, 240 });
+            DrawLine(7, 174, VIRTUAL_WIDTH - 7, 174, COLOR_ROMAN_GOLD);
+            DrawRectangle(7, 175, VIRTUAL_WIDTH - 14, 44, Color{ 14, 10, 20, 240 });
 
             const char* hintNav = "[UP / DOWN] SELECT    [START / JUMP] EMBARK";
             int nhw = MeasureText(hintNav, 10);
-            DrawText(hintNav, (VIRTUAL_WIDTH - nhw) / 2, 186, 10, COLOR_ROMAN_GOLD);
+            DrawText(hintNav, (VIRTUAL_WIDTH - nhw) / 2, 178, 10, COLOR_ROMAN_GOLD);
 
             const char* hintSkip = "[LEFT / RIGHT] SKIP MISSION    [B / ESC] CANCEL";
             int shw = MeasureText(hintSkip, 10);
-            DrawText(hintSkip, (VIRTUAL_WIDTH - shw) / 2, 199, 10, COLOR_ROMAN_STONE);
+            DrawText(hintSkip, (VIRTUAL_WIDTH - shw) / 2, 191, 10, COLOR_ROMAN_STONE);
 
             char credStr[32];
             snprintf(credStr, sizeof(credStr), "CREDIT %02d", credits);
-            DrawText(credStr, VIRTUAL_WIDTH - MeasureText(credStr, 10) - 14, 210, 10, COLOR_ROMAN_GOLD);
+            DrawText(credStr, VIRTUAL_WIDTH - MeasureText(credStr, 10) - 14, 204, 10, COLOR_ROMAN_GOLD);
         } else if (gameState == GameState::MISSION_MAP) {
             // Authentic Shinobi Arcade Jerusalem & Gethsemane Mission Map Screens
             GraphicsManager::DrawMissionMap(missionNumber, currentArea, area1Cleared, area2Cleared, area3Cleared, static_cast<float>(GetTime()));
@@ -799,7 +829,7 @@ int main() {
                 DrawRectangleLines(206, 4, 14, 12, Color{ 75, 70, 80, 255 });
             }
 
-            // Stage Pickups: Baskets (1), Censers (2, 3), Pitchers (4), Wreaths (5), Chalices (6), Bitter Herbs (7), Matzot (8), Holy Grail (9)
+            // Stage Pickups: Baskets (1), Censers (2, 3), Pitchers (4), Wreaths (5), Chalices (6), Bitter Herbs (7), Matzot (8), Holy Grail (9), Scroll (10), Seal (11), Ewer (12)
             SpriteId hudPickupSpr = SPR_ICON_BASKET;
             if (curStage == 2 || curStage == 3) hudPickupSpr = SPR_CENSER_GOLD;
             else if (curStage == 4) hudPickupSpr = SPR_SILVER_PITCHER;
@@ -808,6 +838,9 @@ int main() {
             else if (curStage == 7) hudPickupSpr = SPR_BITTER_HERBS;
             else if (curStage == 8) hudPickupSpr = SPR_PASSOVER_MATZOT;
             else if (curStage == 9) hudPickupSpr = SPR_HOLY_GRAIL;
+            else if (curStage == 10) hudPickupSpr = SPR_ROMAN_SCROLL;
+            else if (curStage == 11) hudPickupSpr = SPR_CAESAR_SEAL;
+            else if (curStage == 12) hudPickupSpr = SPR_PILATE_EWER;
             GraphicsManager::DrawSprite(hudPickupSpr, 230.0f, 2.0f);
 
             char basketText[16];
@@ -842,6 +875,9 @@ int main() {
                     else if (curStage == 7) bossName = "BARABBAS THE ZEALOT";
                     else if (curStage == 8) bossName = "HIGH PRIEST CAIAPHAS";
                     else if (curStage == 9) bossName = "JUDAS ISCARIOT";
+                    else if (curStage == 10) bossName = "PREFECT QUINTUS";
+                    else if (curStage == 11) bossName = "ADVOCATE TERTULLUS";
+                    else if (curStage == 12) bossName = "PONTIUS PILATE";
 
                     DrawText(bossName, bx + 6, by + 3, 10, COLOR_GOLD_BRIGHT);
 
@@ -881,6 +917,9 @@ int main() {
                 else if (curStage == 7) msg = "COLLECT ALL 4 BITTER HERBS TO UNLOCK HIDEOUT GATE!";
                 else if (curStage == 8) msg = "COLLECT ALL 4 PASSOVER MATZOT TO UNLOCK AUDIENCE GATE!";
                 else if (curStage == 9) msg = "COLLECT ALL 4 HOLY GRAILS TO UNLOCK CENACLE SANCTUARY!";
+                else if (curStage == 10) msg = "COLLECT ALL 4 IMPERIAL SCROLLS TO UNLOCK BARRICADE!";
+                else if (curStage == 11) msg = "COLLECT ALL 4 CAESAR SEALS TO UNLOCK TRIBUNAL GATE!";
+                else if (curStage == 12) msg = "COLLECT ALL 4 GOLDEN EWERS TO UNLOCK PRAETORIUM THRONE!";
 
                 int mw = MeasureText(msg, 10);
                 DrawRectangle((VIRTUAL_WIDTH - mw) / 2 - 6, 40, mw + 12, 16, Color{ 20, 15, 25, 230 });
@@ -984,27 +1023,35 @@ int main() {
             // 8. Victory Screen
             if (gameState == GameState::VICTORY) {
                 DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 12, 22, 16, 230 });
-                const char* vicTitle = (missionNumber == 3) ? "THE LAST SUPPER RESTORED!" : "CAMPAIGN VICTORY!";
-                int vw = MeasureText(vicTitle, 18);
-                DrawText(vicTitle, (VIRTUAL_WIDTH - vw) / 2, 40, 18, COLOR_ROMAN_GOLD);
+                const char* vicTitle = (missionNumber == 4) ? "THE TRIAL ENDED - PILATE'S JUDGMENT OVERCOME!" :
+                                       ((missionNumber == 3) ? "THE LAST SUPPER RESTORED!" : "CAMPAIGN VICTORY!");
+                int vw = MeasureText(vicTitle, 16);
+                DrawText(vicTitle, (VIRTUAL_WIDTH - vw) / 2, 40, 16, COLOR_ROMAN_GOLD);
 
-                const char* vicSub1 = (missionNumber == 3) ?
+                const char* vicSub1 = (missionNumber == 4) ?
+                    "PILATE WASHES HIS HANDS IN REMORSE - 'WHAT IS TRUTH?' ANSWERED!" :
+                    ((missionNumber == 3) ?
                     "JUDAS REPENTS - THE 30 PIECES OF SILVER SCATTERED" :
-                    "GETHSEMANE CONQUERED - THE EVIL CLONE OVERCOME!";
+                    "GETHSEMANE CONQUERED - THE EVIL CLONE OVERCOME!");
                 DrawText(vicSub1, (VIRTUAL_WIDTH - MeasureText(vicSub1, 10)) / 2, 68, 10, COLOR_ROBE_WHITE);
 
-                const char* vicSub2 = (missionNumber == 3) ?
+                const char* vicSub2 = (missionNumber == 4) ?
+                    "THE INNOCENT LAMB ASCENDS TRIUMPHANT OVER EMPIRES AND POWERS" :
+                    ((missionNumber == 3) ?
                     "THIS IS MY BODY, GIVEN FOR YOU - DO THIS IN REMEMBRANCE" :
-                    "THE NAZARENE'S DIVINE MISSION IS FULFILLED";
+                    "THE NAZARENE'S DIVINE MISSION IS FULFILLED");
                 DrawText(vicSub2, (VIRTUAL_WIDTH - MeasureText(vicSub2, 10)) / 2, 88, 10, COLOR_GOLD_BRIGHT);
 
-                if (missionNumber == 3) {
-                    const char* vicSub3 = "PEACE UNTO ALL NATIONS - LOVE CONQUERS ALL";
+                const char* vicSub3 = (missionNumber == 4) ?
+                    "MY KINGDOM IS NOT OF THIS WORLD - GLORY FOREVERMORE!" :
+                    ((missionNumber == 3) ?
+                    "PEACE UNTO ALL NATIONS - LOVE CONQUERS ALL" : nullptr);
+                if (vicSub3) {
                     DrawText(vicSub3, (VIRTUAL_WIDTH - MeasureText(vicSub3, 10)) / 2, 106, 10, COLOR_ROMAN_STONE);
                 }
 
                 char vicScore[48];
-                int bonusPts = (missionNumber == 3) ? 100000 : 50000;
+                int bonusPts = (missionNumber == 4) ? 150000 : ((missionNumber == 3) ? 100000 : 50000);
                 snprintf(vicScore, sizeof(vicScore), "FINAL SCORE: %06d", player.GetScore() + bonusPts);
                 DrawText(vicScore, (VIRTUAL_WIDTH - MeasureText(vicScore, 10)) / 2, 130, 10, COLOR_ROMAN_GOLD);
 

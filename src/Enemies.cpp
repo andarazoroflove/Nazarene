@@ -159,6 +159,46 @@ Enemy::Enemy(EnemyType type, Vector2 pos, float patrolMinX, float patrolMaxX)
             m_judasState = JudasState::IDLE;
             m_facingLeft = true;
             break;
+        case EnemyType::SIGNIFER_GUARD:
+            m_maxHp = 2;
+            m_hp = 2;
+            m_velocity.x = -35.0f;
+            break;
+        case EnemyType::PRAETORIAN_GUARD:
+            m_maxHp = 3;
+            m_hp = 3;
+            m_velocity.x = -30.0f;
+            m_isShieldUp = true;
+            break;
+        case EnemyType::IMPERIAL_LICTOR:
+            m_maxHp = 2;
+            m_hp = 2;
+            m_velocity.x = -40.0f;
+            break;
+        case EnemyType::BOSS_PREFECT_QUINTUS:
+            m_maxHp = BOSS_MAX_HP;
+            m_hp = BOSS_MAX_HP;
+            m_velocity = { 0.0f, 0.0f };
+            m_bossPhase = BossPhase::PHASE_2_ARENA;
+            m_whipState = BossWhipState::IDLE;
+            m_facingLeft = true;
+            break;
+        case EnemyType::BOSS_ADVOCATE_TERTULLUS:
+            m_maxHp = BOSS_MAX_HP;
+            m_hp = BOSS_MAX_HP;
+            m_velocity = { 0.0f, 0.0f };
+            m_bossPhase = BossPhase::PHASE_2_ARENA;
+            m_whipState = BossWhipState::IDLE;
+            m_facingLeft = true;
+            break;
+        case EnemyType::BOSS_PONTIUS_PILATE:
+            m_maxHp = BOSS_MAX_HP;
+            m_hp = BOSS_MAX_HP;
+            m_velocity = { 0.0f, 0.0f };
+            m_bossPhase = BossPhase::PHASE_2_ARENA;
+            m_pilateState = PilateState::IDLE;
+            m_facingLeft = true;
+            break;
     }
 }
 
@@ -201,6 +241,18 @@ Rectangle Enemy::GetHurtbox() const {
             return { m_position.x + 6.0f, m_position.y + 4.0f, 20.0f, 30.0f };
         case EnemyType::BOSS_JUDAS:
             return { m_position.x + 6.0f, m_position.y + 4.0f, 20.0f, 30.0f };
+        case EnemyType::SIGNIFER_GUARD:
+            return { m_position.x + 4.0f, m_position.y + 4.0f, 18.0f, 26.0f };
+        case EnemyType::PRAETORIAN_GUARD:
+            return { m_position.x + 4.0f, m_position.y + 4.0f, 20.0f, 28.0f };
+        case EnemyType::IMPERIAL_LICTOR:
+            return { m_position.x + 4.0f, m_position.y + 4.0f, 18.0f, 26.0f };
+        case EnemyType::BOSS_PREFECT_QUINTUS:
+            return { m_position.x + 6.0f, m_position.y + 4.0f, 22.0f, 32.0f };
+        case EnemyType::BOSS_ADVOCATE_TERTULLUS:
+            return { m_position.x + 6.0f, m_position.y + 4.0f, 20.0f, 30.0f };
+        case EnemyType::BOSS_PONTIUS_PILATE:
+            return { m_position.x + 6.0f, m_position.y + 4.0f, 22.0f, 32.0f };
     }
     return { m_position.x, m_position.y, 16.0f, 28.0f };
 }
@@ -281,6 +333,47 @@ bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
         }
     }
 
+    // 2e. Praetorian Guard Scutum Shield Defense
+    if (m_type == EnemyType::PRAETORIAN_GUARD) {
+        if (m_isShieldUp && !hitFromBehind) {
+            AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
+            return true;
+        }
+    }
+
+    // 2f. Praetor Prefect Quintus and Advocate Tertullus Armor Logic
+    if (m_type == EnemyType::BOSS_PREFECT_QUINTUS || m_type == EnemyType::BOSS_ADVOCATE_TERTULLUS) {
+        bool isVulnerable = isHighHit || (damage >= 4) || hitFromBehind;
+        if (!isVulnerable) {
+            AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
+            return true;
+        }
+    }
+
+    // 2g. Pontius Pilate Imperial Judgment Logic
+    if (m_type == EnemyType::BOSS_PONTIUS_PILATE) {
+        if (m_pilateState == PilateState::KNEEL_REMORSE || m_pilateState == PilateState::WASH_HANDS_CELESTIAL || m_pilateState == PilateState::DEFEATED_REDEEMED) {
+            return true;
+        }
+
+        // Striking the real Pilate breaks active teleport mirages!
+        if (m_mirageTimer > 0.0f) {
+            m_mirageTimer = 0.0f;
+            AudioManager::PlaySfx(SFX_CLONE_TELEPORT);
+        }
+
+        bool isVulnerable = (m_pilateState == PilateState::BASIN_SPLASH) ||
+                            (m_pilateState == PilateState::STYLUS_BEAM) ||
+                            isHighHit ||
+                            hitFromBehind ||
+                            (damage >= 4);
+
+        if (!isVulnerable) {
+            AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
+            return true;
+        }
+    }
+
     // 3. Archer Ducking Protection against standard mid-level shots
     if (m_type == EnemyType::ARCHER && m_isDucking) {
         if (!isHighHit) {
@@ -300,12 +393,19 @@ bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
             m_whipState = BossWhipState::KNEEL;
             m_cloneState = CloneState::KNEEL;
             m_judasState = JudasState::KNEEL;
+            m_pilateState = PilateState::KNEEL_REMORSE;
             m_whipTimer = 0.0f;
             m_witherTimer = 0.0f;
             m_judasTimer = 0.0f;
+            m_pilateTimer = 0.0f;
+            m_mirageTimer = 0.0f;
             m_attackHitboxActive = false;
             if (m_type == EnemyType::BOSS_JUDAS) {
                 AudioManager::PlaySfx(SFX_SILVER_SCATTER);
+            }
+            if (m_type == EnemyType::BOSS_PONTIUS_PILATE) {
+                AudioManager::PlaySfx(SFX_WATER_SPLASH);
+                AudioManager::PlaySfx(SFX_ANGEL_CHOIR);
             }
             AudioManager::PlaySfx(SFX_ENEMY_DEFEAT);
         }
@@ -1593,6 +1693,458 @@ void Enemy::Update(float dt, const Vector2& playerPos, Level& level) {
             }
             break;
         }
+
+        case EnemyType::SIGNIFER_GUARD: {
+            m_position.x += m_velocity.x * dt;
+            if (m_position.x <= m_patrolMinX) {
+                m_position.x = m_patrolMinX;
+                m_velocity.x = 35.0f;
+                m_facingLeft = false;
+            } else if (m_position.x >= m_patrolMaxX) {
+                m_position.x = m_patrolMaxX;
+                m_velocity.x = -35.0f;
+                m_facingLeft = true;
+            }
+
+            m_signiferRallyTimer += dt;
+            if (m_signiferRallyTimer >= 2.4f) {
+                m_signiferRallyTimer = 0.0f;
+                AudioManager::PlaySfx(SFX_ROMAN_HORN);
+                m_attackHitboxActive = true;
+                float sx = m_facingLeft ? (m_position.x - 14.0f) : (m_position.x + 18.0f);
+                m_attackHitbox = { sx, m_position.y + 6.0f, 22.0f, 20.0f };
+            } else if (m_signiferRallyTimer > 0.4f) {
+                m_attackHitboxActive = false;
+            }
+
+            if (m_animTimer >= 0.2f) {
+                m_animTimer = 0.0f;
+                m_animFrame = (m_animFrame + 1) % 2;
+            }
+            break;
+        }
+
+        case EnemyType::PRAETORIAN_GUARD: {
+            m_position.x += m_velocity.x * dt;
+            if (m_position.x <= m_patrolMinX) {
+                m_position.x = m_patrolMinX;
+                m_velocity.x = 30.0f;
+                m_facingLeft = false;
+            } else if (m_position.x >= m_patrolMaxX) {
+                m_position.x = m_patrolMaxX;
+                m_velocity.x = -30.0f;
+                m_facingLeft = true;
+            }
+
+            float dist = playerPos.x - m_position.x;
+            bool facing = (m_facingLeft && dist < 0) || (!m_facingLeft && dist > 0);
+            if (facing && fabsf(dist) < 65.0f && fabsf(playerPos.y - m_position.y) < 24.0f) {
+                m_isShieldUp = false;
+                m_attackHitboxActive = true;
+                float px = m_facingLeft ? (m_position.x - 18.0f) : (m_position.x + 20.0f);
+                m_attackHitbox = { px, m_position.y + 6.0f, 22.0f, 20.0f };
+            } else {
+                m_isShieldUp = true;
+                m_attackHitboxActive = false;
+            }
+
+            if (m_animTimer >= 0.2f) {
+                m_animTimer = 0.0f;
+                m_animFrame = (m_animFrame + 1) % 2;
+            }
+            break;
+        }
+
+        case EnemyType::IMPERIAL_LICTOR: {
+            m_position.x += m_velocity.x * dt;
+            if (m_position.x <= m_patrolMinX) {
+                m_position.x = m_patrolMinX;
+                m_velocity.x = 40.0f;
+                m_facingLeft = false;
+            } else if (m_position.x >= m_patrolMaxX) {
+                m_position.x = m_patrolMaxX;
+                m_velocity.x = -40.0f;
+                m_facingLeft = true;
+            }
+
+            float dist = playerPos.x - m_position.x;
+            bool facing = (m_facingLeft && dist < 0) || (!m_facingLeft && dist > 0);
+            if (facing && fabsf(dist) < 55.0f && fabsf(playerPos.y - m_position.y) < 24.0f) {
+                m_lictorSwinging = true;
+                m_attackHitboxActive = true;
+                float lx = m_facingLeft ? (m_position.x - 16.0f) : (m_position.x + 18.0f);
+                m_attackHitbox = { lx, m_position.y + 4.0f, 20.0f, 24.0f };
+            } else {
+                m_lictorSwinging = false;
+                m_attackHitboxActive = false;
+            }
+
+            if (m_animTimer >= 0.2f) {
+                m_animTimer = 0.0f;
+                m_animFrame = (m_animFrame + 1) % 2;
+            }
+            break;
+        }
+
+        case EnemyType::BOSS_PREFECT_QUINTUS: {
+            m_facingLeft = (playerPos.x < m_position.x);
+
+            if (m_hp <= 0) {
+                m_attackHitboxActive = false;
+                m_whipState = BossWhipState::KNEEL;
+                m_witherTimer += dt;
+                if (m_witherTimer >= 1.2f) {
+                    m_whipState = BossWhipState::WITHERING;
+                }
+                if (m_witherTimer >= 4.0f) {
+                    m_whipState = BossWhipState::DEAD_WITHERED;
+                }
+                break;
+            }
+
+            float dist = fabsf(playerPos.x - m_position.x);
+
+            switch (m_whipState) {
+                case BossWhipState::IDLE: {
+                    m_attackHitboxActive = false;
+                    m_prefectRushing = false;
+                    if (dist > 60.0f) {
+                        float dir = m_facingLeft ? -1.0f : 1.0f;
+                        m_position.x += dir * 65.0f * dt;
+                    }
+
+                    if (m_position.x < level.GetArenaMinX() + 16.0f) m_position.x = level.GetArenaMinX() + 16.0f;
+                    if (m_position.x > level.GetArenaMaxX() - 35.0f) m_position.x = level.GetArenaMaxX() - 35.0f;
+
+                    if (m_animTimer >= 0.18f) {
+                        m_animTimer = 0.0f;
+                        m_animFrame = (m_animFrame + 1) % 2;
+                    }
+
+                    m_whipTimer += dt;
+                    if (m_whipTimer >= 0.8f) {
+                        m_whipTimer = 0.0f;
+                        m_whipSwingsCount = (m_whipSwingsCount + 1) % 3;
+
+                        if (m_whipSwingsCount == 0) {
+                            m_whipState = BossWhipState::HORIZONTAL_CRACK; // Double Gladius Slash
+                            AudioManager::PlaySfx(SFX_MELEE_STRIKE);
+                        } else if (m_whipSwingsCount == 1) {
+                            m_whipState = BossWhipState::WINDUP; // Shield Rush charge across arena!
+                            m_prefectRushing = true;
+                            m_prefectRushTimer = 0.0f;
+                            AudioManager::PlaySfx(SFX_ROMAN_HORN);
+                        } else {
+                            m_whipState = BossWhipState::OVERHEAD_SLAM; // Leap down-thrust
+                            m_velocity.y = -330.0f;
+                            AudioManager::PlaySfx(SFX_HIGH_JUMP);
+                        }
+                    }
+                    break;
+                }
+
+                case BossWhipState::HORIZONTAL_CRACK: {
+                    m_whipTimer += dt;
+                    float dir = m_facingLeft ? -1.0f : 1.0f;
+                    m_position.x += dir * 45.0f * dt;
+
+                    if (m_whipTimer <= 0.30f) {
+                        m_attackHitboxActive = true;
+                        float sx = m_facingLeft ? (m_position.x - 18.0f) : (m_position.x + 22.0f);
+                        m_attackHitbox = { sx, m_position.y + 6.0f, 24.0f, 20.0f };
+                    } else {
+                        m_attackHitboxActive = false;
+                        if (m_whipTimer >= 0.45f) {
+                            m_whipState = BossWhipState::IDLE;
+                            m_whipTimer = 0.0f;
+                        }
+                    }
+                    break;
+                }
+
+                case BossWhipState::WINDUP: { // Shield Rush
+                    m_prefectRushTimer += dt;
+                    float rushSpeed = 190.0f;
+                    float dir = m_facingLeft ? -1.0f : 1.0f;
+                    m_position.x += dir * rushSpeed * dt;
+
+                    m_attackHitboxActive = true;
+                    float rx = m_facingLeft ? (m_position.x - 14.0f) : (m_position.x + 18.0f);
+                    m_attackHitbox = { rx, m_position.y + 6.0f, 20.0f, 22.0f };
+
+                    if (m_position.x <= level.GetArenaMinX() + 16.0f || m_position.x >= level.GetArenaMaxX() - 35.0f || m_prefectRushTimer >= 0.65f) {
+                        m_attackHitboxActive = false;
+                        m_prefectRushing = false;
+                        m_whipState = BossWhipState::IDLE;
+                        m_whipTimer = 0.0f;
+                    }
+                    break;
+                }
+
+                case BossWhipState::OVERHEAD_SLAM: {
+                    m_position.y += m_velocity.y * dt;
+                    m_velocity.y += GRAVITY * dt;
+                    if (m_velocity.y > MAX_FALL_SPEED) m_velocity.y = MAX_FALL_SPEED;
+
+                    float dir = m_facingLeft ? -1.0f : 1.0f;
+                    m_position.x += dir * 55.0f * dt;
+
+                    if (m_position.y >= GROUND_Y - 32.0f) {
+                        m_position.y = GROUND_Y - 32.0f;
+                        m_velocity.y = 0.0f;
+                        m_attackHitboxActive = true;
+                        m_attackHitbox = { m_position.x - 14.0f, m_position.y + 12.0f, 48.0f, 18.0f };
+                        m_whipTimer += dt;
+                        if (m_whipTimer >= 0.25f) {
+                            m_attackHitboxActive = false;
+                            m_whipState = BossWhipState::IDLE;
+                            m_whipTimer = 0.0f;
+                        }
+                    }
+                    break;
+                }
+
+                default:
+                    m_whipState = BossWhipState::IDLE;
+                    break;
+            }
+            break;
+        }
+
+        case EnemyType::BOSS_ADVOCATE_TERTULLUS: {
+            m_facingLeft = (playerPos.x < m_position.x);
+
+            if (m_hp <= 0) {
+                m_attackHitboxActive = false;
+                m_whipState = BossWhipState::KNEEL;
+                m_witherTimer += dt;
+                if (m_witherTimer >= 1.2f) {
+                    m_whipState = BossWhipState::WITHERING;
+                }
+                if (m_witherTimer >= 4.0f) {
+                    m_whipState = BossWhipState::DEAD_WITHERED;
+                }
+                break;
+            }
+
+            float dist = fabsf(playerPos.x - m_position.x);
+
+            switch (m_whipState) {
+                case BossWhipState::IDLE: {
+                    m_attackHitboxActive = false;
+                    if (dist < 75.0f) {
+                        float dir = m_facingLeft ? 1.0f : -1.0f;
+                        m_position.x += dir * 50.0f * dt;
+                    } else if (dist > 120.0f) {
+                        float dir = m_facingLeft ? -1.0f : 1.0f;
+                        m_position.x += dir * 50.0f * dt;
+                    }
+
+                    if (m_position.x < level.GetArenaMinX() + 16.0f) m_position.x = level.GetArenaMinX() + 16.0f;
+                    if (m_position.x > level.GetArenaMaxX() - 35.0f) m_position.x = level.GetArenaMaxX() - 35.0f;
+
+                    if (m_animTimer >= 0.18f) {
+                        m_animTimer = 0.0f;
+                        m_animFrame = (m_animFrame + 1) % 2;
+                    }
+
+                    m_tertullusTimer += dt;
+                    if (m_tertullusTimer >= 0.85f) {
+                        m_tertullusTimer = 0.0f;
+                        m_whipSwingsCount = (m_whipSwingsCount + 1) % 3;
+
+                        if (m_whipSwingsCount == 0) {
+                            m_whipState = BossWhipState::HORIZONTAL_CRACK; // Sonic Shout Wave
+                            m_justShouted = true;
+                            m_shoutPos = { m_position.x + (m_facingLeft ? -8.0f : 20.0f), m_position.y + 8.0f };
+                            m_shoutDir = m_facingLeft ? -1.0f : 1.0f;
+                            AudioManager::PlaySfx(SFX_ROMAN_HORN);
+                        } else if (m_whipSwingsCount == 1) {
+                            m_whipState = BossWhipState::WINDUP; // Decree Scroll throw
+                            m_justThrewDagger = true;
+                            m_daggerPos = { m_position.x + (m_facingLeft ? -8.0f : 20.0f), m_position.y + 10.0f };
+                            m_daggerVelX = (m_facingLeft ? -190.0f : 190.0f);
+                            AudioManager::PlaySfx(SFX_NAIL_THROW);
+                        } else {
+                            m_whipState = BossWhipState::OVERHEAD_SLAM; // Magistrate Rod Strike
+                            AudioManager::PlaySfx(SFX_FASCES_STRIKE);
+                        }
+                    }
+                    break;
+                }
+
+                case BossWhipState::HORIZONTAL_CRACK: {
+                    m_tertullusTimer += dt;
+                    if (m_tertullusTimer >= 0.35f) {
+                        m_whipState = BossWhipState::IDLE;
+                        m_tertullusTimer = 0.0f;
+                    }
+                    break;
+                }
+
+                case BossWhipState::WINDUP: {
+                    m_tertullusTimer += dt;
+                    if (m_tertullusTimer >= 0.32f) {
+                        m_whipState = BossWhipState::IDLE;
+                        m_tertullusTimer = 0.0f;
+                    }
+                    break;
+                }
+
+                case BossWhipState::OVERHEAD_SLAM: {
+                    m_tertullusTimer += dt;
+                    if (m_tertullusTimer <= 0.25f) {
+                        m_attackHitboxActive = true;
+                        float rx = m_facingLeft ? (m_position.x - 16.0f) : (m_position.x + 20.0f);
+                        m_attackHitbox = { rx, m_position.y + 6.0f, 22.0f, 22.0f };
+                    } else {
+                        m_attackHitboxActive = false;
+                        if (m_tertullusTimer >= 0.40f) {
+                            m_whipState = BossWhipState::IDLE;
+                            m_tertullusTimer = 0.0f;
+                        }
+                    }
+                    break;
+                }
+
+                default:
+                    m_whipState = BossWhipState::IDLE;
+                    break;
+            }
+            break;
+        }
+
+        case EnemyType::BOSS_PONTIUS_PILATE: {
+            if (m_mirageTimer > 0.0f) {
+                m_mirageTimer -= dt;
+            }
+
+            if (m_hp <= 0) {
+                m_attackHitboxActive = false;
+                m_mirageTimer = 0.0f;
+
+                if (m_pilateState != PilateState::WASH_HANDS_CELESTIAL && m_pilateState != PilateState::DEFEATED_REDEEMED) {
+                    m_pilateState = PilateState::KNEEL_REMORSE;
+                }
+
+                m_pilateTimer += dt;
+                if (m_pilateTimer >= 1.5f && m_pilateState == PilateState::KNEEL_REMORSE) {
+                    m_pilateState = PilateState::WASH_HANDS_CELESTIAL;
+                    AudioManager::PlaySfx(SFX_WATER_SPLASH);
+                }
+                if (m_pilateTimer >= 4.5f) {
+                    m_pilateState = PilateState::DEFEATED_REDEEMED;
+                }
+                break;
+            }
+
+            m_facingLeft = (playerPos.x < m_position.x);
+            float dist = fabsf(playerPos.x - m_position.x);
+
+            switch (m_pilateState) {
+                case PilateState::IDLE: {
+                    m_attackHitboxActive = false;
+                    if (dist > 70.0f) {
+                        float dir = m_facingLeft ? -1.0f : 1.0f;
+                        m_position.x += dir * 55.0f * dt;
+                    }
+
+                    if (m_position.x < level.GetArenaMinX() + 16.0f) m_position.x = level.GetArenaMinX() + 16.0f;
+                    if (m_position.x > level.GetArenaMaxX() - 35.0f) m_position.x = level.GetArenaMaxX() - 35.0f;
+
+                    if (m_animTimer >= 0.18f) {
+                        m_animTimer = 0.0f;
+                        m_animFrame = (m_animFrame + 1) % 2;
+                    }
+
+                    m_pilateTimer += dt;
+                    if (m_pilateTimer >= 0.75f) {
+                        m_pilateTimer = 0.0f;
+                        m_pilateAttackPattern = (m_pilateAttackPattern + 1) % 4;
+
+                        if (m_pilateAttackPattern == 0) {
+                            m_pilateState = PilateState::BASIN_SPLASH;
+                        } else if (m_pilateAttackPattern == 1) {
+                            m_pilateState = PilateState::STYLUS_BEAM;
+                        } else if (m_pilateAttackPattern == 2) {
+                            m_pilateState = PilateState::SWORD_SLASH;
+                            AudioManager::PlaySfx(SFX_MELEE_STRIKE);
+                        } else {
+                            m_pilateState = PilateState::TELEPORT_MIRAGE;
+                            AudioManager::PlaySfx(SFX_CLONE_TELEPORT);
+                            m_mirageTimer = 2.5f;
+                            float aMin = level.GetArenaMinX() + 20.0f;
+                            float aMax = level.GetArenaMaxX() - 40.0f;
+                            m_pilateMirage1 = { aMin + 30.0f, GROUND_Y - 32.0f };
+                            m_pilateMirage2 = { aMax - 30.0f, GROUND_Y - 32.0f };
+                        }
+                    }
+                    break;
+                }
+
+                case PilateState::BASIN_SPLASH: {
+                    m_pilateTimer += dt;
+                    if (m_pilateTimer >= 0.15f && !m_justSplashedWater) {
+                        m_justSplashedWater = true;
+                        m_waterSplashPos = { m_position.x + (m_facingLeft ? -10.0f : 24.0f), m_position.y + 12.0f };
+                        m_waterSplashDir = m_facingLeft ? -1.0f : 1.0f;
+                        AudioManager::PlaySfx(SFX_WATER_SPLASH);
+                    }
+                    if (m_pilateTimer >= 0.45f) {
+                        m_pilateState = PilateState::IDLE;
+                        m_pilateTimer = 0.0f;
+                        m_justSplashedWater = false;
+                    }
+                    break;
+                }
+
+                case PilateState::STYLUS_BEAM: {
+                    m_pilateTimer += dt;
+                    if (m_pilateTimer >= 0.18f && !m_justFiredStylus) {
+                        m_justFiredStylus = true;
+                        m_stylusPos = { m_position.x + (m_facingLeft ? -12.0f : 24.0f), GROUND_Y - 14.0f };
+                        m_stylusDir = m_facingLeft ? -1.0f : 1.0f;
+                        AudioManager::PlaySfx(SFX_PILATE_JUDGMENT);
+                    }
+                    if (m_pilateTimer >= 0.50f) {
+                        m_pilateState = PilateState::IDLE;
+                        m_pilateTimer = 0.0f;
+                        m_justFiredStylus = false;
+                    }
+                    break;
+                }
+
+                case PilateState::SWORD_SLASH: {
+                    m_pilateTimer += dt;
+                    if (m_pilateTimer <= 0.26f) {
+                        m_attackHitboxActive = true;
+                        float sx = m_facingLeft ? (m_position.x - 18.0f) : (m_position.x + 22.0f);
+                        m_attackHitbox = { sx, m_position.y + 6.0f, 26.0f, 22.0f };
+                    } else {
+                        m_attackHitboxActive = false;
+                        if (m_pilateTimer >= 0.40f) {
+                            m_pilateState = PilateState::IDLE;
+                            m_pilateTimer = 0.0f;
+                        }
+                    }
+                    break;
+                }
+
+                case PilateState::TELEPORT_MIRAGE: {
+                    m_pilateTimer += dt;
+                    if (m_pilateTimer >= 0.35f) {
+                        m_pilateState = PilateState::IDLE;
+                        m_pilateTimer = 0.0f;
+                    }
+                    break;
+                }
+
+                default:
+                    m_pilateState = PilateState::IDLE;
+                    break;
+            }
+            break;
+        }
     }
 }
 
@@ -2039,6 +2591,132 @@ void Enemy::Draw() {
             }
             break;
         }
+
+        case EnemyType::SIGNIFER_GUARD: {
+            SpriteId spr = (m_signiferRallyTimer <= 0.4f && m_attackHitboxActive) ? SPR_SIGNIFER_ATTACK : (m_animFrame == 0 ? SPR_SIGNIFER_WALK_0 : SPR_SIGNIFER_WALK_1);
+            if (hurtFlash) spr = SPR_SIGNIFER_HURT;
+            GraphicsManager::DrawDropShadow(m_position.x + 14.0f, m_position.y + 31.0f, 18.0f, 5.0f);
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+            break;
+        }
+
+        case EnemyType::PRAETORIAN_GUARD: {
+            SpriteId spr = !m_isShieldUp ? SPR_PRAETORIAN_SHIELD_BASH : (m_animFrame == 0 ? SPR_PRAETORIAN_WALK_0 : SPR_PRAETORIAN_WALK_1);
+            if (hurtFlash) spr = SPR_PRAETORIAN_HURT;
+            GraphicsManager::DrawDropShadow(m_position.x + 15.0f, m_position.y + 31.0f, 22.0f, 5.5f);
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+            break;
+        }
+
+        case EnemyType::IMPERIAL_LICTOR: {
+            SpriteId spr = m_lictorSwinging ? SPR_LICTOR_FASCES_SWING : (m_animFrame == 0 ? SPR_LICTOR_WALK_0 : SPR_LICTOR_WALK_1);
+            if (hurtFlash) spr = SPR_LICTOR_HURT;
+            GraphicsManager::DrawDropShadow(m_position.x + 14.0f, m_position.y + 31.0f, 18.0f, 5.0f);
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+            break;
+        }
+
+        case EnemyType::BOSS_PREFECT_QUINTUS: {
+            if (m_whipState == BossWhipState::DEAD_WITHERED) return;
+
+            SpriteId spr = SPR_PREFECT_IDLE;
+            if (m_whipState == BossWhipState::IDLE) {
+                spr = (m_animFrame == 0 ? SPR_PREFECT_WALK_0 : SPR_PREFECT_WALK_1);
+            } else if (m_whipState == BossWhipState::HORIZONTAL_CRACK) {
+                spr = SPR_PREFECT_SLASH;
+            } else if (m_whipState == BossWhipState::WINDUP) {
+                spr = SPR_PREFECT_SHIELD_RUSH;
+            } else if (m_whipState == BossWhipState::OVERHEAD_SLAM) {
+                spr = SPR_PREFECT_SLASH;
+            } else if (m_whipState == BossWhipState::KNEEL || m_whipState == BossWhipState::WITHERING) {
+                spr = SPR_PREFECT_KNEEL;
+            }
+
+            if (hurtFlash && m_whipState != BossWhipState::KNEEL && m_whipState != BossWhipState::WITHERING) {
+                spr = SPR_PREFECT_HURT;
+            }
+
+            if (m_prefectRushing) {
+                float dir = m_facingLeft ? 1.0f : -1.0f;
+                DrawLineEx({ m_position.x + dir * 16.0f, m_position.y + 18.0f }, { m_position.x, m_position.y + 18.0f }, 3.0f, Color{ 220, 180, 80, 190 });
+            }
+
+            GraphicsManager::DrawDropShadow(m_position.x + 16.0f, m_position.y + 35.0f, 26.0f, 6.0f);
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+            break;
+        }
+
+        case EnemyType::BOSS_ADVOCATE_TERTULLUS: {
+            if (m_whipState == BossWhipState::DEAD_WITHERED) return;
+
+            SpriteId spr = SPR_ADVOCATE_IDLE;
+            if (m_whipState == BossWhipState::IDLE) {
+                spr = (m_animFrame == 0 ? SPR_ADVOCATE_IDLE : SPR_ADVOCATE_CAST);
+            } else if (m_whipState == BossWhipState::HORIZONTAL_CRACK) {
+                spr = SPR_ADVOCATE_SHOUT;
+            } else if (m_whipState == BossWhipState::WINDUP) {
+                spr = SPR_ADVOCATE_CAST;
+            } else if (m_whipState == BossWhipState::OVERHEAD_SLAM) {
+                spr = SPR_ADVOCATE_SHOUT;
+            } else if (m_whipState == BossWhipState::KNEEL || m_whipState == BossWhipState::WITHERING) {
+                spr = SPR_ADVOCATE_KNEEL;
+            }
+
+            if (hurtFlash && m_whipState != BossWhipState::KNEEL && m_whipState != BossWhipState::WITHERING) {
+                spr = SPR_ADVOCATE_HURT;
+            }
+
+            GraphicsManager::DrawDropShadow(m_position.x + 16.0f, m_position.y + 35.0f, 24.0f, 6.0f);
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+            break;
+        }
+
+        case EnemyType::BOSS_PONTIUS_PILATE: {
+            if (m_pilateState == PilateState::DEFEATED_REDEEMED) return;
+
+            if (m_mirageTimer > 0.0f) {
+                float mirageAlpha = 0.65f + 0.2f * sinf(m_mirageTimer * 12.0f);
+                Color mirageTint = ColorAlpha(Color{ 180, 220, 255, 255 }, mirageAlpha);
+                SpriteId mSpr = (m_animFrame == 0 ? SPR_PILATE_WALK_0 : SPR_PILATE_WALK_1);
+
+                GraphicsManager::DrawDropShadow(m_pilateMirage1.x + 16.0f, m_pilateMirage1.y + 35.0f, 24.0f, 6.0f);
+                GraphicsManager::DrawSprite(mSpr, m_pilateMirage1.x, m_pilateMirage1.y, m_facingLeft, mirageTint);
+
+                GraphicsManager::DrawDropShadow(m_pilateMirage2.x + 16.0f, m_pilateMirage2.y + 35.0f, 24.0f, 6.0f);
+                GraphicsManager::DrawSprite(mSpr, m_pilateMirage2.x, m_pilateMirage2.y, !m_facingLeft, mirageTint);
+            }
+
+            SpriteId spr = SPR_PILATE_IDLE;
+            if (m_pilateState == PilateState::IDLE || m_pilateState == PilateState::APPROACH) {
+                spr = (m_animFrame == 0 ? SPR_PILATE_WALK_0 : SPR_PILATE_WALK_1);
+            } else if (m_pilateState == PilateState::BASIN_SPLASH) {
+                spr = SPR_PILATE_BASIN_SPLASH;
+            } else if (m_pilateState == PilateState::STYLUS_BEAM) {
+                spr = SPR_PILATE_STYLUS_BEAM;
+            } else if (m_pilateState == PilateState::SWORD_SLASH) {
+                spr = SPR_PILATE_SLASH;
+            } else if (m_pilateState == PilateState::TELEPORT_MIRAGE) {
+                spr = SPR_PILATE_TELEPORT;
+            } else if (m_pilateState == PilateState::KNEEL_REMORSE || m_pilateState == PilateState::WASH_HANDS_CELESTIAL) {
+                spr = SPR_PILATE_KNEEL_WASH;
+            }
+
+            if (hurtFlash && m_pilateState != PilateState::KNEEL_REMORSE && m_pilateState != PilateState::WASH_HANDS_CELESTIAL) {
+                spr = SPR_PILATE_HURT;
+            }
+
+            if (m_pilateState == PilateState::WASH_HANDS_CELESTIAL) {
+                float haloPulse = 1.0f + 0.15f * sinf(m_pilateTimer * 8.0f);
+                float haloR = 24.0f * haloPulse;
+                DrawCircleLines(static_cast<int>(m_position.x + 16.0f), static_cast<int>(m_position.y + 16.0f), haloR, COLOR_GOLD_BRIGHT);
+                DrawCircleLines(static_cast<int>(m_position.x + 16.0f), static_cast<int>(m_position.y + 16.0f), haloR + 6.0f, Color{ 255, 255, 230, 180 });
+                GraphicsManager::DrawSpark(m_position.x + 16.0f, m_position.y + 12.0f, 4.0f, COLOR_GOLD_BRIGHT);
+            }
+
+            GraphicsManager::DrawDropShadow(m_position.x + 16.0f, m_position.y + 35.0f, 26.0f, 6.0f);
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+            break;
+        }
     }
 }
 
@@ -2055,6 +2733,9 @@ void EnemyManager::Reset(int stageId) {
     m_silverCoins.clear();
     m_bloodShockwaves.clear();
     m_lightningStrikes.clear();
+    m_waterDroplets.clear();
+    m_stylusBlades.clear();
+    m_shoutWaves.clear();
     m_particles.clear();
     SpawnStageEnemies(stageId);
 }
@@ -2333,6 +3014,107 @@ void EnemyManager::SpawnStageEnemies(int stageId) {
         // 8. FINAL BOSS: Judas Iscariot (The Traitor - 30 Pieces of Silver, Shadow Dash, Remorse Defeat)
         // Arena: 1460 to 1860, Communion Table & overhead beams
         m_enemies.emplace_back(EnemyType::BOSS_JUDAS, Vector2{ 1660.0f, GROUND_Y - 32.0f }, 1480.0f, 1840.0f);
+    } else if (stageId == 10) {
+        // =========================================================================
+        // STAGE 10: VIA DOLOROSA / STREETS OF JUDGMENT
+        // Escorted under Roman garrison watch; Signifers, Praetorians, Lictors
+        // =========================================================================
+        // 1. Signifer Guard on cobblestone street
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 220.0f, GROUND_Y - 30.0f }, 150.0f, 280.0f);
+
+        // 2. Praetorian Guard near wooden barricade
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 420.0f, GROUND_Y - 32.0f }, 360.0f, 480.0f);
+
+        // 3. Archer on high wooden scaffold
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 600.0f, 6.0f * TILE_SIZE - 30.0f }, 600.0f, 600.0f);
+
+        // 4. Imperial Lictor swinging fasces rods
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 780.0f, GROUND_Y - 30.0f }, 720.0f, 840.0f);
+
+        // 5. Signifer Guard rallying legionaries
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 960.0f, GROUND_Y - 30.0f }, 900.0f, 1020.0f);
+
+        // 6. Praetorian Guard with scutum shield
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1160.0f, GROUND_Y - 32.0f }, 1100.0f, 1220.0f);
+
+        // 7. Imperial Lictor at garrison barricade
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 1380.0f, GROUND_Y - 30.0f }, 1320.0f, 1440.0f);
+
+        // 8. Archer on Roman stone arch
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1560.0f, 7.0f * TILE_SIZE - 30.0f }, 1560.0f, 1560.0f);
+
+        // 9. Praetorian Guard before judgment gate
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1760.0f, GROUND_Y - 32.0f }, 1700.0f, 1820.0f);
+
+        // 10. Imperial Lictor guarding the Praetor's gate
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 1960.0f, GROUND_Y - 30.0f }, 1900.0f, 2020.0f);
+
+        // 11. Stage 10 Boss: Praetor Prefect Quintus (Shield Rush & Gladius Flurry)
+        m_enemies.emplace_back(EnemyType::BOSS_PREFECT_QUINTUS, Vector2{ 2280.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
+    } else if (stageId == 11) {
+        // =========================================================================
+        // STAGE 11: THE GABBATHA COURT / LITHOSTROTOS TRIBUNAL
+        // Imperial Roman Courtroom, Mosaic Pavements, Eagle Pedestals
+        // =========================================================================
+        // 1. Imperial Lictor at outer basilica portico
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 240.0f, GROUND_Y - 30.0f }, 180.0f, 320.0f);
+
+        // 2. Praetorian Guard on mosaic floor
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 440.0f, GROUND_Y - 32.0f }, 380.0f, 500.0f);
+
+        // 3. Archer on high magistrate balcony
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 640.0f, 6.0f * TILE_SIZE - 30.0f }, 640.0f, 640.0f);
+
+        // 4. Signifer Guard beside imperial eagle standard
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 820.0f, GROUND_Y - 30.0f }, 760.0f, 900.0f);
+
+        // 5. Praetorian Guard patrolling magistrate terrace
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1020.0f, GROUND_Y - 32.0f }, 960.0f, 1100.0f);
+
+        // 6. Imperial Lictor in assembly hall
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 1240.0f, GROUND_Y - 30.0f }, 1180.0f, 1300.0f);
+
+        // 7. Archer on balustrade gallery
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1460.0f, 7.0f * TILE_SIZE - 30.0f }, 1460.0f, 1460.0f);
+
+        // 8. Signifer Guard rallying court sentries
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 1680.0f, GROUND_Y - 30.0f }, 1620.0f, 1760.0f);
+
+        // 9. Praetorian Guard before tribunal gate
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1960.0f, GROUND_Y - 32.0f }, 1900.0f, 2040.0f);
+
+        // 10. Stage 11 Boss: Imperial Advocate Tertullus (Sonic Shouts & Legal Decrees)
+        m_enemies.emplace_back(EnemyType::BOSS_ADVOCATE_TERTULLUS, Vector2{ 2280.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
+    } else if (stageId == 12) {
+        // =========================================================================
+        // STAGE 12: THE PRAETORIUM THRONE ROOM & THE BEMA OF PILATE
+        // Regal Imperial Palace, Gold Columns, Purple Velvet Canopies
+        // =========================================================================
+        // 1. Elite Praetorian Guard at imperial entrance
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 220.0f, GROUND_Y - 32.0f }, 160.0f, 280.0f);
+
+        // 2. Imperial Lictor on vestibule dais
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 420.0f, GROUND_Y - 30.0f }, 360.0f, 500.0f);
+
+        // 3. Signifer Guard with gilded eagle staff
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 620.0f, GROUND_Y - 30.0f }, 560.0f, 700.0f);
+
+        // 4. Praetorian Guard under purple velvet canopy
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 820.0f, GROUND_Y - 32.0f }, 760.0f, 900.0f);
+
+        // 5. Imperial Lictor before throne antechamber
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 1020.0f, GROUND_Y - 30.0f }, 960.0f, 1100.0f);
+
+        // 6. Signifer Guard at throne approach
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 1220.0f, GROUND_Y - 30.0f }, 1160.0f, 1300.0f);
+
+        // 7. Elite Praetorian Guard before Praetorium Throne Gate
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1380.0f, GROUND_Y - 32.0f }, 1320.0f, 1420.0f);
+
+        // 8. FINAL CAMPAIGN BOSS: Pontius Pilate (Imperial Governor of Judea)
+        // Handwashing Water Basin, Golden Stylus Judgment Decree, Mirage Teleport, Remorse Defeat!
+        // Arena: 1460 to 1860, Ivory Throne & Golden Basin
+        m_enemies.emplace_back(EnemyType::BOSS_PONTIUS_PILATE, Vector2{ 1660.0f, GROUND_Y - 32.0f }, 1480.0f, 1840.0f);
     } else {
         // =========================================================================
         // STAGE 1: JERUSALEM OUTSKIRTS & CITADEL APPROACH
@@ -2480,6 +3262,27 @@ void EnemyManager::Update(float dt, const Vector2& playerPos, Level& level, bool
                 m_lightningStrikes.push_back({ lightningPos, 0.0f, true });
                 AudioManager::PlaySfx(SFX_THUNDER);
             }
+
+            Vector2 waterPos;
+            float waterDir;
+            if (enemy.CheckAndClearJustSplashedWater(waterPos, waterDir)) {
+                // Splash 3 water droplets in an arc
+                m_waterDroplets.push_back({ waterPos, { waterDir * 140.0f, -120.0f }, true, 0.0f });
+                m_waterDroplets.push_back({ waterPos, { waterDir * 190.0f, -160.0f }, true, 0.0f });
+                m_waterDroplets.push_back({ waterPos, { waterDir * 90.0f, -180.0f }, true, 0.0f });
+            }
+
+            Vector2 stylusPos;
+            float stylusDir;
+            if (enemy.CheckAndClearJustFiredStylus(stylusPos, stylusDir)) {
+                m_stylusBlades.push_back({ stylusPos, stylusDir * 230.0f, true, 0.0f });
+            }
+
+            Vector2 shoutPos;
+            float shoutDir;
+            if (enemy.CheckAndClearJustShouted(shoutPos, shoutDir)) {
+                m_shoutWaves.push_back({ shoutPos, shoutDir * 160.0f, true, 0.0f, 1.0f });
+            }
         }
     }
 
@@ -2573,6 +3376,50 @@ void EnemyManager::Update(float dt, const Vector2& playerPos, Level& level, bool
         }
     }
     m_lightningStrikes.erase(std::remove_if(m_lightningStrikes.begin(), m_lightningStrikes.end(), [](const CaiaphasLightning& l) { return !l.active; }), m_lightningStrikes.end());
+
+    // 10. Update Water Droplets (Pilate water basin splashes)
+    for (auto& drop : m_waterDroplets) {
+        if (drop.active) {
+            drop.timer += dt;
+            drop.position.x += drop.velocity.x * dt;
+            drop.position.y += drop.velocity.y * dt;
+            drop.velocity.y += 380.0f * dt; // Gravity
+
+            if (drop.position.y >= GROUND_Y - 4.0f) {
+                drop.active = false;
+            }
+
+            if (drop.timer >= 2.0f || drop.position.x < playerPos.x - 300.0f || drop.position.x > playerPos.x + 300.0f) {
+                drop.active = false;
+            }
+        }
+    }
+    m_waterDroplets.erase(std::remove_if(m_waterDroplets.begin(), m_waterDroplets.end(), [](const WaterDroplet& d) { return !d.active; }), m_waterDroplets.end());
+
+    // 11. Update Stylus Blades (Pilate golden decree floor beam)
+    for (auto& sb : m_stylusBlades) {
+        if (sb.active) {
+            sb.timer += dt;
+            sb.position.x += sb.velocityX * dt;
+            if (sb.timer >= 2.0f || sb.position.x < playerPos.x - 320.0f || sb.position.x > playerPos.x + 320.0f) {
+                sb.active = false;
+            }
+        }
+    }
+    m_stylusBlades.erase(std::remove_if(m_stylusBlades.begin(), m_stylusBlades.end(), [](const StylusBlade& s) { return !s.active; }), m_stylusBlades.end());
+
+    // 12. Update Shout Waves (Advocate Tertullus sonic decree shout)
+    for (auto& sw : m_shoutWaves) {
+        if (sw.active) {
+            sw.timer += dt;
+            sw.position.x += sw.velocityX * dt;
+            sw.scale += dt * 0.8f;
+            if (sw.timer >= 1.6f || sw.position.x < playerPos.x - 300.0f || sw.position.x > playerPos.x + 300.0f) {
+                sw.active = false;
+            }
+        }
+    }
+    m_shoutWaves.erase(std::remove_if(m_shoutWaves.begin(), m_shoutWaves.end(), [](const ShoutWave& w) { return !w.active; }), m_shoutWaves.end());
 }
 
 void EnemyManager::CheckPlayerAttacks(Player& player) {
@@ -2720,6 +3567,43 @@ void EnemyManager::CheckPlayerDamage(Player& player, bool inBossFight) {
             }
         }
     }
+
+    // 8. Pilate Water Droplets
+    for (auto& drop : m_waterDroplets) {
+        if (drop.active) {
+            Rectangle dropBox = { drop.position.x - 4.0f, drop.position.y - 4.0f, 8.0f, 8.0f };
+            if (CheckCollisionRecs(playerBox, dropBox)) {
+                drop.active = false;
+                player.TakeDamage(1, inBossFight);
+                return;
+            }
+        }
+    }
+
+    // 9. Pilate Golden Stylus Blades
+    for (auto& sb : m_stylusBlades) {
+        if (sb.active) {
+            Rectangle sbBox = { sb.position.x - 6.0f, sb.position.y - 4.0f, 14.0f, 8.0f };
+            if (CheckCollisionRecs(playerBox, sbBox)) {
+                sb.active = false;
+                player.TakeDamage(1, inBossFight);
+                return;
+            }
+        }
+    }
+
+    // 10. Advocate Tertullus Shout Waves
+    for (auto& sw : m_shoutWaves) {
+        if (sw.active) {
+            float size = 16.0f * sw.scale;
+            Rectangle swBox = { sw.position.x - size * 0.5f, sw.position.y - size * 0.5f, size, size };
+            if (CheckCollisionRecs(playerBox, swBox)) {
+                sw.active = false;
+                player.TakeDamage(1, inBossFight);
+                return;
+            }
+        }
+    }
 }
 
 float EnemyManager::GetClosestEnemyDistance(const Vector2& playerPos, bool playerFacingLeft, bool& outInFront) const {
@@ -2847,6 +3731,35 @@ void EnemyManager::Draw() {
                 GraphicsManager::DrawSprite(SPR_CAIAPHAS_LIGHTNING, ls.position.x - 8.0f, GROUND_Y - 96.0f);
                 GraphicsManager::DrawSpark(ls.position.x, GROUND_Y - 4.0f, 6.0f, Color{ 255, 255, 200, 255 });
             }
+        }
+    }
+
+    // Draw Water Droplets (Pilate Basin Splash)
+    for (const auto& drop : m_waterDroplets) {
+        if (drop.active) {
+            DrawCircleGradient(static_cast<int>(drop.position.x), static_cast<int>(drop.position.y), 4.0f, COLOR_BASIN_WATER, Color{ 255, 255, 255, 0 });
+            GraphicsManager::DrawSprite(SPR_WATER_DROPLET, drop.position.x - 4.0f, drop.position.y - 4.0f);
+        }
+    }
+
+    // Draw Stylus Blades (Pilate Golden Stylus Beam)
+    for (const auto& sb : m_stylusBlades) {
+        if (sb.active) {
+            float dir = sb.velocityX > 0 ? 1.0f : -1.0f;
+            DrawLineEx({ sb.position.x - dir * 18.0f, sb.position.y }, { sb.position.x + dir * 6.0f, sb.position.y }, 3.0f, COLOR_PRAETORIUM_GOLD);
+            GraphicsManager::DrawSprite(SPR_GOLDEN_STYLUS_BLADE, sb.position.x - 7.0f, sb.position.y - 4.0f, sb.velocityX < 0);
+            GraphicsManager::DrawSpark(sb.position.x, sb.position.y, 2.5f, COLOR_GOLD_BRIGHT);
+        }
+    }
+
+    // Draw Shout Waves (Advocate Tertullus Sonic Wave)
+    for (const auto& sw : m_shoutWaves) {
+        if (sw.active) {
+            float alphaPct = 1.0f - (sw.timer / 1.6f);
+            if (alphaPct < 0.0f) alphaPct = 0.0f;
+            Color waveColor = Color{ 240, 230, 180, static_cast<unsigned char>(alphaPct * 200) };
+            DrawCircleLines(static_cast<int>(sw.position.x), static_cast<int>(sw.position.y), 10.0f * sw.scale, waveColor);
+            GraphicsManager::DrawSprite(SPR_SHOUT_WAVE, sw.position.x - 8.0f, sw.position.y - 8.0f, sw.velocityX < 0);
         }
     }
 

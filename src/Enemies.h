@@ -25,7 +25,27 @@ enum class EnemyType {
     LEVITE_ENFORCER,
     BOSS_BARABBAS,
     BOSS_CAIAPHAS,
-    BOSS_JUDAS
+    BOSS_JUDAS,
+    // Mission 4:
+    SIGNIFER_GUARD,
+    PRAETORIAN_GUARD,
+    IMPERIAL_LICTOR,
+    BOSS_PREFECT_QUINTUS,
+    BOSS_ADVOCATE_TERTULLUS,
+    BOSS_PONTIUS_PILATE
+};
+
+enum class PilateState {
+    IDLE,
+    APPROACH,
+    BASIN_SPLASH,
+    STYLUS_BEAM,
+    TELEPORT_MIRAGE,
+    SWORD_SLASH,
+    RECOVERY,
+    KNEEL_REMORSE,
+    WASH_HANDS_CELESTIAL,
+    DEFEATED_REDEEMED
 };
 
 enum class JudasState {
@@ -151,6 +171,28 @@ struct CaiaphasLightning {
     bool active;
 };
 
+struct WaterDroplet {
+    Vector2 position;
+    Vector2 velocity;
+    bool active;
+    float timer;
+};
+
+struct StylusBlade {
+    Vector2 position;
+    float velocityX;
+    bool active;
+    float timer;
+};
+
+struct ShoutWave {
+    Vector2 position;
+    float velocityX;
+    bool active;
+    float timer;
+    float scale;
+};
+
 class Enemy {
 public:
     Enemy(EnemyType type, Vector2 pos, float patrolMinX, float patrolMaxX);
@@ -172,10 +214,16 @@ public:
                m_type == EnemyType::BOSS_EVIL_CLONE ||
                m_type == EnemyType::BOSS_BARABBAS ||
                m_type == EnemyType::BOSS_CAIAPHAS ||
-               m_type == EnemyType::BOSS_JUDAS;
+               m_type == EnemyType::BOSS_JUDAS ||
+               m_type == EnemyType::BOSS_PREFECT_QUINTUS ||
+               m_type == EnemyType::BOSS_ADVOCATE_TERTULLUS ||
+               m_type == EnemyType::BOSS_PONTIUS_PILATE;
     }
     bool IsDefeated() const {
         if (IsBoss()) {
+            if (m_type == EnemyType::BOSS_PONTIUS_PILATE) {
+                return m_hp <= 0 && (m_pilateState == PilateState::DEFEATED_REDEEMED || m_pilateState == PilateState::KNEEL_REMORSE || m_pilateState == PilateState::WASH_HANDS_CELESTIAL);
+            }
             if (m_type == EnemyType::BOSS_EVIL_CLONE) {
                 return m_hp <= 0 && (m_cloneState == CloneState::DEAD_WITHERED || m_cloneState == CloneState::KNEEL);
             }
@@ -188,6 +236,9 @@ public:
     }
     bool IsInDefeatSequence() const {
         if (!IsBoss()) return false;
+        if (m_type == EnemyType::BOSS_PONTIUS_PILATE) {
+            return m_hp <= 0 || m_pilateState == PilateState::KNEEL_REMORSE || m_pilateState == PilateState::WASH_HANDS_CELESTIAL || m_pilateState == PilateState::DEFEATED_REDEEMED;
+        }
         if (m_type == EnemyType::BOSS_EVIL_CLONE) {
             return m_hp <= 0 || m_cloneState == CloneState::KNEEL || m_cloneState == CloneState::WITHERING || m_cloneState == CloneState::DEAD_WITHERED;
         }
@@ -198,6 +249,9 @@ public:
     }
     bool IsWithering() const {
         if (!IsBoss()) return false;
+        if (m_type == EnemyType::BOSS_PONTIUS_PILATE) {
+            return m_pilateState == PilateState::KNEEL_REMORSE || m_pilateState == PilateState::WASH_HANDS_CELESTIAL || m_pilateState == PilateState::DEFEATED_REDEEMED;
+        }
         if (m_type == EnemyType::BOSS_EVIL_CLONE) {
             return m_cloneState == CloneState::KNEEL || m_cloneState == CloneState::WITHERING || m_cloneState == CloneState::DEAD_WITHERED;
         }
@@ -208,6 +262,9 @@ public:
     }
     bool IsWitheredDead() const {
         if (!IsBoss()) return false;
+        if (m_type == EnemyType::BOSS_PONTIUS_PILATE) {
+            return m_pilateState == PilateState::DEFEATED_REDEEMED;
+        }
         if (m_type == EnemyType::BOSS_EVIL_CLONE) {
             return m_cloneState == CloneState::DEAD_WITHERED;
         }
@@ -236,13 +293,20 @@ public:
     BossWhipState GetBossWhipState() const { return m_whipState; }
     CloneState GetCloneState() const { return m_cloneState; }
     JudasState GetJudasState() const { return m_judasState; }
+    PilateState GetPilateState() const { return m_pilateState; }
+    bool IsPilateMirageActive() const { return m_mirageTimer > 0.0f; }
+    Vector2 GetPilateMirage1() const { return m_pilateMirage1; }
+    Vector2 GetPilateMirage2() const { return m_pilateMirage2; }
+
     void StartArenaCombat() {
         m_bossPhase = BossPhase::PHASE_2_ARENA;
         m_whipState = BossWhipState::IDLE;
         m_cloneState = CloneState::IDLE;
         m_judasState = JudasState::IDLE;
+        m_pilateState = PilateState::IDLE;
         m_whipTimer = 0.0f;
         m_stateTimer = 0.0f;
+        m_pilateTimer = 0.0f;
         m_attackHitboxActive = false;
     }
 
@@ -302,6 +366,36 @@ public:
         if (m_justCastLightning) {
             m_justCastLightning = false;
             outPos = m_lightningPos;
+            return true;
+        }
+        return false;
+    }
+
+    bool CheckAndClearJustSplashedWater(Vector2& outPos, float& outDir) {
+        if (m_justSplashedWater) {
+            m_justSplashedWater = false;
+            outPos = m_waterSplashPos;
+            outDir = m_waterSplashDir;
+            return true;
+        }
+        return false;
+    }
+
+    bool CheckAndClearJustFiredStylus(Vector2& outPos, float& outDir) {
+        if (m_justFiredStylus) {
+            m_justFiredStylus = false;
+            outPos = m_stylusPos;
+            outDir = m_stylusDir;
+            return true;
+        }
+        return false;
+    }
+
+    bool CheckAndClearJustShouted(Vector2& outPos, float& outDir) {
+        if (m_justShouted) {
+            m_justShouted = false;
+            outPos = m_shoutPos;
+            outDir = m_shoutDir;
             return true;
         }
         return false;
@@ -395,6 +489,35 @@ protected:
     Vector2 m_lightningPos = { 0, 0 };
     float m_caiaphasCastTimer = 0.0f;
 
+    // Mission 4: Pontius Pilate specific
+    PilateState m_pilateState = PilateState::IDLE;
+    float m_pilateTimer = 0.0f;
+    int m_pilateAttackPattern = 0;
+    Vector2 m_pilateMirage1 = { 0, 0 };
+    Vector2 m_pilateMirage2 = { 0, 0 };
+    float m_mirageTimer = 0.0f;
+    bool m_justSplashedWater = false;
+    Vector2 m_waterSplashPos = { 0, 0 };
+    float m_waterSplashDir = 0.0f;
+    bool m_justFiredStylus = false;
+    Vector2 m_stylusPos = { 0, 0 };
+    float m_stylusDir = 0.0f;
+
+    // Mission 4: Advocate Tertullus specific
+    bool m_justShouted = false;
+    Vector2 m_shoutPos = { 0, 0 };
+    float m_shoutDir = 0.0f;
+    float m_tertullusTimer = 0.0f;
+
+    // Mission 4: Prefect Quintus specific
+    float m_prefectRushTimer = 0.0f;
+    bool m_prefectRushing = false;
+
+    // Mission 4: Regular enemies specific
+    float m_lictorSwingTimer = 0.0f;
+    bool m_lictorSwinging = false;
+    float m_signiferRallyTimer = 0.0f;
+
     // Boss specific
     BossPhase m_bossPhase;
     BossWhipState m_whipState;
@@ -428,6 +551,9 @@ public:
     const std::vector<SilverProjectile>& GetSilverCoins() const { return m_silverCoins; }
     const std::vector<BloodShockwave>& GetBloodShockwaves() const { return m_bloodShockwaves; }
     const std::vector<CaiaphasLightning>& GetLightningStrikes() const { return m_lightningStrikes; }
+    const std::vector<WaterDroplet>& GetWaterDroplets() const { return m_waterDroplets; }
+    const std::vector<StylusBlade>& GetStylusBlades() const { return m_stylusBlades; }
+    const std::vector<ShoutWave>& GetShoutWaves() const { return m_shoutWaves; }
 
 private:
     std::vector<Enemy> m_enemies;
@@ -437,6 +563,9 @@ private:
     std::vector<SilverProjectile> m_silverCoins;
     std::vector<BloodShockwave> m_bloodShockwaves;
     std::vector<CaiaphasLightning> m_lightningStrikes;
+    std::vector<WaterDroplet> m_waterDroplets;
+    std::vector<StylusBlade> m_stylusBlades;
+    std::vector<ShoutWave> m_shoutWaves;
     std::vector<DeathParticle> m_particles;
 
     void SpawnExplosion(Vector2 pos, Color mainColor);

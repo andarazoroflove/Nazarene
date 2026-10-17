@@ -112,5 +112,18 @@ inline const Color COLOR_CENACLE_BEAM     = Color{  95,  60,  35, 255 };
 inline const Color COLOR_CENACLE_CANDLE   = Color{ 255, 220, 110, 255 };
 inline const Color COLOR_CAIAPHAS_PURPLE  = Color{ 110,  20,  95, 255 };
 
+// Mission 4: The Judgment of Pontius Pilate (Via Dolorosa, Gabbatha, and Praetorium)
+inline const Color COLOR_PRAETORIUM_STONE  = Color{ 185, 175, 160, 255 };
+inline const Color COLOR_PRAETORIUM_PURPLE = Color{  90,  15,  75, 255 };
+inline const Color COLOR_PRAETORIUM_GOLD   = Color{ 235, 195,  55, 255 };
+inline const Color COLOR_PILATE_TOGA       = Color{ 245, 242, 240, 255 };
+inline const Color COLOR_PILATE_CRIMSON    = Color{ 175,  22,  38, 255 };
+inline const Color COLOR_BASIN_WATER       = Color{  75, 165, 235, 220 };
+inline const Color COLOR_BASIN_SILVER      = Color{ 210, 225, 240, 255 };
+inline const Color COLOR_FASCES_WOOD       = Color{ 135,  85,  45, 255 };
+inline const Color COLOR_EAGLE_BRONZE      = Color{ 205, 145,  35, 255 };
+inline const Color COLOR_COURT_MOSAIC_RED  = Color{ 150,  35,  45, 255 };
+inline const Color COLOR_COURT_MOSAIC_GOLD = Color{ 215, 180,  65, 255 };
+
 
 

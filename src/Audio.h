@@ -33,6 +33,10 @@ enum SoundEffect {
     SFX_SILVER_SCATTER,
     SFX_COIN_RICOCHET,
     SFX_TRAITOR_DASH,
+    SFX_ROMAN_HORN,
+    SFX_WATER_SPLASH,
+    SFX_FASCES_STRIKE,
+    SFX_PILATE_JUDGMENT,
     SFX_COUNT
 };
 
@@ -51,10 +55,12 @@ private:
     static Sound s_stageMusicM1;
     static Sound s_stageMusicM2;
     static Sound s_stageMusicM3;
+    static Sound s_stageMusicM4;
     static Sound s_bonusMusic;
     static Sound s_bossMusic;
     static Sound s_evilCloneMusic;
     static Sound s_judasBossMusic;
+    static Sound s_pilateBossMusic;
     static Sound s_continueMusic;
     static bool s_musicEnabled;
     static bool s_initialized;
@@ -64,10 +70,12 @@ private:
     static Wave GenerateStageMusicWave();
     static Wave GenerateStage2MusicWave();
     static Wave GenerateStage3MusicWave();
+    static Wave GenerateStage4MusicWave();
     static Wave GenerateBonusMusicWave();
     static Wave GenerateBossMusicWave();
     static Wave GenerateEvilCloneMusicWave();
     static Wave GenerateJudasBossMusicWave();
+    static Wave GeneratePilateBossMusicWave();
     static Wave GenerateContinueMusicWave();
 };
 

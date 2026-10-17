@@ -47,6 +47,8 @@ set(SOURCE_FILES
     src/Mission2Graphics.cpp
     src/Mission3Graphics.h
     src/Mission3Graphics.cpp
+    src/Mission4Graphics.h
+    src/Mission4Graphics.cpp
 )
 
 add_executable(Nazarene ${SOURCE_FILES})

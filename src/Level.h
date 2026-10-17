@@ -76,5 +76,8 @@ private:
     void BuildSiloamBazaar();
     void BuildMountZionPalace();
     void BuildUpperRoomCenacle();
+    void BuildViaDolorosa();
+    void BuildTheGabbathaCourt();
+    void BuildPraetoriumThrone();
 };
 

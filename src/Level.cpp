@@ -66,6 +66,24 @@ void Level::Reset(int stageId) {
         m_arenaMinX = 1460.0f;
         m_arenaMaxX = 1860.0f;
         BuildUpperRoomCenacle();
+    } else if (m_stageId == 10) {
+        // Stage 10: Via Dolorosa / Streets of Judgment
+        m_arenaGateX = ARENA_GATE_X; // 2120.0f
+        m_arenaMinX = ARENA_MIN_X;   // 2140.0f
+        m_arenaMaxX = ARENA_MAX_X;   // 2540.0f
+        BuildViaDolorosa();
+    } else if (m_stageId == 11) {
+        // Stage 11: The Gabbatha Courtroom / Lithostrotos
+        m_arenaGateX = ARENA_GATE_X; // 2120.0f
+        m_arenaMinX = ARENA_MIN_X;   // 2140.0f
+        m_arenaMaxX = ARENA_MAX_X;   // 2540.0f
+        BuildTheGabbathaCourt();
+    } else if (m_stageId == 12) {
+        // Stage 12: The Praetorium Throne Room & Bema of Pilate
+        m_arenaGateX = 1440.0f;
+        m_arenaMinX = 1460.0f;
+        m_arenaMaxX = 1860.0f;
+        BuildPraetoriumThrone();
     } else {
         m_arenaGateX = ARENA_GATE_X;
         m_arenaMinX = ARENA_MIN_X;
@@ -583,7 +601,7 @@ void Level::Draw(float cameraX) {
             float drawY = ty * TILE_SIZE;
 
             // Handle gate portcullis vertical slide
-            if (tx == gateCol + 1 && id == TILE_GATE_BARS) {
+            if (tx == gateCol + 1 && (id == TILE_GATE_BARS || id == TILE_CAIAPHAS_GATE || id == TILE_DOLOROSA_GATE)) {
                 drawY -= m_gateOpenOffsetY;
             }
 
@@ -610,6 +628,12 @@ void Level::Draw(float cameraX) {
                 pickupSpr = SPR_PASSOVER_MATZOT;
             } else if (m_stageId == 9) {
                 pickupSpr = SPR_HOLY_GRAIL;
+            } else if (m_stageId == 10) {
+                pickupSpr = SPR_ROMAN_SCROLL;
+            } else if (m_stageId == 11) {
+                pickupSpr = SPR_CAESAR_SEAL;
+            } else if (m_stageId == 12) {
+                pickupSpr = SPR_PILATE_EWER;
             }
             GraphicsManager::DrawSprite(pickupSpr, b.position.x, b.position.y + floatY);
 
@@ -1408,6 +1432,357 @@ void Level::BuildUpperRoomCenacle() {
         }
     }
 }
+
+void Level::BuildViaDolorosa() {
+    // 1. Initialize tilemap with air
+    for (int y = 0; y < LEVEL_TILES_Y; ++y) {
+        for (int x = 0; x < LEVEL_TILES_X; ++x) {
+            m_tilemap[y][x] = TILE_AIR;
+        }
+    }
+
+    // 2. Cobblestone Paved Roman Road
+    for (int x = 0; x < LEVEL_TILES_X; ++x) {
+        m_tilemap[12][x] = TILE_DOLOROSA_STONE_SURFACE;
+        m_tilemap[13][x] = TILE_DOLOROSA_STONE_SUB;
+    }
+
+    auto AddScaffoldPlatform = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_DOLOROSA_BALCONY;
+        }
+    };
+
+    auto AddAwningPlatform = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_DOLOROSA_BALCONY;
+        }
+    };
+
+    auto AddBarricadeBlock = [this](int tileX, int tileY) {
+        m_tilemap[tileY][tileX] = TILE_DOLOROSA_BARRICADE;
+        m_crates.push_back({ (float)tileX * TILE_SIZE, (float)tileY * TILE_SIZE, (float)TILE_SIZE, (float)TILE_SIZE });
+    };
+
+    auto AddArch = [this](int tileX, int topTileY, int groundTileY) {
+        m_tilemap[topTileY][tileX] = TILE_DOLOROSA_ARCH_ECCE;
+        for (int ty = topTileY + 1; ty < groundTileY; ++ty) {
+            m_tilemap[ty][tileX] = TILE_DOLOROSA_STONE_SUB;
+        }
+    };
+
+    // === SECTION 1: Outer Roman Street & Aqueducts (Tiles 0 - 35) ===
+    AddArch(6, 4, 12);
+    AddArch(16, 4, 12);
+    AddArch(28, 4, 12);
+    m_tilemap[11][10] = TILE_DOLOROSA_TORCH_BRACKET;
+    m_tilemap[11][22] = TILE_DOLOROSA_TORCH_BRACKET;
+    AddBarricadeBlock(12, 11);
+    AddBarricadeBlock(26, 11);
+
+    AddScaffoldPlatform(14, 26, 8);
+    // Roman Scroll 1: High scaffolding above street barricade
+    m_baskets.push_back({ { 20.0f * TILE_SIZE, 6.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // === SECTION 2: Merchant Awnings & Barricaded Squares (Tiles 36 - 75) ===
+    AddArch(40, 3, 12);
+    AddArch(52, 3, 12);
+    AddArch(66, 3, 12);
+    m_tilemap[11][44] = TILE_DOLOROSA_TORCH_BRACKET;
+    m_tilemap[11][60] = TILE_DOLOROSA_TORCH_BRACKET;
+
+    AddScaffoldPlatform(38, 64, 9);
+    AddAwningPlatform(44, 58, 6);
+    AddBarricadeBlock(37, 11);
+    AddBarricadeBlock(43, 8);
+
+    // Roman Scroll 2: High merchant awning
+    m_baskets.push_back({ { 50.0f * TILE_SIZE, 4.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // === SECTION 3: Antonia Garrison Checkpoint (Tiles 76 - 115) ===
+    AddArch(80, 4, 12);
+    AddArch(94, 4, 12);
+    AddArch(108, 4, 12);
+    m_tilemap[11][84] = TILE_DOLOROSA_TORCH_BRACKET;
+    m_tilemap[11][102] = TILE_DOLOROSA_TORCH_BRACKET;
+
+    AddScaffoldPlatform(78, 106, 8);
+    AddBarricadeBlock(77, 11);
+    AddBarricadeBlock(90, 11);
+    AddBarricadeBlock(104, 11);
+
+    // Roman Scroll 3: Upper garrison scaffold
+    m_baskets.push_back({ { 92.0f * TILE_SIZE, 6.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // === SECTION 4: Praetor's Pavillion Approach (Tiles 116 - 132) ===
+    AddBarricadeBlock(118, 11);
+    AddBarricadeBlock(124, 11);
+    m_tilemap[11][120] = TILE_DOLOROSA_TORCH_BRACKET;
+    m_tilemap[11][128] = TILE_DOLOROSA_TORCH_BRACKET;
+
+    // Roman Scroll 4: Street barricade before the judgment gate
+    m_baskets.push_back({ { 122.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    // Arena Gate at Tile 132 (X = 2120)
+    int gateTileX = static_cast<int>(m_arenaGateX / TILE_SIZE);
+    for (int ty = 2; ty <= 11; ++ty) {
+        m_tilemap[ty][gateTileX] = TILE_GATE_FRAME;
+        m_tilemap[ty][gateTileX + 1] = TILE_GATE_BARS;
+        m_tilemap[ty][gateTileX + 2] = TILE_GATE_FRAME;
+    }
+    m_tilemap[11][gateTileX - 1] = TILE_DOLOROSA_TORCH_BRACKET;
+
+    // === SECTION 5: Praetor Prefect Quintus Arena (Tiles 135 - 158) ===
+    AddArch(138, 3, 12);
+    AddArch(148, 3, 12);
+    AddArch(156, 3, 12);
+    AddScaffoldPlatform(140, 154, 7);
+    m_tilemap[11][142] = TILE_DOLOROSA_TORCH_BRACKET;
+    m_tilemap[11][152] = TILE_DOLOROSA_TORCH_BRACKET;
+
+    int backWallX = static_cast<int>(m_arenaMaxX / TILE_SIZE);
+    if (backWallX < LEVEL_TILES_X) {
+        for (int ty = 0; ty <= 11; ++ty) {
+            m_tilemap[ty][backWallX] = TILE_GATE_FRAME;
+        }
+    }
+}
+
+void Level::BuildTheGabbathaCourt() {
+    // 1. Initialize tilemap with air
+    for (int y = 0; y < LEVEL_TILES_Y; ++y) {
+        for (int x = 0; x < LEVEL_TILES_X; ++x) {
+            m_tilemap[y][x] = TILE_AIR;
+        }
+    }
+
+    // 2. Mosaic Tesserae Pavement Floor (Lithostrotos)
+    for (int x = 0; x < LEVEL_TILES_X; ++x) {
+        m_tilemap[12][x] = TILE_COURT_MOSAIC_SURFACE;
+        m_tilemap[13][x] = TILE_COURT_MOSAIC_SUB;
+    }
+
+    auto AddBalconyPlatform = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_COURT_BALUSTRADE;
+        }
+    };
+
+    auto AddBenchBlock = [this](int tileX, int tileY) {
+        m_tilemap[tileY][tileX] = TILE_COURT_BENCH_WOOD;
+        m_crates.push_back({ (float)tileX * TILE_SIZE, (float)tileY * TILE_SIZE, (float)TILE_SIZE, (float)TILE_SIZE });
+    };
+
+    auto AddCourtColumn = [this](int tileX, int topTileY, int groundTileY) {
+        m_tilemap[topTileY][tileX] = TILE_COURT_COLUMN_HEAD;
+        for (int ty = topTileY + 1; ty < groundTileY; ++ty) {
+            m_tilemap[ty][tileX] = TILE_COURT_COLUMN_MID;
+        }
+    };
+
+    // === SECTION 1: Outer Basilica Portico (Tiles 0 - 35) ===
+    AddCourtColumn(6, 3, 12);
+    AddCourtColumn(18, 3, 12);
+    AddCourtColumn(30, 3, 12);
+    m_tilemap[11][10] = TILE_COURT_EAGLE_PEDESTAL;
+    m_tilemap[11][24] = TILE_COURT_EAGLE_PEDESTAL;
+    AddBenchBlock(12, 11);
+    AddBenchBlock(22, 11);
+
+    AddBalconyPlatform(10, 26, 8);
+    // Caesar Seal 1: Outer basilica magistrate bench
+    m_baskets.push_back({ { 16.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    // === SECTION 2: Lithostrotos Great Tribunal (Tiles 36 - 75) ===
+    AddCourtColumn(40, 2, 12);
+    AddCourtColumn(54, 2, 12);
+    AddCourtColumn(68, 2, 12);
+    m_tilemap[11][44] = TILE_COURT_EAGLE_PEDESTAL;
+    m_tilemap[11][62] = TILE_COURT_EAGLE_PEDESTAL;
+
+    AddBalconyPlatform(38, 70, 9);
+    AddBalconyPlatform(46, 62, 6);
+    AddBenchBlock(37, 11);
+    AddBenchBlock(45, 8);
+
+    // Caesar Seal 2: High tribunal balcony
+    m_baskets.push_back({ { 54.0f * TILE_SIZE, 4.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // === SECTION 3: Advocate Assembly Hall (Tiles 76 - 115) ===
+    AddCourtColumn(82, 3, 12);
+    AddCourtColumn(96, 3, 12);
+    AddCourtColumn(110, 3, 12);
+    m_tilemap[11][88] = TILE_COURT_EAGLE_PEDESTAL;
+    m_tilemap[11][104] = TILE_COURT_EAGLE_PEDESTAL;
+
+    AddBalconyPlatform(80, 108, 8);
+    AddBenchBlock(79, 11);
+    AddBenchBlock(92, 11);
+    AddBenchBlock(106, 11);
+
+    // Caesar Seal 3: Assembly hall gallery
+    m_baskets.push_back({ { 94.0f * TILE_SIZE, 6.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // === SECTION 4: Court Gate Approach (Tiles 116 - 132) ===
+    AddBenchBlock(118, 11);
+    AddBenchBlock(126, 11);
+    m_tilemap[11][122] = TILE_COURT_EAGLE_PEDESTAL;
+
+    // Caesar Seal 4: Magistrate bench before the tribunal gate
+    m_baskets.push_back({ { 124.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    // Tribunal Gate at Tile 132 (X = 2120)
+    int gateTileX = static_cast<int>(m_arenaGateX / TILE_SIZE);
+    for (int ty = 2; ty <= 11; ++ty) {
+        m_tilemap[ty][gateTileX] = TILE_GATE_FRAME;
+        m_tilemap[ty][gateTileX + 1] = TILE_GATE_BARS;
+        m_tilemap[ty][gateTileX + 2] = TILE_GATE_FRAME;
+    }
+    m_tilemap[11][gateTileX - 1] = TILE_COURT_EAGLE_PEDESTAL;
+
+    // === SECTION 5: Imperial Advocate Tertullus Arena (Tiles 135 - 158) ===
+    AddCourtColumn(138, 2, 12);
+    AddCourtColumn(148, 2, 12);
+    AddCourtColumn(156, 2, 12);
+    AddBalconyPlatform(140, 154, 7);
+    m_tilemap[11][142] = TILE_COURT_EAGLE_PEDESTAL;
+    m_tilemap[11][152] = TILE_COURT_EAGLE_PEDESTAL;
+
+    int backWallX = static_cast<int>(m_arenaMaxX / TILE_SIZE);
+    if (backWallX < LEVEL_TILES_X) {
+        for (int ty = 0; ty <= 11; ++ty) {
+            m_tilemap[ty][backWallX] = TILE_GATE_FRAME;
+        }
+    }
+}
+
+void Level::BuildPraetoriumThrone() {
+    // 1. Initialize tilemap with air
+    for (int y = 0; y < LEVEL_TILES_Y; ++y) {
+        for (int x = 0; x < LEVEL_TILES_X; ++x) {
+            m_tilemap[y][x] = TILE_AIR;
+        }
+    }
+
+    // 2. Imperial Praetorium Marble Floor
+    for (int x = 0; x < LEVEL_TILES_X; ++x) {
+        m_tilemap[12][x] = TILE_THRONE_MARBLE_SURFACE;
+        m_tilemap[13][x] = TILE_THRONE_MARBLE_SUB;
+    }
+
+    auto AddDaisPlatform = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_THRONE_DAIS_STEP;
+        }
+    };
+
+    auto AddCanopyPlatform = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_THRONE_VELVET_CANOPY;
+        }
+    };
+
+    auto AddBrazierBlock = [this](int tileX, int tileY) {
+        m_tilemap[tileY][tileX] = TILE_THRONE_CANDELABRA;
+        m_crates.push_back({ (float)tileX * TILE_SIZE, (float)tileY * TILE_SIZE, (float)TILE_SIZE, (float)TILE_SIZE });
+    };
+
+    auto AddThroneColumn = [this](int tileX, int topTileY, int groundTileY) {
+        for (int ty = topTileY; ty < groundTileY; ++ty) {
+            m_tilemap[ty][tileX] = TILE_THRONE_PILLAR_ARCH;
+        }
+    };
+
+    // === SECTION 1: Imperial Grand Vestibule (Tiles 0 - 30) ===
+    AddThroneColumn(6, 2, 12);
+    AddThroneColumn(16, 2, 12);
+    AddThroneColumn(26, 2, 12);
+    AddBrazierBlock(8, 11);
+    AddBrazierBlock(24, 11);
+
+    AddDaisPlatform(10, 22, 8);
+    // Pilate Ewer 1: Entrance dais
+    m_baskets.push_back({ { 16.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    // === SECTION 2: Hall of the Golden Eagles (Tiles 31 - 60) ===
+    AddThroneColumn(36, 1, 12);
+    AddThroneColumn(48, 1, 12);
+    AddThroneColumn(60, 1, 12);
+    AddBrazierBlock(34, 11);
+    AddBrazierBlock(52, 11);
+
+    AddDaisPlatform(34, 58, 9);
+    AddCanopyPlatform(40, 52, 6);
+    AddBrazierBlock(39, 8);
+
+    // Pilate Ewer 2: High imperial canopy
+    m_baskets.push_back({ { 46.0f * TILE_SIZE, 4.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // === SECTION 3: The Praetorium Antechamber (Tiles 61 - 88) ===
+    AddThroneColumn(66, 2, 12);
+    AddThroneColumn(78, 2, 12);
+    AddBrazierBlock(64, 11);
+    AddBrazierBlock(80, 11);
+
+    AddDaisPlatform(64, 82, 8);
+    // Pilate Ewer 3: Antechamber gallery
+    m_baskets.push_back({ { 72.0f * TILE_SIZE, 6.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // Pilate Ewer 4: Pedestal before the Throne Gate
+    m_baskets.push_back({ { 84.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    // === SECTION 4: Praetorium Throne Gate (Tile 90, X = 1440) ===
+    int gateTileX = static_cast<int>(m_arenaGateX / TILE_SIZE);
+    for (int ty = 2; ty <= 11; ++ty) {
+        m_tilemap[ty][gateTileX] = TILE_GATE_FRAME;
+        m_tilemap[ty][gateTileX + 1] = TILE_GATE_BARS;
+        m_tilemap[ty][gateTileX + 2] = TILE_GATE_FRAME;
+    }
+    m_tilemap[11][gateTileX - 1] = TILE_THRONE_CANDELABRA;
+
+    // === SECTION 5: The Bema of Pilate Arena (Tiles 93 - 116, X = 1460 to 1860) ===
+    // Central Elevated Throne Dais
+    AddDaisPlatform(98, 110, 9);
+    AddCanopyPlatform(96, 112, 6); // High purple velvet canopies
+
+    // Pontius Pilate's Ivory Throne and Golden Water Basin on the dais
+    m_tilemap[8][104] = TILE_THRONE_GOLD_EAGLE;
+    m_tilemap[8][105] = TILE_THRONE_BASIN_PEDESTAL;
+
+    // Gold columns and braziers flanking the judgment seat
+    AddThroneColumn(94, 2, 12);
+    AddThroneColumn(114, 2, 12);
+    m_tilemap[11][96] = TILE_THRONE_CANDELABRA;
+    m_tilemap[11][112] = TILE_THRONE_CANDELABRA;
+
+    int backWallX = static_cast<int>(m_arenaMaxX / TILE_SIZE);
+    if (backWallX < LEVEL_TILES_X) {
+        for (int ty = 0; ty <= 11; ++ty) {
+            m_tilemap[ty][backWallX] = TILE_GATE_FRAME;
+        }
+    }
+}
+
 
 
 

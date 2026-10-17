@@ -402,6 +402,7 @@ public:
     // Title & Mission Map screen drawing
     static void DrawTitleSplash(int destWidth, int destHeight);
     static void DrawMissionMap(int missionNumber, int currentArea, bool a1Cleared, bool a2Cleared, bool a3Cleared, float time);
+    static void DrawSecretSelectScreen(int step, int missionIndex, int stageIndex, int credits, float time);
 
     // Particle / Effect drawing helpers
     static void DrawDivineBeam(float targetX, float alpha);

@@ -1475,7 +1475,7 @@ void Level::BuildViaDolorosa() {
     auto AddArch = [this](int tileX, int topTileY, int groundTileY) {
         m_tilemap[topTileY][tileX] = TILE_DOLOROSA_ARCH_ECCE;
         for (int ty = topTileY + 1; ty < groundTileY; ++ty) {
-            m_tilemap[ty][tileX] = TILE_DOLOROSA_STONE_SUB;
+            m_tilemap[ty][tileX] = TILE_COLUMN_MID;
         }
     };
 
@@ -1535,7 +1535,7 @@ void Level::BuildViaDolorosa() {
     int gateTileX = static_cast<int>(m_arenaGateX / TILE_SIZE);
     for (int ty = 2; ty <= 11; ++ty) {
         m_tilemap[ty][gateTileX] = TILE_GATE_FRAME;
-        m_tilemap[ty][gateTileX + 1] = TILE_GATE_BARS;
+        m_tilemap[ty][gateTileX + 1] = TILE_DOLOROSA_GATE;
         m_tilemap[ty][gateTileX + 2] = TILE_GATE_FRAME;
     }
     m_tilemap[11][gateTileX - 1] = TILE_DOLOROSA_TORCH_BRACKET;

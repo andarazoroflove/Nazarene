@@ -21,32 +21,10 @@ enum class GameState {
     VICTORY
 };
 
-struct SecretStageEntry {
-    int missionNum;
-    int areaNum;
-    bool isBonus;
-    const char* tag;
-    const char* title;
-    const char* bossOrDesc;
-    Color tagColor;
+enum class SecretSelectStep {
+    MISSION_SELECT = 0,
+    STAGE_SELECT = 1
 };
-
-static const SecretStageEntry SECRET_STAGES[] = {
-    { 1, 1, false, "M1-1", "JERUSALEM OUTSKIRTS",      "CENTURION BRUTUS",      COLOR_ROMAN_CRIMSON },
-    { 1, 2, false, "M1-2", "TEMPLE OF JERUSALEM",      "COMMANDER MALCHUS",     COLOR_ROMAN_CRIMSON },
-    { 1, 3, false, "M1-3", "GOLGOTHA CITADEL",         "PRAETOR LONGINUS",      COLOR_ROMAN_CRIMSON },
-    { 1, 3, true,  "BONUS", "MOUNT OF BEATITUDES",     "FEEDING THE 5,000",     COLOR_GOLD_BRIGHT },
-    { 2, 1, false, "M2-1", "VALLEY OF THE KIDRON",     "TORMENTOR DECURION",    Color{ 45, 160, 75, 255 } },
-    { 2, 2, false, "M2-2", "CYPRESS HEDGE MAZE",       "SHADOW INQUISITOR",     Color{ 45, 160, 75, 255 } },
-    { 2, 3, false, "M2-3", "GARDEN OF GETHSEMANE",     "CHRISTUS TENEBRIS",     Color{ 45, 160, 75, 255 } },
-    { 3, 1, false, "M3-1", "SILOAM BAZAAR & AQUEDUCT", "BARABBAS THE ZEALOT",   Color{ 160, 80, 220, 255 } },
-    { 3, 2, false, "M3-2", "PALACE OF CAIAPHAS",       "HIGH PRIEST CAIAPHAS",  Color{ 160, 80, 220, 255 } },
-    { 3, 3, false, "M3-3", "THE CENACLE / LAST SUPPER", "JUDAS ISCARIOT",       Color{ 210, 180, 60, 255 } },
-    { 4, 1, false, "M4-1", "VIA DOLOROSA STREETS",     "PREFECT QUINTUS",       COLOR_PRAETORIUM_PURPLE },
-    { 4, 2, false, "M4-2", "THE GABBATHA COURT",       "ADVOCATE TERTULLUS",    COLOR_PRAETORIUM_PURPLE },
-    { 4, 3, false, "M4-3", "THE PRAETORIUM THRONE",    "PONTIUS PILATE",        COLOR_PILATE_CRIMSON }
-};
-static constexpr int SECRET_STAGES_COUNT = sizeof(SECRET_STAGES) / sizeof(SECRET_STAGES[0]);
 
 int main() {
     // 1. Initialize Raylib Window
@@ -84,7 +62,9 @@ int main() {
     bool area2Cleared = false;
     bool area3Cleared = false;
     float missionMapTimer = 0.0f;
-    int secretMenuIndex = 10; // Default to Mission 4-1 for quick access
+    SecretSelectStep secretStep = SecretSelectStep::MISSION_SELECT;
+    int secretMissionIndex = 3; // 0 = M1, 1 = M2, 2 = M3, 3 = M4 (defaults to Mission IV)
+    int secretStageIndex = 0;   // 0 = Board 1, 1 = Board 2, 2 = Board 3 (or 3 = Bonus for M1)
 
     float gateNoticeTimer = 0.0f;
     float victoryTimer = 0.0f;
@@ -180,6 +160,9 @@ int main() {
                 // Secret Mission Select Trigger: Both Triggers on controller (or Q+E / [ ] / F1 on keyboard)
                 if (input.secretSelectPressed) {
                     gameState = GameState::SECRET_SELECT;
+                    secretStep = SecretSelectStep::MISSION_SELECT;
+                    secretMissionIndex = 3;
+                    secretStageIndex = 0;
                     AudioManager::PlaySfx(SFX_HOLY_BEAM);
                     break;
                 }
@@ -212,57 +195,76 @@ int main() {
             }
 
             case GameState::SECRET_SELECT: {
-                // Exit back to Title Screen
-                if (input.cancelPressed || input.secretSelectPressed) {
-                    gameState = GameState::TITLE;
-                    AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
-                    break;
-                }
+                if (secretStep == SecretSelectStep::MISSION_SELECT) {
+                    // Exit back to Title Screen
+                    if (input.cancelPressed || input.secretSelectPressed) {
+                        gameState = GameState::TITLE;
+                        AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
+                        break;
+                    }
 
-                // Up / Down Navigation
-                if (input.upPressed) {
-                    secretMenuIndex = (secretMenuIndex - 1 + SECRET_STAGES_COUNT) % SECRET_STAGES_COUNT;
-                    AudioManager::PlaySfx(SFX_COIN_RICOCHET);
-                }
-                if (input.downPressed) {
-                    secretMenuIndex = (secretMenuIndex + 1) % SECRET_STAGES_COUNT;
-                    AudioManager::PlaySfx(SFX_COIN_RICOCHET);
-                }
+                    // 2x2 Mission Grid navigation:
+                    // [0: MISSION I]    [1: MISSION II]
+                    // [2: MISSION III]  [3: MISSION IV]
+                    if (input.leftPressed || input.rightPressed) {
+                        secretMissionIndex ^= 1; // Toggle column: 0 <-> 1, 2 <-> 3
+                        AudioManager::PlaySfx(SFX_COIN_RICOCHET);
+                    } else if (input.upPressed || input.downPressed) {
+                        secretMissionIndex ^= 2; // Toggle row: 0 <-> 2, 1 <-> 3
+                        AudioManager::PlaySfx(SFX_COIN_RICOCHET);
+                    }
 
-                // Left / Right quick-jump between Mission blocks
-                if (input.leftPressed) {
-                    if (secretMenuIndex >= 10) secretMenuIndex = 7;
-                    else if (secretMenuIndex >= 7) secretMenuIndex = 4;
-                    else if (secretMenuIndex >= 4) secretMenuIndex = 0;
-                    else secretMenuIndex = 10;
-                    AudioManager::PlaySfx(SFX_COIN_RICOCHET);
-                }
-                if (input.rightPressed) {
-                    if (secretMenuIndex < 4) secretMenuIndex = 4;
-                    else if (secretMenuIndex < 7) secretMenuIndex = 7;
-                    else if (secretMenuIndex < 10) secretMenuIndex = 10;
-                    else secretMenuIndex = 0;
-                    AudioManager::PlaySfx(SFX_COIN_RICOCHET);
-                }
-
-                // Confirm / Launch into Mission
-                if (input.startPressed || input.jumpPressed || input.attackPressed) {
-                    const auto& choice = SECRET_STAGES[secretMenuIndex];
-                    credits = std::max(credits, 1);
-
-                    if (choice.isBonus) {
-                        gameState = GameState::BONUS_STAGE;
-                        bonusStage.Reset();
+                    // Confirm Mission -> Proceed to Stage Select
+                    bool confirmPressed = input.startPressed || input.attackPressed || (input.jumpPressed && !input.cancelPressed);
+                    if (confirmPressed) {
+                        secretStep = SecretSelectStep::STAGE_SELECT;
+                        secretStageIndex = 0;
                         AudioManager::PlaySfx(SFX_COIN_INSERT);
-                    } else {
-                        missionNumber = choice.missionNum;
-                        currentArea = choice.areaNum;
-                        area1Cleared = (choice.areaNum > 1);
-                        area2Cleared = (choice.areaNum > 2);
-                        area3Cleared = false;
-                        StartMission(missionNumber, currentArea);
-                        gameState = GameState::GAMEPLAY;
-                        AudioManager::PlaySfx(SFX_VICTORY);
+                    }
+                } else {
+                    // STAGE_SELECT (Sub-board 1, 2, or 3)
+                    // Cancel / Back to Mission Select
+                    if (input.cancelPressed) {
+                        secretStep = SecretSelectStep::MISSION_SELECT;
+                        AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
+                        break;
+                    }
+                    if (input.secretSelectPressed) {
+                        gameState = GameState::TITLE;
+                        AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
+                        break;
+                    }
+
+                    int maxStages = (secretMissionIndex == 0) ? 4 : 3;
+
+                    // Navigate sub-boards 1, 2, 3 (and Beatitudes bonus for M1)
+                    if (input.leftPressed || input.upPressed) {
+                        secretStageIndex = (secretStageIndex - 1 + maxStages) % maxStages;
+                        AudioManager::PlaySfx(SFX_COIN_RICOCHET);
+                    } else if (input.rightPressed || input.downPressed) {
+                        secretStageIndex = (secretStageIndex + 1) % maxStages;
+                        AudioManager::PlaySfx(SFX_COIN_RICOCHET);
+                    }
+
+                    // Confirm Stage -> Embark!
+                    bool confirmPressed = input.startPressed || input.attackPressed || (input.jumpPressed && !input.cancelPressed);
+                    if (confirmPressed) {
+                        credits = std::max(credits, 1);
+
+                        if (secretMissionIndex == 0 && secretStageIndex == 3) {
+                            gameState = GameState::BONUS_STAGE;
+                            bonusStage.Reset();
+                            AudioManager::PlaySfx(SFX_COIN_INSERT);
+                        } else {
+                            missionNumber = secretMissionIndex + 1;
+                            currentArea = secretStageIndex + 1;
+                            area1Cleared = (currentArea > 1);
+                            area2Cleared = (currentArea > 2);
+                            area3Cleared = false;
+                            StartMission(missionNumber, currentArea);
+                            gameState = GameState::GAMEPLAY;
+                            AudioManager::PlaySfx(SFX_VICTORY);
+                        }
                     }
                 }
                 break;
@@ -659,70 +661,14 @@ int main() {
             int csw = MeasureText(credStr, 10);
             DrawText(credStr, VIRTUAL_WIDTH - csw - 8, VIRTUAL_HEIGHT - 16, 10, COLOR_ROMAN_GOLD);
         } else if (gameState == GameState::SECRET_SELECT) {
-            // Secret Mission Select Screen (Arcade Service Dispensation Mode)
-            DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 12, 10, 18, 255 });
-            DrawRectangleGradientV(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 22, 15, 30, 255 }, Color{ 8, 6, 12, 255 });
-
-            // Ornate Outer Gold Borders
-            DrawRectangleLines(3, 3, VIRTUAL_WIDTH - 6, VIRTUAL_HEIGHT - 6, COLOR_ROMAN_GOLD);
-            DrawRectangleLines(5, 5, VIRTUAL_WIDTH - 10, VIRTUAL_HEIGHT - 10, Color{ 60, 45, 20, 255 });
-
-            // Header Banner
-            DrawRectangle(7, 6, VIRTUAL_WIDTH - 14, 21, Color{ 28, 18, 38, 240 });
-            DrawLine(7, 27, VIRTUAL_WIDTH - 7, 27, COLOR_ROMAN_GOLD);
-
-            const char* secTitle = "SECRET MISSION SELECT";
-            int tw = MeasureText(secTitle, 10);
-            DrawText(secTitle, (VIRTUAL_WIDTH - tw) / 2, 8, 10, COLOR_GOLD_BRIGHT);
-
-            const char* secSub = "- DIVINE DISPENSATION ARCHIVE -";
-            int sw = MeasureText(secSub, 10);
-            DrawText(secSub, (VIRTUAL_WIDTH - sw) / 2, 17, 10, COLOR_ROMAN_STONE);
-
-            // List of 13 stages
-            for (int i = 0; i < SECRET_STAGES_COUNT; ++i) {
-                int ry = 29 + i * 11;
-                bool isSel = (i == secretMenuIndex);
-
-                if (isSel) {
-                    float pulse = 0.5f + 0.5f * sinf(static_cast<float>(GetTime()) * 8.0f);
-                    Color barCol = Color{ 75, 50, 15, static_cast<unsigned char>(180 + pulse * 60) };
-                    DrawRectangle(10, ry, VIRTUAL_WIDTH - 20, 11, barCol);
-                    DrawRectangleLines(10, ry, VIRTUAL_WIDTH - 20, 11, COLOR_GOLD_BRIGHT);
-                    DrawText(">", 13, ry + 1, 10, COLOR_GOLD_BRIGHT);
-                } else if (i % 2 == 1) {
-                    DrawRectangle(10, ry, VIRTUAL_WIDTH - 20, 11, Color{ 20, 15, 26, 140 });
-                }
-
-                // Tag [M1-1], [BONUS], [M4-3]
-                Color tagCol = isSel ? WHITE : SECRET_STAGES[i].tagColor;
-                DrawText(SECRET_STAGES[i].tag, 22, ry + 1, 10, tagCol);
-
-                // Title
-                Color titleCol = isSel ? COLOR_GOLD_BRIGHT : Color{ 215, 210, 225, 255 };
-                DrawText(SECRET_STAGES[i].title, 64, ry + 1, 10, titleCol);
-
-                // Boss / Target
-                Color bossCol = isSel ? COLOR_ROBE_WHITE : Color{ 160, 150, 175, 255 };
-                int bw = MeasureText(SECRET_STAGES[i].bossOrDesc, 10);
-                DrawText(SECRET_STAGES[i].bossOrDesc, VIRTUAL_WIDTH - 15 - bw, ry + 1, 10, bossCol);
-            }
-
-            // Bottom Navigation Footer
-            DrawLine(7, 174, VIRTUAL_WIDTH - 7, 174, COLOR_ROMAN_GOLD);
-            DrawRectangle(7, 175, VIRTUAL_WIDTH - 14, 44, Color{ 14, 10, 20, 240 });
-
-            const char* hintNav = "[UP / DOWN] SELECT    [START / JUMP] EMBARK";
-            int nhw = MeasureText(hintNav, 10);
-            DrawText(hintNav, (VIRTUAL_WIDTH - nhw) / 2, 178, 10, COLOR_ROMAN_GOLD);
-
-            const char* hintSkip = "[LEFT / RIGHT] SKIP MISSION    [B / ESC] CANCEL";
-            int shw = MeasureText(hintSkip, 10);
-            DrawText(hintSkip, (VIRTUAL_WIDTH - shw) / 2, 191, 10, COLOR_ROMAN_STONE);
-
-            char credStr[32];
-            snprintf(credStr, sizeof(credStr), "CREDIT %02d", credits);
-            DrawText(credStr, VIRTUAL_WIDTH - MeasureText(credStr, 10) - 14, 204, 10, COLOR_ROMAN_GOLD);
+            // Visual Two-Step Secret Mission & Stage Select Showcase
+            GraphicsManager::DrawSecretSelectScreen(
+                static_cast<int>(secretStep),
+                secretMissionIndex,
+                secretStageIndex,
+                credits,
+                static_cast<float>(GetTime())
+            );
         } else if (gameState == GameState::MISSION_MAP) {
             // Authentic Shinobi Arcade Jerusalem & Gethsemane Mission Map Screens
             GraphicsManager::DrawMissionMap(missionNumber, currentArea, area1Cleared, area2Cleared, area3Cleared, static_cast<float>(GetTime()));

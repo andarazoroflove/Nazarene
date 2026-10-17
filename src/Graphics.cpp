@@ -3584,6 +3584,287 @@ void GraphicsManager::DrawMissionMap(int missionNumber, int currentArea, bool a1
     }
 }
 
+void GraphicsManager::DrawSecretSelectScreen(int step, int missionIndex, int stageIndex, int credits, float time) {
+    // 1. Screen Backdrop & Roman Ornate Border
+    DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 12, 10, 18, 255 });
+    DrawRectangleGradientV(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 22, 15, 30, 255 }, Color{ 8, 6, 12, 255 });
+
+    DrawRectangleLines(3, 3, VIRTUAL_WIDTH - 6, VIRTUAL_HEIGHT - 6, COLOR_ROMAN_GOLD);
+    DrawRectangleLines(5, 5, VIRTUAL_WIDTH - 10, VIRTUAL_HEIGHT - 10, Color{ 60, 45, 20, 255 });
+
+    if (step == 0) {
+        // =========================================================================
+        // STEP 1: MISSION SELECT (SHOWCASING ONLY THE 4 MISSIONS WITH ARTWORK)
+        // =========================================================================
+        DrawRectangle(7, 6, VIRTUAL_WIDTH - 14, 21, Color{ 28, 18, 38, 240 });
+        DrawLine(7, 27, VIRTUAL_WIDTH - 7, 27, COLOR_ROMAN_GOLD);
+
+        const char* secTitle = "SECRET MISSION ARCHIVE";
+        int tw = MeasureText(secTitle, 10);
+        DrawText(secTitle, (VIRTUAL_WIDTH - tw) / 2, 8, 10, COLOR_GOLD_BRIGHT);
+
+        const char* secSub = "- SELECT MISSION (I - IV) -";
+        int sw = MeasureText(secSub, 10);
+        DrawText(secSub, (VIRTUAL_WIDTH - sw) / 2, 17, 10, COLOR_ROMAN_STONE);
+
+        struct MissionCardData {
+            const char* badge;
+            Color badgeCol;
+            const char* title;
+            const char* sub;
+            Texture2D bgTex;
+            SpriteId bossSpr;
+            int x, y;
+        };
+
+        MissionCardData mCards[4] = {
+            { "MISSION I",   COLOR_ROMAN_CRIMSON,     "JERUSALEM",    "Temple & Citadel",     s_bgTempleOfDavid,   SPR_BOSS_IDLE,       12,  31 },
+            { "MISSION II",  Color{ 35, 125, 50, 255 }, "GETHSEMANE",   "The Olive Garden",     s_bgGethsemaneGrove, SPR_CLONE_IDLE,     164,  31 },
+            { "MISSION III", Color{ 120, 40, 150, 255 }, "LAST SUPPER", "The Upper Room",      s_bgCenacleChamber,  SPR_JUDAS_IDLE,      12, 107 },
+            { "MISSION IV",  COLOR_PRAETORIUM_PURPLE, "PILATE TRIAL", "The Praetorium",       s_bgThronePalace,    SPR_PILATE_IDLE,    164, 107 }
+        };
+
+        int cardW = 144;
+        int cardH = 72;
+
+        for (int m = 0; m < 4; ++m) {
+            const auto& mc = mCards[m];
+            bool isSel = (m == missionIndex);
+
+            // Card background artwork from parallax texture
+            if (mc.bgTex.id > 0) {
+                Rectangle src = { 0, 0, (float)mc.bgTex.width, (float)mc.bgTex.height };
+                Rectangle dst = { (float)mc.x, (float)mc.y, (float)cardW, (float)cardH };
+                Color tint = isSel ? WHITE : Color{ 125, 125, 140, 220 };
+                DrawTexturePro(mc.bgTex, src, dst, { 0, 0 }, 0.0f, tint);
+            } else {
+                DrawRectangle(mc.x, mc.y, cardW, cardH, Color{ 30, 24, 38, 255 });
+            }
+
+            // Dark gradient overlay on bottom half so text is crisp
+            DrawRectangleGradientV(mc.x, mc.y + 24, cardW, cardH - 24, Color{ 0, 0, 0, 25 }, Color{ 10, 8, 14, 235 });
+
+            // Character Sprites in Card: Hero Jesus on left, Boss on right
+            DrawDropShadow(mc.x + 18.0f, mc.y + 54.0f, 18.0f, 5.0f);
+            DrawSprite(SPR_PLAYER_IDLE, mc.x + 6, mc.y + 24, false, isSel ? WHITE : Color{ 180, 180, 190, 220 });
+
+            DrawDropShadow(mc.x + cardW - 20.0f, mc.y + 54.0f, 22.0f, 5.0f);
+            DrawSprite(mc.bossSpr, mc.x + cardW - 36, mc.y + 16, true, isSel ? WHITE : Color{ 180, 180, 190, 220 });
+
+            // Roman badge at top-left
+            DrawRectangle(mc.x + 4, mc.y + 4, 62, 11, mc.badgeCol);
+            DrawRectangleLines(mc.x + 4, mc.y + 4, 62, 11, COLOR_ROMAN_GOLD);
+            DrawText(mc.badge, mc.x + 7, mc.y + 5, 10, COLOR_GOLD_BRIGHT);
+
+            // Title & Subtitle
+            Color titleCol = isSel ? COLOR_GOLD_BRIGHT : Color{ 220, 215, 230, 255 };
+            DrawText(mc.title, mc.x + 8, mc.y + 43, 10, titleCol);
+            DrawText(mc.sub, mc.x + 8, mc.y + 55, 10, isSel ? COLOR_ROBE_WHITE : Color{ 160, 155, 170, 255 });
+
+            // Selection Highlight
+            if (isSel) {
+                float pulse = 0.5f + 0.5f * sinf(time * 8.0f);
+                Color borderCol = ColorAlpha(COLOR_GOLD_BRIGHT, 0.75f + 0.25f * pulse);
+                DrawRectangleLines(mc.x - 2, mc.y - 2, cardW + 4, cardH + 4, borderCol);
+                DrawRectangleLines(mc.x - 1, mc.y - 1, cardW + 2, cardH + 2, COLOR_ROMAN_CRIMSON);
+
+                // Corner tabs
+                int tab = 5;
+                DrawLine(mc.x - 4, mc.y - 4, mc.x - 4 + tab, mc.y - 4, COLOR_GOLD_BRIGHT);
+                DrawLine(mc.x - 4, mc.y - 4, mc.x - 4, mc.y - 4 + tab, COLOR_GOLD_BRIGHT);
+                DrawLine(mc.x + cardW + 3, mc.y - 4, mc.x + cardW + 3 - tab, mc.y - 4, COLOR_GOLD_BRIGHT);
+                DrawLine(mc.x + cardW + 3, mc.y - 4, mc.x + cardW + 3, mc.y - 4 + tab, COLOR_GOLD_BRIGHT);
+                DrawLine(mc.x - 4, mc.y + cardH + 3, mc.x - 4 + tab, mc.y + cardH + 3, COLOR_GOLD_BRIGHT);
+                DrawLine(mc.x - 4, mc.y + cardH + 3, mc.x - 4, mc.y + cardH + 3 - tab, COLOR_GOLD_BRIGHT);
+                DrawLine(mc.x + cardW + 3, mc.y + cardH + 3, mc.x + cardW + 3 - tab, mc.y + cardH + 3, COLOR_GOLD_BRIGHT);
+                DrawLine(mc.x + cardW + 3, mc.y + cardH + 3, mc.x + cardW + 3, mc.y + cardH + 3 - tab, COLOR_GOLD_BRIGHT);
+
+                // Prompt tag
+                DrawRectangle(mc.x + 28, mc.y + cardH - 12, cardW - 56, 11, Color{ 15, 10, 20, 235 });
+                DrawRectangleLines(mc.x + 28, mc.y + cardH - 12, cardW - 56, 11, COLOR_GOLD_BRIGHT);
+                DrawText(">> SELECT <<", mc.x + 36, mc.y + cardH - 11, 10, COLOR_GOLD_BRIGHT);
+            } else {
+                DrawRectangleLines(mc.x, mc.y, cardW, cardH, Color{ 60, 45, 25, 180 });
+            }
+        }
+
+        // Bottom Navigation Footer
+        DrawLine(7, 182, VIRTUAL_WIDTH - 7, 182, COLOR_ROMAN_GOLD);
+        DrawRectangle(7, 183, VIRTUAL_WIDTH - 14, 36, Color{ 14, 10, 20, 240 });
+
+        const char* hintNav = "[ARROWS / D-PAD] SELECT MISSION    [START / JUMP] CHOOSE STAGES";
+        int nhw = MeasureText(hintNav, 10);
+        DrawText(hintNav, (VIRTUAL_WIDTH - nhw) / 2, 187, 10, COLOR_ROMAN_GOLD);
+
+        const char* hintBack = "[B / ESC] RETURN TO TITLE";
+        int bhw = MeasureText(hintBack, 10);
+        DrawText(hintBack, (VIRTUAL_WIDTH - bhw) / 2, 200, 10, COLOR_ROMAN_STONE);
+
+        char credStr[32];
+        snprintf(credStr, sizeof(credStr), "CREDIT %02d", credits);
+        DrawText(credStr, VIRTUAL_WIDTH - MeasureText(credStr, 10) - 14, 204, 10, COLOR_ROMAN_GOLD);
+    } else {
+        // =========================================================================
+        // STEP 2: STAGE SELECT (CHOOSE SUB-BOARD 1, 2, OR 3 FOR CHOSEN MISSION)
+        // =========================================================================
+        DrawRectangle(7, 6, VIRTUAL_WIDTH - 14, 23, Color{ 28, 18, 38, 240 });
+        DrawLine(7, 29, VIRTUAL_WIDTH - 7, 29, COLOR_ROMAN_GOLD);
+
+        const char* mNames[4] = {
+            "MISSION I: JERUSALEM OUTSKIRTS & CITADEL",
+            "MISSION II: THE ROAD TO GETHSEMANE",
+            "MISSION III: THE CENACLE & LAST SUPPER",
+            "MISSION IV: THE TRIAL OF PONTIUS PILATE"
+        };
+        const char* chosenMName = (missionIndex >= 0 && missionIndex < 4) ? mNames[missionIndex] : mNames[0];
+        int mtw = MeasureText(chosenMName, 10);
+        DrawText(chosenMName, (VIRTUAL_WIDTH - mtw) / 2, 8, 10, COLOR_GOLD_BRIGHT);
+
+        const char* subPrompt = (missionIndex == 0) ? "- CHOOSE SUB-BOARD (1, 2, 3, OR BONUS) -" : "- CHOOSE SUB-BOARD (1, 2, OR 3) -";
+        int stw = MeasureText(subPrompt, 10);
+        DrawText(subPrompt, (VIRTUAL_WIDTH - stw) / 2, 18, 10, COLOR_ROMAN_STONE);
+
+        struct StageCardData {
+            const char* numBadge;
+            const char* title;
+            const char* sub;
+            const char* boss;
+            Texture2D bgTex;
+            SpriteId bossSpr;
+            SpriteId pickupSpr;
+            const char* pickupText;
+        };
+
+        std::vector<StageCardData> stages;
+        if (missionIndex == 3) {
+            // Mission 4: The Trial of Pilate
+            stages = {
+                { "1", "VIA DOLOROSA",   "Streets of Judgment",  "PREFECT QUINTUS",    s_bgDolorosaStreet,  SPR_PREFECT_IDLE,  SPR_ROMAN_SCROLL, "4 Scrolls" },
+                { "2", "THE GABBATHA",   "Lithostrotos Court",   "ADVOCATE TERTULLUS", s_bgCourtBasilica,   SPR_ADVOCATE_IDLE, SPR_CAESAR_SEAL,  "4 Seals" },
+                { "3", "THE PRAETORIUM", "Throne Room & Bema",   "PONTIUS PILATE",     s_bgThronePalace,    SPR_PILATE_IDLE,   SPR_PILATE_EWER,  "4 Ewers" }
+            };
+        } else if (missionIndex == 2) {
+            // Mission 3: The Last Supper
+            stages = {
+                { "1", "SILOAM BAZAAR",  "Old City Aqueduct",    "BARABBAS THE ZEALOT", s_bgBazaarRoofs,     SPR_BARABBAS_IDLE, SPR_BITTER_HERBS, "4 Herbs" },
+                { "2", "CAIAPHAS",       "Mount Zion Audience",  "HIGH PRIEST CAIAPHAS",s_bgCaiaphasPalace,  SPR_CAIAPHAS_STAND,SPR_PASSOVER_MATZOT,"4 Matzot" },
+                { "3", "THE CENACLE",    "The Last Supper",      "JUDAS ISCARIOT",      s_bgCenacleChamber,  SPR_JUDAS_IDLE,    SPR_HOLY_GRAIL,   "4 Grails" }
+            };
+        } else if (missionIndex == 1) {
+            // Mission 2: Road to Gethsemane
+            stages = {
+                { "1", "KIDRON VALLEY",  "Moonlit Chasm",        "TORMENTOR DECURION",  s_bgKidronRavine,    SPR_TORMENTOR_WALK_0, SPR_SILVER_PITCHER, "4 Pitchers" },
+                { "2", "CYPRESS MAZE",   "Royal Labyrinth",      "SHADOW INQUISITOR",   s_bgHedgeLabyrinth,  SPR_THORN_SICARII_SLASH, SPR_OLIVE_WREATH, "4 Wreaths" },
+                { "3", "GETHSEMANE",     "The Olive Tree",       "CHRISTUS TENEBRIS",   s_bgGethsemaneGrove, SPR_CLONE_IDLE,   SPR_SACRED_CHALICE, "4 Chalices" }
+            };
+        } else {
+            // Mission 1: Jerusalem Campaign + Bonus
+            stages = {
+                { "1", "OUTSKIRTS",      "Roman Garrison",       "CENTURION BRUTUS",    s_bgNearStreetscape, SPR_BOSS_IDLE,        SPR_ICON_BASKET, "4 Baskets" },
+                { "2", "INNER TEMPLE",   "Solomon's Porch",      "COMMANDER MALCHUS",   s_bgTempleSanctuary, SPR_TEMPLE_BOSS_IDLE, SPR_CENSER_GOLD, "4 Censers" },
+                { "3", "GOLGOTHA",       "Upper Citadel",        "PRAETOR LONGINUS",    s_bgGolgothaCrags,   SPR_TRIBUNAL_IDLE,    SPR_CENSER_GOLD, "4 Relics" },
+                { "★", "BEATITUDES",     "Mount of Beatitudes",  "FEEDING THE 5,000",   s_bgBonusSunset,     SPR_PLAYER_IDLE,      SPR_BREAD_LOAF,  "Bread & Fish" }
+            };
+        }
+
+        int count = static_cast<int>(stages.size());
+        int cardW = (count == 4) ? 68 : 92;
+        int cardH = 138;
+        int spacing = (count == 4) ? 6 : 8;
+        int totalW = count * cardW + (count - 1) * spacing;
+        int startX = (VIRTUAL_WIDTH - totalW) / 2;
+        int cardY = 34;
+
+        for (int s = 0; s < count; ++s) {
+            const auto& sc = stages[s];
+            int cx = startX + s * (cardW + spacing);
+            bool isSel = (s == stageIndex);
+
+            // Background preview
+            if (sc.bgTex.id > 0) {
+                Rectangle src = { 0, 0, (float)sc.bgTex.width, (float)sc.bgTex.height };
+                Rectangle dst = { (float)cx, (float)cardY, (float)cardW, (float)cardH };
+                Color tint = isSel ? WHITE : Color{ 120, 120, 130, 220 };
+                DrawTexturePro(sc.bgTex, src, dst, { 0, 0 }, 0.0f, tint);
+            } else {
+                DrawRectangle(cx, cardY, cardW, cardH, Color{ 25, 20, 32, 255 });
+            }
+
+            // Dark gradient overlay
+            DrawRectangleGradientV(cx, cardY, cardW, cardH, Color{ 10, 8, 14, 120 }, Color{ 10, 8, 14, 245 });
+
+            // Top Stage Number Badge
+            int medalCenterX = cx + cardW / 2;
+            int medalCenterY = cardY + 14;
+            DrawCircle(medalCenterX, medalCenterY, 10.0f, isSel ? COLOR_ROMAN_CRIMSON : Color{ 24, 18, 30, 255 });
+            DrawCircleLines(medalCenterX, medalCenterY, 10.0f, isSel ? COLOR_GOLD_BRIGHT : COLOR_ROMAN_GOLD);
+            int nw = MeasureText(sc.numBadge, 10);
+            DrawText(sc.numBadge, medalCenterX - nw / 2, medalCenterY - 4, 10, COLOR_GOLD_BRIGHT);
+
+            // Sprite centered in card
+            DrawDropShadow(cx + cardW / 2.0f, cardY + 62.0f, 24.0f, 6.0f);
+            DrawSprite(sc.bossSpr, cx + (cardW - 32) / 2, cardY + 32, true, isSel ? WHITE : Color{ 190, 190, 200, 220 });
+
+            // Sub-board Title & Sub
+            Color titleCol = isSel ? COLOR_GOLD_BRIGHT : Color{ 220, 215, 230, 255 };
+            int tw = MeasureText(sc.title, 10);
+            if (tw > cardW - 4) {
+                DrawText(sc.title, cx + 2, cardY + 68, 10, titleCol);
+            } else {
+                DrawText(sc.title, cx + (cardW - tw) / 2, cardY + 68, 10, titleCol);
+            }
+
+            // Boss / Objective target
+            char bossBuf[48];
+            snprintf(bossBuf, sizeof(bossBuf), "%s", sc.boss);
+            int bw = MeasureText(bossBuf, 10);
+            Color bossCol = isSel ? Color{ 255, 120, 120, 255 } : Color{ 190, 110, 110, 255 };
+            if (bw > cardW - 4) {
+                DrawText(bossBuf, cx + 2, cardY + 82, 10, bossCol);
+            } else {
+                DrawText(bossBuf, cx + (cardW - bw) / 2, cardY + 82, 10, bossCol);
+            }
+
+            // Relic pickup icon and text
+            DrawSprite(sc.pickupSpr, cx + 6, cardY + 98);
+            DrawText(sc.pickupText, cx + 22, cardY + 102, 10, isSel ? COLOR_ROBE_WHITE : Color{ 170, 165, 180, 255 });
+
+            // Selection frame
+            if (isSel) {
+                float pulse = 0.5f + 0.5f * sinf(time * 8.0f);
+                Color borderCol = ColorAlpha(COLOR_GOLD_BRIGHT, 0.75f + 0.25f * pulse);
+                DrawRectangleLines(cx - 2, cardY - 2, cardW + 4, cardH + 4, borderCol);
+                DrawRectangleLines(cx - 1, cardY - 1, cardW + 2, cardH + 2, COLOR_ROMAN_CRIMSON);
+
+                // Prompt banner
+                DrawRectangle(cx + 4, cardY + cardH - 16, cardW - 8, 13, Color{ 140, 15, 20, 230 });
+                DrawRectangleLines(cx + 4, cardY + cardH - 16, cardW - 8, 13, COLOR_GOLD_BRIGHT);
+                const char* emb = ">> EMBARK <<";
+                int ew = MeasureText(emb, 10);
+                DrawText(emb, cx + (cardW - ew) / 2, cardY + cardH - 14, 10, COLOR_GOLD_BRIGHT);
+            } else {
+                DrawRectangleLines(cx, cardY, cardW, cardH, Color{ 60, 45, 25, 180 });
+            }
+        }
+
+        // Bottom Navigation Footer
+        DrawLine(7, 182, VIRTUAL_WIDTH - 7, 182, COLOR_ROMAN_GOLD);
+        DrawRectangle(7, 183, VIRTUAL_WIDTH - 14, 36, Color{ 14, 10, 20, 240 });
+
+        const char* hintNav = "[LEFT / RIGHT] CHOOSE BOARD    [START / JUMP] EMBARK";
+        int nhw = MeasureText(hintNav, 10);
+        DrawText(hintNav, (VIRTUAL_WIDTH - nhw) / 2, 187, 10, COLOR_ROMAN_GOLD);
+
+        const char* hintBack = "[B / ESC] BACK TO MISSIONS";
+        int bhw = MeasureText(hintBack, 10);
+        DrawText(hintBack, (VIRTUAL_WIDTH - bhw) / 2, 200, 10, COLOR_ROMAN_STONE);
+
+        char credStr[32];
+        snprintf(credStr, sizeof(credStr), "CREDIT %02d", credits);
+        DrawText(credStr, VIRTUAL_WIDTH - MeasureText(credStr, 10) - 14, 204, 10, COLOR_ROMAN_GOLD);
+    }
+}
+
 void GraphicsManager::DrawSprite(SpriteId id, float x, float y, bool flipH, Color tint) {
     if (id < 0 || id >= SPRITE_TOTAL_COUNT) return;
     Texture2D tex = s_sprites[id];

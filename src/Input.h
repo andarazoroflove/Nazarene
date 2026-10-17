@@ -7,6 +7,8 @@ struct InputState {
     bool right = false;
     bool up = false;
     bool down = false;
+    bool upPressed = false;
+    bool downPressed = false;
     
     bool jumpPressed = false;
     bool jumpDown = false;

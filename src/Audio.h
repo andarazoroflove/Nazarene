@@ -22,6 +22,14 @@ enum SoundEffect {
     SFX_FINISH_HIM,
     SFX_ANGEL_CHOIR,
     SFX_THUNDER,
+    SFX_BREAD_TOSS,
+    SFX_FISH_TOSS,
+    SFX_CROWD_CHEER,
+    SFX_BONUS_WIN,
+    SFX_DARK_SPIKE,
+    SFX_DARK_WRATH,
+    SFX_CLONE_TELEPORT,
+    SFX_TORCH_SWING,
     SFX_COUNT
 };
 
@@ -29,7 +37,7 @@ class AudioManager {
 public:
     static void Init();
     static void Close();
-    static void Update(bool inBossArena, bool isGameOver, bool isVictory);
+    static void Update(bool inBossArena, bool isGameOver, bool isVictory, int stageId = 1, bool isBonusStage = false);
     static void PlaySfx(SoundEffect sfx);
     static void SetMusicEnabled(bool enabled);
     static bool IsMusicEnabled();
@@ -37,8 +45,11 @@ public:
 
 private:
     static Sound s_sounds[SFX_COUNT];
-    static Sound s_stageMusic;
+    static Sound s_stageMusicM1;
+    static Sound s_stageMusicM2;
+    static Sound s_bonusMusic;
     static Sound s_bossMusic;
+    static Sound s_evilCloneMusic;
     static Sound s_continueMusic;
     static bool s_musicEnabled;
     static bool s_initialized;
@@ -46,7 +57,10 @@ private:
 
     static Wave GenerateSfxWave(SoundEffect sfx);
     static Wave GenerateStageMusicWave();
+    static Wave GenerateStage2MusicWave();
+    static Wave GenerateBonusMusicWave();
     static Wave GenerateBossMusicWave();
+    static Wave GenerateEvilCloneMusicWave();
     static Wave GenerateContinueMusicWave();
 };
 

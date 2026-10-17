@@ -4,8 +4,11 @@
 #include <vector>
 
 Sound AudioManager::s_sounds[SFX_COUNT] = {};
-Sound AudioManager::s_stageMusic = {};
+Sound AudioManager::s_stageMusicM1 = {};
+Sound AudioManager::s_stageMusicM2 = {};
+Sound AudioManager::s_bonusMusic = {};
 Sound AudioManager::s_bossMusic = {};
+Sound AudioManager::s_evilCloneMusic = {};
 Sound AudioManager::s_continueMusic = {};
 bool AudioManager::s_musicEnabled = true;
 bool AudioManager::s_initialized = false;
@@ -42,6 +45,14 @@ Wave AudioManager::GenerateSfxWave(SoundEffect sfx) {
         case SFX_FINISH_HIM: duration = 1.85f; break;
         case SFX_ANGEL_CHOIR: duration = 4.80f; break;
         case SFX_THUNDER: duration = 1.40f; break;
+        case SFX_BREAD_TOSS: duration = 0.16f; break;
+        case SFX_FISH_TOSS: duration = 0.18f; break;
+        case SFX_CROWD_CHEER: duration = 0.85f; break;
+        case SFX_BONUS_WIN: duration = 2.40f; break;
+        case SFX_DARK_SPIKE: duration = 0.22f; break;
+        case SFX_DARK_WRATH: duration = 1.60f; break;
+        case SFX_CLONE_TELEPORT: duration = 0.32f; break;
+        case SFX_TORCH_SWING: duration = 0.24f; break;
         default: duration = 0.2f; break;
     }
 
@@ -307,6 +318,77 @@ Wave AudioManager::GenerateSfxWave(SoundEffect sfx) {
                 float noise = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.35f;
                 if (t < 0.12f) noise *= 2.0f; // Initial lightning crack
                 sample = (rumble + sub + noise) * env * 0.95f;
+                break;
+            }
+            case SFX_BREAD_TOSS: {
+                // Soft airy swoosh with warm impact
+                float env = 1.0f - progress;
+                float freq = 360.0f - 180.0f * progress;
+                float tone = sinf(PI2 * freq * t);
+                float whoosh = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.35f * expf(-progress * 12.0f);
+                sample = (tone * 0.6f + whoosh) * env;
+                break;
+            }
+            case SFX_FISH_TOSS: {
+                // Aquatic shimmer & zip
+                float env = expf(-progress * 8.0f);
+                float freq = 750.0f + 350.0f * sinf(progress * 18.0f);
+                float tone = sinf(PI2 * freq * t);
+                float splash = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.25f * env;
+                sample = (tone * 0.7f + splash);
+                break;
+            }
+            case SFX_CROWD_CHEER: {
+                // Joyful celestial chime + chorus harmonic
+                float env = expf(-progress * 4.5f);
+                float c5 = sinf(PI2 * 523.25f * t);
+                float e5 = sinf(PI2 * 659.25f * t) * 0.7f;
+                float g5 = sinf(PI2 * 783.99f * t) * 0.6f;
+                float c6 = sinf(PI2 * 1046.50f * t) * 0.4f;
+                sample = (c5 + e5 + g5 + c6) * 0.35f * env;
+                break;
+            }
+            case SFX_BONUS_WIN: {
+                // Triumphant ascending arcade fanfare
+                int step = static_cast<int>(progress * 5.0f);
+                float notes[5] = { 523.25f, 659.25f, 783.99f, 1046.50f, 1318.51f };
+                float f = notes[step < 5 ? step : 4];
+                float tone = sinf(PI2 * f * t) * 0.6f + sinf(PI2 * (f * 2.0f) * t) * 0.2f;
+                float env = (1.0f - fmodf(progress * 5.0f, 1.0f) * 0.4f) * (1.0f - progress * 0.3f);
+                sample = tone * env;
+                break;
+            }
+            case SFX_DARK_SPIKE: {
+                // Cursed iron spike with dark resonance
+                float env = expf(-progress * 14.0f);
+                float freq = 820.0f - 300.0f * progress;
+                float tone = sinf(PI2 * freq * t) + sinf(PI2 * (freq * 0.73f) * t) * 0.5f;
+                sample = tone * env * 0.8f;
+                break;
+            }
+            case SFX_DARK_WRATH: {
+                // Low sub-bass earthquake rumble + dark detonation
+                float env = expf(-t * 2.2f);
+                float rumble = sinf(PI2 * (42.0f + 18.0f * sinf(t * 12.0f)) * t) * 0.75f;
+                float sub = sinf(PI2 * 30.0f * t) * 0.5f;
+                float dist = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.45f;
+                sample = (rumble + sub + dist) * env;
+                break;
+            }
+            case SFX_CLONE_TELEPORT: {
+                // Phaser sweep down with sinister edge
+                float env = 1.0f - progress * 0.7f;
+                float sweepFreq = 1600.0f - 1200.0f * (progress * progress);
+                float tone = sinf(PI2 * sweepFreq * t + sinf(PI2 * 35.0f * t) * 2.5f);
+                sample = tone * env * 0.6f;
+                break;
+            }
+            case SFX_TORCH_SWING: {
+                // Fiery whoosh with crackling embers
+                float env = sinf(progress * 3.14159f);
+                float whoosh = sinf(PI2 * (220.0f - 80.0f * progress) * t) * 0.5f;
+                float embers = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.45f * env;
+                sample = (whoosh + embers) * env;
                 break;
             }
             default:
@@ -623,6 +705,261 @@ Wave AudioManager::GenerateContinueMusicWave() {
     return wave;
 }
 
+// Procedural Mission 2 Stage soundtrack (Nocturnal Kidron & Gethsemane groove, C minor)
+Wave AudioManager::GenerateStage2MusicWave() {
+    constexpr unsigned int sampleRate = 44100;
+    constexpr float bpm = 126.0f;
+    constexpr float beatSec = 60.0f / bpm;
+    constexpr int totalBeats = 16;
+    float totalDuration = totalBeats * beatSec;
+    unsigned int frameCount = static_cast<unsigned int>(sampleRate * totalDuration);
+
+    short* buffer = (short*)malloc(frameCount * sizeof(short));
+    constexpr float PI2 = 6.28318530718f;
+
+    // Frequencies in C minor / Dorian (C3, Eb3, F3, G3, Bb3, C4, D4, Eb4, G4)
+    constexpr float C3  = 130.81f;
+    constexpr float Eb3 = 155.56f;
+    constexpr float F3  = 174.61f;
+    constexpr float G3  = 196.00f;
+    constexpr float Bb3 = 233.08f;
+    constexpr float C4  = 261.63f;
+    constexpr float D4  = 293.66f;
+    constexpr float Eb4 = 311.13f;
+    constexpr float F4  = 349.23f;
+    constexpr float G4  = 392.00f;
+
+    float bassNotes[16] = {
+        C3, C3, Eb3, C3,   F3, Eb3, C3, Bb3,
+        C3, C3, G3, F3,    Eb3, F3, D4, C3
+    };
+
+    float leadNotes[16] = {
+        C4, Eb4, G4, Eb4,  F4, Eb4, D4, C4,
+        Eb4, G4, Bb3, C4,  D4, Eb4, D4, C4
+    };
+
+    for (unsigned int i = 0; i < frameCount; ++i) {
+        float t = static_cast<float>(i) / sampleRate;
+        float beatProgress = fmodf(t, beatSec) / beatSec;
+        int currentBeat = static_cast<int>(t / beatSec) % totalBeats;
+
+        // 1. Muffled deep nocturnal kick on beats 0, 2, 4, 6, 8, 10, 12, 14
+        float kick = 0.0f;
+        if (currentBeat % 2 == 0) {
+            float kEnv = expf(-beatProgress * 18.0f);
+            float kFreq = 110.0f - 75.0f * beatProgress;
+            kick = sinf(PI2 * kFreq * beatProgress * beatSec) * kEnv * 0.7f;
+        }
+
+        // 2. Crisp rimshot / snare on beats 1, 3, 5, 7, 9, 11, 13, 15
+        float snare = 0.0f;
+        if (currentBeat % 2 == 1) {
+            float sEnv = expf(-beatProgress * 20.0f);
+            float noise = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f);
+            snare = noise * sEnv * 0.42f;
+        }
+
+        // 3. Night crickets / 16th-note shaker
+        float sub16 = fmodf(t, beatSec / 4.0f) / (beatSec / 4.0f);
+        float hat = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * expf(-sub16 * 40.0f) * 0.12f;
+
+        // 4. Deep analog bass
+        float bFreq = bassNotes[currentBeat];
+        float bPhase = fmodf(t * bFreq, 1.0f);
+        float bWave = (bPhase > 0.5f ? 1.0f : -1.0f) * 0.32f * (1.0f - beatProgress * 0.4f);
+
+        // 5. Haunting nocturnal lead with slight vibrato
+        float lFreq = leadNotes[currentBeat];
+        float vibrato = sinf(PI2 * 5.0f * t) * 3.5f;
+        float lead = sinf(PI2 * (lFreq + vibrato) * t) * 0.28f * sinf(beatProgress * 3.14159f);
+
+        // 6. Eerie cathedral chime on bar downbeats (beats 0, 8)
+        float chime = 0.0f;
+        if (currentBeat == 0 || currentBeat == 8) {
+            float cProgress = fmodf(t, beatSec * 8.0f) / (beatSec * 8.0f);
+            chime = sinf(PI2 * 1046.50f * t) * expf(-cProgress * 8.0f) * 0.18f;
+        }
+
+        float mix = (kick + snare + hat + bWave + lead + chime) * 0.65f;
+        mix = ClampFloat(mix, -1.0f, 1.0f);
+        buffer[i] = static_cast<short>(mix * 26000.0f);
+    }
+
+    Wave wave = {};
+    wave.frameCount = frameCount;
+    wave.sampleRate = sampleRate;
+    wave.sampleSize = 16;
+    wave.channels = 1;
+    wave.data = buffer;
+    return wave;
+}
+
+// Procedural Bonus Stage track (Upbeat, fast 148 BPM Sega arcade FM synth style)
+Wave AudioManager::GenerateBonusMusicWave() {
+    constexpr unsigned int sampleRate = 44100;
+    constexpr float bpm = 148.0f;
+    constexpr float beatSec = 60.0f / bpm;
+    constexpr int totalBeats = 16;
+    float totalDuration = totalBeats * beatSec;
+    unsigned int frameCount = static_cast<unsigned int>(sampleRate * totalDuration);
+
+    short* buffer = (short*)malloc(frameCount * sizeof(short));
+    constexpr float PI2 = 6.28318530718f;
+
+    // Joyous G Major pentatonic frequencies
+    constexpr float G2 = 98.00f;
+    constexpr float B2 = 123.47f;
+    constexpr float D3 = 146.83f;
+    constexpr float E3 = 164.81f;
+    constexpr float G3 = 196.00f;
+
+    constexpr float G4 = 392.00f;
+    constexpr float A4 = 440.00f;
+    constexpr float B4 = 493.88f;
+    constexpr float D5 = 587.33f;
+    constexpr float E5 = 659.25f;
+    constexpr float G5 = 783.99f;
+
+    float bassNotes[16] = {
+        G2, G2, B2, D3,    E3, D3, B2, G2,
+        G2, G2, D3, E3,    G3, E3, D3, B2
+    };
+
+    float leadNotes[16] = {
+        G4, B4, D5, E5,    D5, B4, A4, G4,
+        B4, D5, E5, G5,    E5, D5, B4, G4
+    };
+
+    for (unsigned int i = 0; i < frameCount; ++i) {
+        float t = static_cast<float>(i) / sampleRate;
+        float beatProgress = fmodf(t, beatSec) / beatSec;
+        int currentBeat = static_cast<int>(t / beatSec) % totalBeats;
+
+        // 1. Punchy four-on-the-floor arcade kick
+        float kEnv = expf(-beatProgress * 24.0f);
+        float kick = sinf(PI2 * (150.0f - 100.0f * beatProgress) * beatProgress * beatSec) * kEnv * 0.7f;
+
+        // 2. Handclap / Snare on 1, 3, 5, 7, 9, 11, 13, 15
+        float snare = 0.0f;
+        if (currentBeat % 2 == 1) {
+            float sEnv = expf(-beatProgress * 16.0f);
+            float noise = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f);
+            snare = noise * sEnv * 0.5f;
+        }
+
+        // 3. Fast open/closed hi-hats
+        float sub16 = fmodf(t, beatSec / 4.0f) / (beatSec / 4.0f);
+        float hat = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * expf(-sub16 * 32.0f) * 0.18f;
+
+        // 4. Slap FM bassline
+        float bFreq = bassNotes[currentBeat];
+        float bPhase = fmodf(t * bFreq, 1.0f);
+        float bWave = (bPhase * 2.0f - 1.0f) * 0.35f * (1.0f - beatProgress * 0.5f);
+
+        // 5. Bright bell-like arpeggiated lead
+        float lFreq = leadNotes[currentBeat];
+        float lead = (sinf(PI2 * lFreq * t) + sinf(PI2 * lFreq * 2.0f * t) * 0.4f) * 0.30f * sinf(beatProgress * 3.14159f);
+
+        float mix = (kick + snare + hat + bWave + lead) * 0.65f;
+        mix = ClampFloat(mix, -1.0f, 1.0f);
+        buffer[i] = static_cast<short>(mix * 26000.0f);
+    }
+
+    Wave wave = {};
+    wave.frameCount = frameCount;
+    wave.sampleRate = sampleRate;
+    wave.sampleSize = 16;
+    wave.channels = 1;
+    wave.data = buffer;
+    return wave;
+}
+
+// Procedural Evil Clone Boss track (Intense, 160 BPM Dark Baroque counterpoint)
+Wave AudioManager::GenerateEvilCloneMusicWave() {
+    constexpr unsigned int sampleRate = 44100;
+    constexpr float bpm = 160.0f;
+    constexpr float beatSec = 60.0f / bpm;
+    constexpr int totalBeats = 16;
+    float totalDuration = totalBeats * beatSec;
+    unsigned int frameCount = static_cast<unsigned int>(sampleRate * totalDuration);
+
+    short* buffer = (short*)malloc(frameCount * sizeof(short));
+    constexpr float PI2 = 6.28318530718f;
+
+    // D minor Harmonic frequencies
+    constexpr float D3  = 146.83f;
+    constexpr float F3  = 174.61f;
+    constexpr float G3  = 196.00f;
+    constexpr float A3  = 220.00f;
+    constexpr float Bb3 = 233.08f;
+    constexpr float Cs4 = 277.18f;
+
+    constexpr float D4  = 293.66f;
+    constexpr float E4  = 329.63f;
+    constexpr float F4  = 349.23f;
+    constexpr float G4  = 392.00f;
+    constexpr float A4  = 440.00f;
+    constexpr float Bb4 = 466.16f;
+    constexpr float Cs5 = 554.37f;
+    constexpr float D5  = 587.33f;
+
+    float bassNotes[16] = {
+        D3, D3, F3, D3,    G3, F3, D3, Cs4,
+        Bb3, Bb3, A3, G3,  F3, G3, A3, Cs4
+    };
+
+    float leadNotes[16] = {
+        D4, F4, A4, D5,    Cs5, Bb4, A4, G4,
+        F4, E4, D4, F4,    A4, Cs5, D5, Cs5
+    };
+
+    for (unsigned int i = 0; i < frameCount; ++i) {
+        float t = static_cast<float>(i) / sampleRate;
+        float beatProgress = fmodf(t, beatSec) / beatSec;
+        int currentBeat = static_cast<int>(t / beatSec) % totalBeats;
+
+        // Double-time aggressive kick drum
+        float subBeat = fmodf(t, beatSec / 2.0f) / (beatSec / 2.0f);
+        float kick = sinf(PI2 * (160.0f - 110.0f * subBeat) * subBeat * beatSec) * expf(-subBeat * 22.0f) * 0.7f;
+
+        // Heavy industrial snare
+        float snare = 0.0f;
+        if (currentBeat % 2 == 1) {
+            float sEnv = expf(-beatProgress * 15.0f);
+            float noise = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f);
+            snare = noise * sEnv * 0.55f;
+        }
+
+        // Tense rapid 16th hats
+        float sub16 = fmodf(t, beatSec / 4.0f) / (beatSec / 4.0f);
+        float hat = ((float)rand() / (float)RAND_MAX * 2.0f - 1.0f) * expf(-sub16 * 45.0f) * 0.16f;
+
+        // Distorted sawtooth bass
+        float bFreq = bassNotes[currentBeat];
+        float bPhase = fmodf(t * bFreq, 1.0f);
+        float bWave = (bPhase * 2.0f - 1.0f);
+        bWave = ClampFloat(bWave * 1.5f, -1.0f, 1.0f) * 0.35f * (1.0f - beatProgress * 0.5f);
+
+        // Furious classical lead synth
+        float lFreq = leadNotes[currentBeat];
+        float lPhase = fmodf(t * lFreq, 1.0f);
+        float lead = (lPhase > 0.5f ? 0.8f : -0.8f) * 0.28f * sinf(beatProgress * 3.14159f);
+
+        float mix = (kick + snare + hat + bWave + lead) * 0.65f;
+        mix = ClampFloat(mix, -1.0f, 1.0f);
+        buffer[i] = static_cast<short>(mix * 26000.0f);
+    }
+
+    Wave wave = {};
+    wave.frameCount = frameCount;
+    wave.sampleRate = sampleRate;
+    wave.sampleSize = 16;
+    wave.channels = 1;
+    wave.data = buffer;
+    return wave;
+}
+
 void AudioManager::Init() {
     if (s_initialized) return;
 
@@ -636,21 +973,36 @@ void AudioManager::Init() {
     }
 
     // Generate looping music waves
-    Wave stageMusicWave = GenerateStageMusicWave();
-    s_stageMusic = LoadSoundFromWave(stageMusicWave);
-    UnloadWave(stageMusicWave);
+    Wave m1Wave = GenerateStageMusicWave();
+    s_stageMusicM1 = LoadSoundFromWave(m1Wave);
+    UnloadWave(m1Wave);
+
+    Wave m2Wave = GenerateStage2MusicWave();
+    s_stageMusicM2 = LoadSoundFromWave(m2Wave);
+    UnloadWave(m2Wave);
+
+    Wave bonusWave = GenerateBonusMusicWave();
+    s_bonusMusic = LoadSoundFromWave(bonusWave);
+    UnloadWave(bonusWave);
 
     Wave bossMusicWave = GenerateBossMusicWave();
     s_bossMusic = LoadSoundFromWave(bossMusicWave);
     UnloadWave(bossMusicWave);
+
+    Wave evilCloneWave = GenerateEvilCloneMusicWave();
+    s_evilCloneMusic = LoadSoundFromWave(evilCloneWave);
+    UnloadWave(evilCloneWave);
 
     Wave continueMusicWave = GenerateContinueMusicWave();
     s_continueMusic = LoadSoundFromWave(continueMusicWave);
     UnloadWave(continueMusicWave);
 
     // Set volumes
-    SetSoundVolume(s_stageMusic, 0.45f);
+    SetSoundVolume(s_stageMusicM1, 0.45f);
+    SetSoundVolume(s_stageMusicM2, 0.48f);
+    SetSoundVolume(s_bonusMusic, 0.50f);
     SetSoundVolume(s_bossMusic, 0.55f);
+    SetSoundVolume(s_evilCloneMusic, 0.58f);
     SetSoundVolume(s_continueMusic, 0.55f);
 
     s_initialized = true;
@@ -666,8 +1018,11 @@ void AudioManager::Close() {
         }
     }
 
-    if (s_stageMusic.frameCount > 0) UnloadSound(s_stageMusic);
+    if (s_stageMusicM1.frameCount > 0) UnloadSound(s_stageMusicM1);
+    if (s_stageMusicM2.frameCount > 0) UnloadSound(s_stageMusicM2);
+    if (s_bonusMusic.frameCount > 0) UnloadSound(s_bonusMusic);
     if (s_bossMusic.frameCount > 0) UnloadSound(s_bossMusic);
+    if (s_evilCloneMusic.frameCount > 0) UnloadSound(s_evilCloneMusic);
     if (s_continueMusic.frameCount > 0) UnloadSound(s_continueMusic);
 
     CloseAudioDevice();
@@ -694,12 +1049,15 @@ bool AudioManager::IsMusicEnabled() {
 
 void AudioManager::StopAllMusic() {
     if (!s_initialized) return;
-    if (IsSoundPlaying(s_stageMusic)) StopSound(s_stageMusic);
+    if (IsSoundPlaying(s_stageMusicM1)) StopSound(s_stageMusicM1);
+    if (IsSoundPlaying(s_stageMusicM2)) StopSound(s_stageMusicM2);
+    if (IsSoundPlaying(s_bonusMusic)) StopSound(s_bonusMusic);
     if (IsSoundPlaying(s_bossMusic)) StopSound(s_bossMusic);
+    if (IsSoundPlaying(s_evilCloneMusic)) StopSound(s_evilCloneMusic);
     if (IsSoundPlaying(s_continueMusic)) StopSound(s_continueMusic);
 }
 
-void AudioManager::Update(bool inBossArena, bool isGameOver, bool isVictory) {
+void AudioManager::Update(bool inBossArena, bool isGameOver, bool isVictory, int stageId, bool isBonusStage) {
     if (!s_initialized || !s_musicEnabled) return;
 
     if (isVictory) {
@@ -708,8 +1066,11 @@ void AudioManager::Update(bool inBossArena, bool isGameOver, bool isVictory) {
     }
 
     if (isGameOver) {
-        if (IsSoundPlaying(s_stageMusic)) StopSound(s_stageMusic);
+        if (IsSoundPlaying(s_stageMusicM1)) StopSound(s_stageMusicM1);
+        if (IsSoundPlaying(s_stageMusicM2)) StopSound(s_stageMusicM2);
+        if (IsSoundPlaying(s_bonusMusic)) StopSound(s_bonusMusic);
         if (IsSoundPlaying(s_bossMusic)) StopSound(s_bossMusic);
+        if (IsSoundPlaying(s_evilCloneMusic)) StopSound(s_evilCloneMusic);
 
         if (!IsSoundPlaying(s_continueMusic)) {
             PlaySound(s_continueMusic);
@@ -721,21 +1082,57 @@ void AudioManager::Update(bool inBossArena, bool isGameOver, bool isVictory) {
         StopSound(s_continueMusic);
     }
 
+    // Handle Bonus Stage music
+    if (isBonusStage) {
+        if (IsSoundPlaying(s_stageMusicM1)) StopSound(s_stageMusicM1);
+        if (IsSoundPlaying(s_stageMusicM2)) StopSound(s_stageMusicM2);
+        if (IsSoundPlaying(s_bossMusic)) StopSound(s_bossMusic);
+        if (IsSoundPlaying(s_evilCloneMusic)) StopSound(s_evilCloneMusic);
+
+        if (!IsSoundPlaying(s_bonusMusic)) {
+            PlaySound(s_bonusMusic);
+        }
+        return;
+    }
+
+    if (IsSoundPlaying(s_bonusMusic)) {
+        StopSound(s_bonusMusic);
+    }
+
     s_inBossArena = inBossArena;
 
     if (s_inBossArena) {
-        if (IsSoundPlaying(s_stageMusic)) {
-            StopSound(s_stageMusic);
-        }
-        if (!IsSoundPlaying(s_bossMusic)) {
-            PlaySound(s_bossMusic);
+        if (IsSoundPlaying(s_stageMusicM1)) StopSound(s_stageMusicM1);
+        if (IsSoundPlaying(s_stageMusicM2)) StopSound(s_stageMusicM2);
+
+        if (stageId == 6) {
+            // Evil Clone final boss theme!
+            if (IsSoundPlaying(s_bossMusic)) StopSound(s_bossMusic);
+            if (!IsSoundPlaying(s_evilCloneMusic)) {
+                PlaySound(s_evilCloneMusic);
+            }
+        } else {
+            if (IsSoundPlaying(s_evilCloneMusic)) StopSound(s_evilCloneMusic);
+            if (!IsSoundPlaying(s_bossMusic)) {
+                PlaySound(s_bossMusic);
+            }
         }
     } else {
-        if (IsSoundPlaying(s_bossMusic)) {
-            StopSound(s_bossMusic);
-        }
-        if (!IsSoundPlaying(s_stageMusic)) {
-            PlaySound(s_stageMusic);
+        if (IsSoundPlaying(s_bossMusic)) StopSound(s_bossMusic);
+        if (IsSoundPlaying(s_evilCloneMusic)) StopSound(s_evilCloneMusic);
+
+        if (stageId >= 4) {
+            // Mission 2 Stage theme
+            if (IsSoundPlaying(s_stageMusicM1)) StopSound(s_stageMusicM1);
+            if (!IsSoundPlaying(s_stageMusicM2)) {
+                PlaySound(s_stageMusicM2);
+            }
+        } else {
+            // Mission 1 Stage theme
+            if (IsSoundPlaying(s_stageMusicM2)) StopSound(s_stageMusicM2);
+            if (!IsSoundPlaying(s_stageMusicM1)) {
+                PlaySound(s_stageMusicM1);
+            }
         }
     }
 }

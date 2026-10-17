@@ -1,4 +1,5 @@
 #include "Graphics.h"
+#include "Mission2Graphics.h"
 #include "TitleImageBytes.h"
 #include <cmath>
 #include <cstdlib>
@@ -15,6 +16,14 @@ Texture2D GraphicsManager::s_bgTempleSanctuary = {};
 Texture2D GraphicsManager::s_bgTempleColonnade = {};
 Texture2D GraphicsManager::s_bgGolgothaSky = {};
 Texture2D GraphicsManager::s_bgGolgothaCrags = {};
+Texture2D GraphicsManager::s_bgKidronSky = {};
+Texture2D GraphicsManager::s_bgKidronRavine = {};
+Texture2D GraphicsManager::s_bgHedgeSky = {};
+Texture2D GraphicsManager::s_bgHedgeLabyrinth = {};
+Texture2D GraphicsManager::s_bgGethsemaneSky = {};
+Texture2D GraphicsManager::s_bgGethsemaneGrove = {};
+Texture2D GraphicsManager::s_bgBonusSunset = {};
+Texture2D GraphicsManager::s_bgBonusTerraces = {};
 Texture2D GraphicsManager::s_texMissionMap = {};
 Texture2D GraphicsManager::s_texTitleSplash = {};
 bool GraphicsManager::s_initialized = false;
@@ -3352,6 +3361,17 @@ void GraphicsManager::Init() {
     GenerateParallaxBackgrounds();
     GenerateMissionMap();
 
+    Mission2Graphics::GenerateAll(
+        s_bgKidronSky,
+        s_bgKidronRavine,
+        s_bgHedgeSky,
+        s_bgHedgeLabyrinth,
+        s_bgGethsemaneSky,
+        s_bgGethsemaneGrove,
+        s_bgBonusSunset,
+        s_bgBonusTerraces
+    );
+
     // Load Title Splash Screen (from file or embedded bytes)
     Image splashImg{};
     if (FileExists("assets/title.jpg")) {
@@ -3389,6 +3409,14 @@ void GraphicsManager::Close() {
     if (s_bgTempleColonnade.id > 0) UnloadTexture(s_bgTempleColonnade);
     if (s_bgGolgothaSky.id > 0) UnloadTexture(s_bgGolgothaSky);
     if (s_bgGolgothaCrags.id > 0) UnloadTexture(s_bgGolgothaCrags);
+    if (s_bgKidronSky.id > 0) UnloadTexture(s_bgKidronSky);
+    if (s_bgKidronRavine.id > 0) UnloadTexture(s_bgKidronRavine);
+    if (s_bgHedgeSky.id > 0) UnloadTexture(s_bgHedgeSky);
+    if (s_bgHedgeLabyrinth.id > 0) UnloadTexture(s_bgHedgeLabyrinth);
+    if (s_bgGethsemaneSky.id > 0) UnloadTexture(s_bgGethsemaneSky);
+    if (s_bgGethsemaneGrove.id > 0) UnloadTexture(s_bgGethsemaneGrove);
+    if (s_bgBonusSunset.id > 0) UnloadTexture(s_bgBonusSunset);
+    if (s_bgBonusTerraces.id > 0) UnloadTexture(s_bgBonusTerraces);
     if (s_texMissionMap.id > 0) UnloadTexture(s_texMissionMap);
     if (s_texTitleSplash.id > 0) UnloadTexture(s_texTitleSplash);
 
@@ -3402,7 +3430,7 @@ void GraphicsManager::DrawTitleSplash(int destWidth, int destHeight) {
     DrawTexturePro(s_texTitleSplash, src, dst, { 0, 0 }, 0.0f, WHITE);
 }
 
-void GraphicsManager::DrawMissionMap(int currentMission, bool m1Cleared, bool m2Cleared, bool m3Cleared, float time) {
+void GraphicsManager::DrawMissionMap(int missionNumber, int currentArea, bool a1Cleared, bool a2Cleared, bool a3Cleared, float time) {
     if (s_texMissionMap.id == 0) return;
 
     DrawTexture(s_texMissionMap, 0, 0, WHITE);
@@ -3415,15 +3443,20 @@ void GraphicsManager::DrawMissionMap(int currentMission, bool m1Cleared, bool m2
         bool cleared;
     };
 
-    AreaNode areas[3] = {
-        {  42,  64, 46, 44, "AREA 1: VIA DOLOROSA", "ROMAN GARRISON & AQUEDUCT", "CENTURION BRUTUS", m1Cleared },
-        { 138,  48, 52, 48, "AREA 2: THE INNER TEMPLE", "SOLOMON'S PORCH & SANCTUARY", "SICARII & MALCHUS", m2Cleared },
-        { 236,  72, 48, 44, "AREA 3: GOLGOTHA CITADEL", "THE CRAGS & UPPER CITADEL", "TRIBUNAL PRAETOR", m3Cleared }
-    };
+    AreaNode areas[3];
+    if (missionNumber == 2) {
+        areas[0] = {  42,  64, 46, 44, "AREA 1: VALLEY OF KIDRON", "THE CHASM & MOONLIT BRIDGES", "TORMENTOR DECURION", a1Cleared };
+        areas[1] = { 138,  48, 52, 48, "AREA 2: CYPRESS HEDGE MAZE", "ROYAL PALACE LABYRINTH", "SHADOW INQUISITOR", a2Cleared };
+        areas[2] = { 236,  72, 48, 44, "AREA 3: GETHSEMANE GROVE", "THE ANCIENT OLIVE TREE", "CHRISTUS TENEBRIS", a3Cleared };
+    } else {
+        areas[0] = {  42,  64, 46, 44, "AREA 1: VIA DOLOROSA", "ROMAN GARRISON & AQUEDUCT", "CENTURION BRUTUS", a1Cleared };
+        areas[1] = { 138,  48, 52, 48, "AREA 2: THE INNER TEMPLE", "SOLOMON'S PORCH & SANCTUARY", "SICARII & MALCHUS", a2Cleared };
+        areas[2] = { 236,  72, 48, 44, "AREA 3: GOLGOTHA CITADEL", "THE CRAGS & UPPER CITADEL", "TRIBUNAL PRAETOR", a3Cleared };
+    }
 
     for (int i = 0; i < 3; ++i) {
         const auto& a = areas[i];
-        bool isCurrent = (currentMission == (i + 1));
+        bool isCurrent = (currentArea == (i + 1));
 
         if (a.cleared) {
             DrawRectangle(a.x - 2, a.y - 2, a.w + 4, a.h + 4, Color{ 40, 35, 45, 130 });
@@ -3469,7 +3502,7 @@ void GraphicsManager::DrawMissionMap(int currentMission, bool m1Cleared, bool m2
         }
     }
 
-    const char* topTitle = "JERUSALEM CAMPAIGN MAP";
+    const char* topTitle = (missionNumber == 2) ? "MISSION 2: GETHSEMANE OUTSKIRTS" : "MISSION 1: JERUSALEM CAMPAIGN";
     int ttw = MeasureText(topTitle, 10);
     DrawRectangle((VIRTUAL_WIDTH - ttw) / 2 - 10, 12, ttw + 20, 15, Color{ 24, 18, 22, 230 });
     DrawRectangleLines((VIRTUAL_WIDTH - ttw) / 2 - 10, 12, ttw + 20, 15, COLOR_GOLD_BRIGHT);
@@ -3480,7 +3513,7 @@ void GraphicsManager::DrawMissionMap(int currentMission, bool m1Cleared, bool m2
     DrawRectangleLines(bx - 1, by - 1, bw + 2, bh + 2, COLOR_ROMAN_CRIMSON);
     DrawRectangleLines(bx - 2, by - 2, bw + 4, bh + 4, COLOR_GOLD_BRIGHT);
 
-    int curIdx = std::clamp(currentMission - 1, 0, 2);
+    int curIdx = std::clamp(currentArea - 1, 0, 2);
     const auto& curArea = areas[curIdx];
 
     DrawText(curArea.name, bx + 10, by + 6, 10, COLOR_GOLD_BRIGHT);
@@ -3515,6 +3548,15 @@ void GraphicsManager::DrawTile(TileId id, float x, float y, Color tint) {
     DrawTexture(tex, static_cast<int>(x), static_cast<int>(y), tint);
 }
 
+void GraphicsManager::DrawBonusStageBackground(float time) {
+    if (s_bgBonusSunset.id > 0) {
+        DrawTexture(s_bgBonusSunset, 0, 0, WHITE);
+    }
+    if (s_bgBonusTerraces.id > 0) {
+        DrawTexture(s_bgBonusTerraces, 0, 0, WHITE);
+    }
+}
+
 void GraphicsManager::DrawParallaxBackground(float cameraX, float time, int stageId) {
     if (stageId == 2) {
         // --- STAGE 2: INSIDE THE TEMPLE OF JERUSALEM ---
@@ -3539,6 +3581,42 @@ void GraphicsManager::DrawParallaxBackground(float cameraX, float time, int stag
         DrawTexture(s_bgGolgothaCrags, static_cast<int>(gCragX), 14, WHITE);
         DrawTexture(s_bgGolgothaCrags, static_cast<int>(gCragX + s_bgGolgothaCrags.width), 14, WHITE);
         if (gCragX > 0) DrawTexture(s_bgGolgothaCrags, static_cast<int>(gCragX - s_bgGolgothaCrags.width), 14, WHITE);
+        return;
+    } else if (stageId == 4) {
+        // --- STAGE 4: VALLEY OF THE KIDRON & RAVINE ---
+        float kSkyX = -fmodf(cameraX * 0.08f, (float)s_bgKidronSky.width);
+        DrawTexture(s_bgKidronSky, static_cast<int>(kSkyX), 0, WHITE);
+        DrawTexture(s_bgKidronSky, static_cast<int>(kSkyX + s_bgKidronSky.width), 0, WHITE);
+        if (kSkyX > 0) DrawTexture(s_bgKidronSky, static_cast<int>(kSkyX - s_bgKidronSky.width), 0, WHITE);
+
+        float kRavineX = -fmodf(cameraX * 0.45f, (float)s_bgKidronRavine.width);
+        DrawTexture(s_bgKidronRavine, static_cast<int>(kRavineX), 12, WHITE);
+        DrawTexture(s_bgKidronRavine, static_cast<int>(kRavineX + s_bgKidronRavine.width), 12, WHITE);
+        if (kRavineX > 0) DrawTexture(s_bgKidronRavine, static_cast<int>(kRavineX - s_bgKidronRavine.width), 12, WHITE);
+        return;
+    } else if (stageId == 5) {
+        // --- STAGE 5: THE ROYAL CYPRESS HEDGE MAZE ---
+        float hSkyX = -fmodf(cameraX * 0.10f, (float)s_bgHedgeSky.width);
+        DrawTexture(s_bgHedgeSky, static_cast<int>(hSkyX), 0, WHITE);
+        DrawTexture(s_bgHedgeSky, static_cast<int>(hSkyX + s_bgHedgeSky.width), 0, WHITE);
+        if (hSkyX > 0) DrawTexture(s_bgHedgeSky, static_cast<int>(hSkyX - s_bgHedgeSky.width), 0, WHITE);
+
+        float hLabX = -fmodf(cameraX * 0.40f, (float)s_bgHedgeLabyrinth.width);
+        DrawTexture(s_bgHedgeLabyrinth, static_cast<int>(hLabX), 10, WHITE);
+        DrawTexture(s_bgHedgeLabyrinth, static_cast<int>(hLabX + s_bgHedgeLabyrinth.width), 10, WHITE);
+        if (hLabX > 0) DrawTexture(s_bgHedgeLabyrinth, static_cast<int>(hLabX - s_bgHedgeLabyrinth.width), 10, WHITE);
+        return;
+    } else if (stageId == 6) {
+        // --- STAGE 6: THE GARDEN OF GETHSEMANE ---
+        float gSkyX = -fmodf(cameraX * 0.08f, (float)s_bgGethsemaneSky.width);
+        DrawTexture(s_bgGethsemaneSky, static_cast<int>(gSkyX), 0, WHITE);
+        DrawTexture(s_bgGethsemaneSky, static_cast<int>(gSkyX + s_bgGethsemaneSky.width), 0, WHITE);
+        if (gSkyX > 0) DrawTexture(s_bgGethsemaneSky, static_cast<int>(gSkyX - s_bgGethsemaneSky.width), 0, WHITE);
+
+        float gGroveX = -fmodf(cameraX * 0.42f, (float)s_bgGethsemaneGrove.width);
+        DrawTexture(s_bgGethsemaneGrove, static_cast<int>(gGroveX), 8, WHITE);
+        DrawTexture(s_bgGethsemaneGrove, static_cast<int>(gGroveX + s_bgGethsemaneGrove.width), 8, WHITE);
+        if (gGroveX > 0) DrawTexture(s_bgGethsemaneGrove, static_cast<int>(gGroveX - s_bgGethsemaneGrove.width), 8, WHITE);
         return;
     }
 

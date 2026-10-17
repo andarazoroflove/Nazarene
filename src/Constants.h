@@ -77,3 +77,27 @@ inline const Color COLOR_SICARII_DARK     = Color{  28,  32,  48, 255 };
 inline const Color COLOR_SICARII_BLUE     = Color{  48,  65,  98, 255 };
 inline const Color COLOR_SICARII_BLADE    = Color{ 230, 240, 255, 255 };
 
+// Mission 2: Kidron, Hedge Maze, and Gethsemane Palette
+inline const Color COLOR_NIGHT_SKY        = Color{  12,  10,  26, 255 };
+inline const Color COLOR_KIDRON_ROCK      = Color{  68,  62,  75, 255 };
+inline const Color COLOR_KIDRON_DARK      = Color{  38,  34,  44, 255 };
+inline const Color COLOR_KIDRON_MIST      = Color{  85,  95, 130, 160 };
+inline const Color COLOR_TORCH_FIRE       = Color{ 255, 145,  30, 255 };
+inline const Color COLOR_TORCH_EMBER      = Color{ 255, 220,  90, 255 };
+
+inline const Color COLOR_HEDGE_EMERALD    = Color{  34,  98,  48, 255 };
+inline const Color COLOR_HEDGE_DARK       = Color{  16,  52,  26, 255 };
+inline const Color COLOR_HEDGE_TRIM       = Color{  58, 142,  72, 255 };
+inline const Color COLOR_MARBLE_STATUE    = Color{ 220, 225, 230, 255 };
+
+inline const Color COLOR_OLIVE_BARK       = Color{  86,  62,  42, 255 };
+inline const Color COLOR_OLIVE_LEAF       = Color{  72,  96,  64, 255 };
+inline const Color COLOR_OLIVE_SILVER     = Color{ 160, 185, 155, 255 };
+inline const Color COLOR_ALTAR_MOSS       = Color{  52,  68,  50, 255 };
+
+inline const Color COLOR_CLONE_TUNIC      = Color{  22,  20,  28, 255 };
+inline const Color COLOR_CLONE_CRIMSON    = Color{ 175,  18,  32, 255 };
+inline const Color COLOR_CLONE_EYE_RED    = Color{ 255,  30,  45, 255 };
+inline const Color COLOR_CLONE_AURA       = Color{ 120,  20, 160, 200 };
+
+

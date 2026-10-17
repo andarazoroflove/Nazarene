@@ -70,5 +70,8 @@ private:
     void BuildStreetsOfJerusalem();
     void BuildInsideTheTemple();
     void BuildGolgothaCitadel();
+    void BuildValleyOfKidron();
+    void BuildCypressHedgeMaze();
+    void BuildGardenOfGethsemane();
 };
 

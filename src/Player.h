@@ -49,6 +49,7 @@ public:
     void TakeDamage(int damage = 1, bool inBossFight = false);
     void RestoreHealth(int pips = 1);
     void AddScore(int points) { m_score += points; }
+    void AddLives(int count = 1) { m_lives += count; }
     void Resurrect(bool inBossArena, float bossArenaX = ARENA_MIN_X + 24.0f);
 
     // State queries

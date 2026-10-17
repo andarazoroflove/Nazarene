@@ -84,6 +84,57 @@ enum SpriteId {
     SPR_TRIBUNAL_HURT,
     SPR_TRIBUNAL_KNEEL,
 
+    // Bonus Stage: Mount of Beatitudes / Feeding the 5,000
+    SPR_VILLAGER_ELDER_RUN_0,
+    SPR_VILLAGER_ELDER_RUN_1,
+    SPR_VILLAGER_WOMAN_RUN_0,
+    SPR_VILLAGER_WOMAN_RUN_1,
+    SPR_VILLAGER_YOUTH_RUN_0,
+    SPR_VILLAGER_YOUTH_RUN_1,
+    SPR_VILLAGER_BEGGAR_RUN_0,
+    SPR_VILLAGER_BEGGAR_RUN_1,
+    SPR_VILLAGER_SATISFIED,
+    SPR_BREAD_LOAF,
+    SPR_FISH_PROJECTILE,
+    SPR_JESUS_BASKET_AIM,
+    SPR_JESUS_BASKET_THROW,
+
+    // Mission 2: Tormentor Guard (Torch & Spiked Cudgel)
+    SPR_TORMENTOR_WALK_0,
+    SPR_TORMENTOR_WALK_1,
+    SPR_TORMENTOR_ATTACK,
+    SPR_TORMENTOR_HURT,
+
+    // Mission 2: Thorn Sicarii (Hedge Camouflaged Assassin)
+    SPR_THORN_SICARII_CROUCH,
+    SPR_THORN_SICARII_LEAP,
+    SPR_THORN_SICARII_SLASH,
+    SPR_THORN_SICARII_HURT,
+
+    // Mission 2: Corrupted Priest (Dark Magic Caster)
+    SPR_CORRUPTED_PRIEST_STAND,
+    SPR_CORRUPTED_PRIEST_CAST,
+    SPR_CORRUPTED_PRIEST_HURT,
+    SPR_DARK_ORB,
+    SPR_DARK_SPIKE,
+
+    // Mission 2 Boss: The Evil Genius Clone ("Christus Tenebris")
+    SPR_CLONE_IDLE,
+    SPR_CLONE_WALK_0,
+    SPR_CLONE_WALK_1,
+    SPR_CLONE_JUMP,
+    SPR_CLONE_THROW_STAND,
+    SPR_CLONE_THROW_CROUCH,
+    SPR_CLONE_MELEE_STRIKE,
+    SPR_CLONE_CHANNEL,
+    SPR_CLONE_HURT,
+    SPR_CLONE_KNEEL,
+
+    // Mission 2 Pickups
+    SPR_SILVER_PITCHER,
+    SPR_OLIVE_WREATH,
+    SPR_SACRED_CHALICE,
+
     // Projectiles & Items
     SPR_NAIL,
     SPR_ARROW,
@@ -143,6 +194,35 @@ enum TileId {
     TILE_GOLGOTHA_STANDARD,
     TILE_GOLGOTHA_WALL_STONE,
 
+    // Stage 4: Kidron Valley & Ravine Tiles
+    TILE_KIDRON_ROCK_SURFACE,
+    TILE_KIDRON_ROCK_SUB,
+    TILE_KIDRON_BRIDGE_WOOD,
+    TILE_KIDRON_LEDGE,
+    TILE_KIDRON_COLUMN_HEAD,
+    TILE_KIDRON_COLUMN_MID,
+    TILE_KIDRON_COLUMN_BASE,
+    TILE_KIDRON_TORCH,
+
+    // Stage 5: Royal Cypress Hedge Maze Tiles
+    TILE_HEDGE_TOP,
+    TILE_HEDGE_MID,
+    TILE_HEDGE_LEDGE_1,
+    TILE_HEDGE_LEDGE_2,
+    TILE_HEDGE_ARCH,
+    TILE_HEDGE_URN,
+    TILE_HEDGE_FOUNTAIN,
+
+    // Stage 6: Garden of Gethsemane & Ancient Olive Tree Tiles
+    TILE_GETHSEMANE_EARTH_SURFACE,
+    TILE_GETHSEMANE_EARTH_SUB,
+    TILE_GETHSEMANE_OLIVE_TRUNK,
+    TILE_GETHSEMANE_OLIVE_BRANCH,
+    TILE_GETHSEMANE_OLIVE_LEAVES,
+    TILE_GETHSEMANE_LEDGE,
+    TILE_GETHSEMANE_ALTAR_STONE,
+    TILE_GETHSEMANE_LANTERN,
+
     TILE_TOTAL_COUNT
 };
 
@@ -155,13 +235,14 @@ public:
     static void DrawSprite(SpriteId id, float x, float y, bool flipH = false, Color tint = WHITE);
     static void DrawTile(TileId id, float x, float y, Color tint = WHITE);
     
-    // Parallax background drawing (Supports Stage 1 Streets & Stage 2 Temple)
+    // Parallax background drawing (Supports all stages 1 through 6)
     static void DrawParallaxBackground(float cameraX, float time = 0.0f, int stageId = 1);
+    static void DrawBonusStageBackground(float time);
     static void DrawDropShadow(float x, float y, float width = 20.0f, float height = 5.0f);
 
     // Title & Mission Map screen drawing
     static void DrawTitleSplash(int destWidth, int destHeight);
-    static void DrawMissionMap(int currentMission, bool m1Cleared, bool m2Cleared, bool m3Cleared, float time);
+    static void DrawMissionMap(int missionNumber, int currentArea, bool a1Cleared, bool a2Cleared, bool a3Cleared, float time);
 
     // Particle / Effect drawing helpers
     static void DrawDivineBeam(float targetX, float alpha);
@@ -179,6 +260,9 @@ public:
     static bool TryLoadExternalSpritesheet(const char* filepath);
 
     static Texture2D GetSpriteTexture(SpriteId id) { return s_sprites[id]; }
+    static void SetSpriteTexture(SpriteId id, Texture2D tex) { s_sprites[id] = tex; }
+    static void SetTileTexture(TileId id, Texture2D tex) { s_tiles[id] = tex; }
+    static Texture2D CreateTextureFromPixels(int width, int height, const Color* pixels);
 
 private:
     static Texture2D s_sprites[SPRITE_TOTAL_COUNT];
@@ -196,6 +280,18 @@ private:
     static Texture2D s_bgGolgothaSky;
     static Texture2D s_bgGolgothaCrags;
 
+    // Mission 2 Parallax Layers
+    static Texture2D s_bgKidronSky;
+    static Texture2D s_bgKidronRavine;
+    static Texture2D s_bgHedgeSky;
+    static Texture2D s_bgHedgeLabyrinth;
+    static Texture2D s_bgGethsemaneSky;
+    static Texture2D s_bgGethsemaneGrove;
+
+    // Bonus Stage Background Layers
+    static Texture2D s_bgBonusSunset;
+    static Texture2D s_bgBonusTerraces;
+
     // Map screen texture
     static Texture2D s_texMissionMap;
 
@@ -207,8 +303,5 @@ private:
     static void GenerateAllProceduralTiles();
     static void GenerateParallaxBackgrounds();
     static void GenerateMissionMap();
-
-    // Helper to generate textures from pixel arrays
-    static Texture2D CreateTextureFromPixels(int width, int height, const Color* pixels);
 };
 

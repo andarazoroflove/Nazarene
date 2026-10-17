@@ -31,6 +31,24 @@ Enemy::Enemy(EnemyType type, Vector2 pos, float patrolMinX, float patrolMaxX)
     m_bossWalkedOff = false;
     m_phase1WalkedOff = false;
 
+    m_thornState = ThornSicariiState::CROUCH;
+    m_thornTimer = 0.0f;
+    m_thornCooldown = 1.0f;
+    m_torchTimer = 0.0f;
+    m_torchSwinging = false;
+    m_castTimer = 0.0f;
+    m_castCooldown = 2.0f;
+    m_cloneState = CloneState::IDLE;
+    m_cloneActionTimer = 0.0f;
+    m_cloneAttackPattern = 0;
+    m_cloneBarrierActive = true;
+    m_cloneLeapStartY = 0.0f;
+    m_justFiredDark = false;
+    m_darkProjPos = { 0, 0 };
+    m_darkProjVelX = 0.0f;
+    m_darkProjVelY = 0.0f;
+    m_darkProjIsSpike = false;
+
     switch (m_type) {
         case EnemyType::PATROL_GUARD:
             m_maxHp = 1;
@@ -81,6 +99,32 @@ Enemy::Enemy(EnemyType type, Vector2 pos, float patrolMinX, float patrolMaxX)
             m_whipState = BossWhipState::IDLE;
             m_facingLeft = true;
             break;
+        case EnemyType::TORMENTOR_GUARD:
+            m_maxHp = 2;
+            m_hp = 2;
+            m_velocity.x = -40.0f;
+            break;
+        case EnemyType::GARDEN_THORN_SICARII:
+            m_maxHp = 2;
+            m_hp = 2;
+            m_thornState = ThornSicariiState::CROUCH;
+            m_velocity = { 0.0f, 0.0f };
+            break;
+        case EnemyType::CORRUPTED_PRIEST:
+            m_maxHp = 2;
+            m_hp = 2;
+            m_velocity = { 0.0f, 0.0f };
+            m_castCooldown = 1.8f;
+            break;
+        case EnemyType::BOSS_EVIL_CLONE:
+            m_maxHp = BOSS_MAX_HP;
+            m_hp = BOSS_MAX_HP;
+            m_velocity = { 0.0f, 0.0f };
+            m_bossPhase = BossPhase::PHASE_2_ARENA;
+            m_cloneState = CloneState::IDLE;
+            m_facingLeft = true;
+            m_cloneBarrierActive = true;
+            break;
     }
 }
 
@@ -102,6 +146,17 @@ Rectangle Enemy::GetHurtbox() const {
         case EnemyType::BOSS_TEMPLE_COMMANDER:
         case EnemyType::BOSS_TRIBUNAL_PRAETOR:
             return { m_position.x + 6.0f, m_position.y + 4.0f, 24.0f, 44.0f };
+        case EnemyType::TORMENTOR_GUARD:
+            return { m_position.x + 4.0f, m_position.y + 4.0f, 18.0f, 26.0f };
+        case EnemyType::GARDEN_THORN_SICARII:
+            return { m_position.x + 3.0f, m_position.y + (m_thornState == ThornSicariiState::CROUCH ? 12.0f : 4.0f), 18.0f, (m_thornState == ThornSicariiState::CROUCH ? 18.0f : 24.0f) };
+        case EnemyType::CORRUPTED_PRIEST:
+            return { m_position.x + 4.0f, m_position.y + 4.0f, 18.0f, 26.0f };
+        case EnemyType::BOSS_EVIL_CLONE:
+            if (m_cloneState == CloneState::THROW_CROUCH) {
+                return { m_position.x + 4.0f, m_position.y + 12.0f, 20.0f, 18.0f };
+            }
+            return { m_position.x + 4.0f, m_position.y + 4.0f, 20.0f, 26.0f };
     }
     return { m_position.x, m_position.y, 16.0f, 28.0f };
 }
@@ -133,6 +188,26 @@ bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
         }
     }
 
+    // 2b. Evil Genius Clone Logic ("Christus Tenebris")
+    if (m_type == EnemyType::BOSS_EVIL_CLONE) {
+        if (m_cloneState == CloneState::KNEEL || m_cloneState == CloneState::WITHERING || m_cloneState == CloneState::DEAD_WITHERED) {
+            return true;
+        }
+
+        // Vulnerable when channeling wrath, somersaulting in the air, jump headshot, or from behind/melee
+        bool isVulnerable = (m_cloneState == CloneState::CHANNEL_WRATH) ||
+                            (m_cloneState == CloneState::JUMP_LEAP) ||
+                            isHighHit ||
+                            hitFromBehind ||
+                            (damage >= 4);
+
+        if (!isVulnerable) {
+            // Dark aura deflects standard standing frontal nail shots!
+            AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
+            return true;
+        }
+    }
+
     // 3. Archer Ducking Protection against standard mid-level shots
     if (m_type == EnemyType::ARCHER && m_isDucking) {
         if (!isHighHit) {
@@ -145,11 +220,12 @@ bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
     if (m_hp < 0) m_hp = 0;
     m_hurtTimer = 0.28f;
 
-    if (m_type == EnemyType::BOSS_GLADIATOR || m_type == EnemyType::BOSS_TEMPLE_COMMANDER || m_type == EnemyType::BOSS_TRIBUNAL_PRAETOR) {
+    if (m_type == EnemyType::BOSS_GLADIATOR || m_type == EnemyType::BOSS_TEMPLE_COMMANDER || m_type == EnemyType::BOSS_TRIBUNAL_PRAETOR || m_type == EnemyType::BOSS_EVIL_CLONE) {
         AudioManager::PlaySfx(SFX_BOSS_HURT);
         if (m_hp <= 0) {
             m_hp = 0;
             m_whipState = BossWhipState::KNEEL;
+            m_cloneState = CloneState::KNEEL;
             m_whipTimer = 0.0f;
             m_witherTimer = 0.0f;
             m_attackHitboxActive = false;
@@ -798,6 +874,298 @@ void Enemy::Update(float dt, const Vector2& playerPos, Level& level) {
             }
             break;
         }
+
+        case EnemyType::TORMENTOR_GUARD: {
+            // Patrol movement
+            m_position.x += m_velocity.x * dt;
+            if (m_position.x <= m_patrolMinX) {
+                m_position.x = m_patrolMinX;
+                m_velocity.x = 40.0f;
+                m_facingLeft = false;
+            } else if (m_position.x >= m_patrolMaxX) {
+                m_position.x = m_patrolMaxX;
+                m_velocity.x = -40.0f;
+                m_facingLeft = true;
+            }
+
+            // Torch swing timer
+            if (m_torchTimer > 0.0f) m_torchTimer -= dt;
+
+            float distToPlayer = playerPos.x - m_position.x;
+            bool facingPlayer = (m_facingLeft && distToPlayer < 0) || (!m_facingLeft && distToPlayer > 0);
+
+            if (facingPlayer && fabsf(distToPlayer) < 65.0f && fabsf(playerPos.y - m_position.y) < 24.0f) {
+                if (m_torchTimer <= 0.0f) {
+                    m_torchSwinging = true;
+                    m_torchTimer = 1.3f;
+                    AudioManager::PlaySfx(SFX_TORCH_SWING);
+                }
+            }
+
+            if (m_torchSwinging) {
+                m_attackHitboxActive = true;
+                float tx = m_facingLeft ? (m_position.x - 16.0f) : (m_position.x + 18.0f);
+                m_attackHitbox = { tx, m_position.y + 6.0f, 22.0f, 18.0f };
+                if (m_torchTimer <= 0.9f) {
+                    m_torchSwinging = false;
+                    m_attackHitboxActive = false;
+                }
+            } else {
+                m_attackHitboxActive = false;
+            }
+
+            // Walk animation
+            if (m_animTimer >= 0.2f) {
+                m_animTimer = 0.0f;
+                m_animFrame = (m_animFrame + 1) % 2;
+            }
+            break;
+        }
+
+        case EnemyType::GARDEN_THORN_SICARII: {
+            m_facingLeft = (playerPos.x < m_position.x);
+            m_thornTimer += dt;
+
+            switch (m_thornState) {
+                case ThornSicariiState::CROUCH: {
+                    m_attackHitboxActive = false;
+                    float dist = fabsf(playerPos.x - m_position.x);
+                    if (dist < 130.0f && m_thornTimer >= 0.4f) {
+                        m_thornState = ThornSicariiState::LEAP;
+                        m_thornTimer = 0.0f;
+                        float hopDir = (playerPos.x < m_position.x) ? -1.0f : 1.0f;
+                        m_velocity.x = hopDir * 115.0f;
+                        m_velocity.y = -220.0f;
+                        m_facingLeft = (hopDir < 0.0f);
+                        AudioManager::PlaySfx(SFX_HIGH_JUMP);
+                    }
+                    break;
+                }
+                case ThornSicariiState::LEAP: {
+                    m_attackHitboxActive = false;
+                    m_position.x += m_velocity.x * dt;
+                    m_position.y += m_velocity.y * dt;
+                    m_velocity.y += GRAVITY * dt;
+                    if (m_velocity.y > MAX_FALL_SPEED) m_velocity.y = MAX_FALL_SPEED;
+
+                    float prevY = m_position.y - m_velocity.y * dt;
+                    float ledgeY = 0.0f;
+                    if (m_velocity.y >= 0.0f) {
+                        if (level.CheckOneWayLanding(GetHurtbox(), prevY, ledgeY) || level.IsOnGround(GetHurtbox(), ledgeY)) {
+                            m_position.y = ledgeY - 28.0f;
+                            m_velocity = { 0, 0 };
+                            m_thornState = ThornSicariiState::SLASH;
+                            m_thornTimer = 0.0f;
+                            AudioManager::PlaySfx(SFX_MELEE_STRIKE);
+                        }
+                    }
+                    break;
+                }
+                case ThornSicariiState::SLASH: {
+                    if (m_thornTimer <= 0.35f) {
+                        m_attackHitboxActive = true;
+                        float sx = m_facingLeft ? (m_position.x - 14.0f) : (m_position.x + 16.0f);
+                        m_attackHitbox = { sx, m_position.y + 8.0f, 22.0f, 18.0f };
+                    } else {
+                        m_attackHitboxActive = false;
+                        if (m_thornTimer >= 0.65f) {
+                            m_thornState = ThornSicariiState::CROUCH;
+                            m_thornTimer = 0.0f;
+                        }
+                    }
+                    break;
+                }
+                case ThornSicariiState::HURT: {
+                    m_attackHitboxActive = false;
+                    if (m_thornTimer >= 0.3f) {
+                        m_thornState = ThornSicariiState::CROUCH;
+                        m_thornTimer = 0.0f;
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+
+        case EnemyType::CORRUPTED_PRIEST: {
+            m_facingLeft = (playerPos.x < m_position.x);
+            m_castCooldown -= dt;
+
+            if (m_castCooldown <= 0.3f && !m_justFiredDark) {
+                m_justFiredDark = true;
+                m_darkProjPos = { m_facingLeft ? (m_position.x - 10.0f) : (m_position.x + 22.0f), m_position.y + 10.0f };
+                m_darkProjVelX = m_facingLeft ? -150.0f : 150.0f;
+                m_darkProjVelY = 0.0f;
+                m_darkProjIsSpike = false;
+                AudioManager::PlaySfx(SFX_DARK_WRATH);
+            }
+
+            if (m_castCooldown <= 0.0f) {
+                m_castCooldown = 2.4f;
+                m_justFiredDark = false;
+            }
+            break;
+        }
+
+        case EnemyType::BOSS_EVIL_CLONE: {
+            m_facingLeft = (playerPos.x < m_position.x);
+
+            if (m_hp <= 0) {
+                m_attackHitboxActive = false;
+                m_cloneState = CloneState::KNEEL;
+                m_witherTimer += dt;
+                if (m_witherTimer >= 1.2f) {
+                    m_cloneState = CloneState::WITHERING;
+                }
+                if (m_witherTimer >= 4.0f) {
+                    m_cloneState = CloneState::DEAD_WITHERED;
+                }
+                break;
+            }
+
+            float dist = fabsf(playerPos.x - m_position.x);
+
+            switch (m_cloneState) {
+                case CloneState::IDLE: {
+                    m_attackHitboxActive = false;
+                    if (dist > 85.0f) {
+                        float dir = m_facingLeft ? -1.0f : 1.0f;
+                        m_position.x += dir * 55.0f * dt;
+                    } else if (dist < 42.0f) {
+                        float dir = m_facingLeft ? 1.0f : -1.0f;
+                        m_position.x += dir * 35.0f * dt;
+                    }
+
+                    if (m_position.x < level.GetArenaMinX() + 16.0f) m_position.x = level.GetArenaMinX() + 16.0f;
+                    if (m_position.x > level.GetArenaMaxX() - 35.0f) m_position.x = level.GetArenaMaxX() - 35.0f;
+
+                    if (m_animTimer >= 0.18f) {
+                        m_animTimer = 0.0f;
+                        m_animFrame = (m_animFrame + 1) % 2;
+                    }
+
+                    m_cloneActionTimer += dt;
+                    if (m_cloneActionTimer >= 0.75f) {
+                        m_cloneActionTimer = 0.0f;
+                        m_cloneAttackPattern = (m_cloneAttackPattern + 1) % 5;
+
+                        if (m_cloneAttackPattern == 0) {
+                            m_cloneState = CloneState::THROW_STAND;
+                        } else if (m_cloneAttackPattern == 1) {
+                            m_cloneState = CloneState::JUMP_LEAP;
+                            m_velocity.x = (m_facingLeft ? -120.0f : 120.0f);
+                            m_velocity.y = -340.0f;
+                            m_cloneLeapStartY = m_position.y;
+                            AudioManager::PlaySfx(SFX_HIGH_JUMP);
+                        } else if (m_cloneAttackPattern == 2) {
+                            m_cloneState = CloneState::THROW_CROUCH;
+                        } else if (m_cloneAttackPattern == 3) {
+                            m_cloneState = CloneState::CHANNEL_WRATH;
+                            AudioManager::PlaySfx(SFX_CLONE_TELEPORT);
+                        } else {
+                            if (dist < 45.0f) {
+                                m_cloneState = CloneState::MELEE_STRIKE;
+                                AudioManager::PlaySfx(SFX_MELEE_STRIKE);
+                            } else {
+                                m_cloneState = CloneState::THROW_STAND;
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                case CloneState::THROW_STAND: {
+                    m_cloneActionTimer += dt;
+                    if (m_cloneActionTimer >= 0.12f && !m_justFiredDark) {
+                        m_justFiredDark = true;
+                        m_darkProjPos = { m_facingLeft ? (m_position.x - 8.0f) : (m_position.x + 24.0f), m_position.y + 12.0f };
+                        m_darkProjVelX = m_facingLeft ? -240.0f : 240.0f;
+                        m_darkProjVelY = 0.0f;
+                        m_darkProjIsSpike = false;
+                        AudioManager::PlaySfx(SFX_NAIL_THROW);
+                    }
+                    if (m_cloneActionTimer >= 0.35f) {
+                        m_cloneState = CloneState::IDLE;
+                        m_cloneActionTimer = 0.0f;
+                        m_justFiredDark = false;
+                    }
+                    break;
+                }
+
+                case CloneState::THROW_CROUCH: {
+                    m_cloneActionTimer += dt;
+                    if (m_cloneActionTimer >= 0.12f && !m_justFiredDark) {
+                        m_justFiredDark = true;
+                        m_darkProjPos = { m_facingLeft ? (m_position.x - 8.0f) : (m_position.x + 24.0f), m_position.y + 20.0f };
+                        m_darkProjVelX = m_facingLeft ? -240.0f : 240.0f;
+                        m_darkProjVelY = 0.0f;
+                        m_darkProjIsSpike = false;
+                        AudioManager::PlaySfx(SFX_NAIL_THROW);
+                    }
+                    if (m_cloneActionTimer >= 0.35f) {
+                        m_cloneState = CloneState::IDLE;
+                        m_cloneActionTimer = 0.0f;
+                        m_justFiredDark = false;
+                    }
+                    break;
+                }
+
+                case CloneState::JUMP_LEAP: {
+                    m_position.x += m_velocity.x * dt;
+                    m_position.y += m_velocity.y * dt;
+                    m_velocity.y += GRAVITY * dt;
+                    if (m_velocity.y > MAX_FALL_SPEED) m_velocity.y = MAX_FALL_SPEED;
+
+                    if (m_position.y >= GROUND_Y - 30.0f) {
+                        m_position.y = GROUND_Y - 30.0f;
+                        m_velocity = { 0, 0 };
+                        m_cloneState = CloneState::IDLE;
+                        m_cloneActionTimer = 0.0f;
+                    }
+                    break;
+                }
+
+                case CloneState::CHANNEL_WRATH: {
+                    m_cloneActionTimer += dt;
+                    // At 0.8s: launch dark floor spike erupting at player's feet!
+                    if (m_cloneActionTimer >= 0.8f && !m_justFiredDark) {
+                        m_justFiredDark = true;
+                        m_darkProjPos = { playerPos.x, GROUND_Y - 14.0f };
+                        m_darkProjVelX = 0.0f;
+                        m_darkProjVelY = -50.0f;
+                        m_darkProjIsSpike = true;
+                        AudioManager::PlaySfx(SFX_DARK_SPIKE);
+                    }
+                    if (m_cloneActionTimer >= 1.6f) {
+                        m_cloneState = CloneState::IDLE;
+                        m_cloneActionTimer = 0.0f;
+                        m_justFiredDark = false;
+                    }
+                    break;
+                }
+
+                case CloneState::MELEE_STRIKE: {
+                    m_cloneActionTimer += dt;
+                    if (m_cloneActionTimer <= 0.25f) {
+                        m_attackHitboxActive = true;
+                        float mx = m_facingLeft ? (m_position.x - 14.0f) : (m_position.x + 20.0f);
+                        m_attackHitbox = { mx, m_position.y + 8.0f, 22.0f, 18.0f };
+                    } else {
+                        m_attackHitboxActive = false;
+                        if (m_cloneActionTimer >= 0.38f) {
+                            m_cloneState = CloneState::IDLE;
+                            m_cloneActionTimer = 0.0f;
+                        }
+                    }
+                    break;
+                }
+
+                default:
+                    m_cloneState = CloneState::IDLE;
+                    break;
+            }
+            break;
+        }
     }
 }
 
@@ -1020,6 +1388,114 @@ void Enemy::Draw() {
             }
             break;
         }
+
+        case EnemyType::TORMENTOR_GUARD: {
+            SpriteId spr = m_attackHitboxActive ? SPR_TORMENTOR_ATTACK : (m_animFrame == 0 ? SPR_TORMENTOR_WALK_0 : SPR_TORMENTOR_WALK_1);
+            if (hurtFlash) spr = SPR_TORMENTOR_HURT;
+            GraphicsManager::DrawDropShadow(m_position.x + 14.0f, m_position.y + 31.0f, 18.0f, 5.0f);
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+
+            // Blazing torch flame glow
+            float torchX = m_facingLeft ? m_position.x - 4.0f : m_position.x + 24.0f;
+            float torchY = m_position.y + 8.0f;
+            DrawCircle(static_cast<int>(torchX), static_cast<int>(torchY), 5.0f, Color{ 255, 160, 40, 180 });
+            GraphicsManager::DrawSpark(torchX, torchY, 2.0f, Color{ 255, 230, 80, 220 });
+            break;
+        }
+
+        case EnemyType::GARDEN_THORN_SICARII: {
+            SpriteId spr = SPR_THORN_SICARII_CROUCH;
+            if (m_thornState == ThornSicariiState::LEAP) {
+                spr = SPR_THORN_SICARII_LEAP;
+            } else if (m_thornState == ThornSicariiState::SLASH) {
+                spr = SPR_THORN_SICARII_SLASH;
+            }
+            if (hurtFlash) spr = SPR_THORN_SICARII_HURT;
+
+            if (m_thornState != ThornSicariiState::LEAP) {
+                GraphicsManager::DrawDropShadow(m_position.x + 14.0f, m_position.y + 31.0f, 18.0f, 5.0f);
+            }
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+
+            // Thorn blade gleam on slash
+            if (m_attackHitboxActive) {
+                float sx = m_facingLeft ? m_position.x - 8.0f : m_position.x + 24.0f;
+                DrawCircleLines(static_cast<int>(sx), static_cast<int>(m_position.y + 14.0f), 12.0f, Color{ 80, 240, 120, 220 });
+                GraphicsManager::DrawSpark(sx, m_position.y + 12.0f, 2.0f, Color{ 255, 255, 255, 220 });
+            }
+            break;
+        }
+
+        case EnemyType::CORRUPTED_PRIEST: {
+            SpriteId spr = (m_castCooldown <= 0.6f) ? SPR_CORRUPTED_PRIEST_CAST : SPR_CORRUPTED_PRIEST_STAND;
+            if (hurtFlash) spr = SPR_CORRUPTED_PRIEST_HURT;
+
+            GraphicsManager::DrawDropShadow(m_position.x + 14.0f, m_position.y + 31.0f, 18.0f, 5.0f);
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+
+            // Dark magic casting orb aura
+            if (m_castCooldown <= 0.6f) {
+                float orbX = m_facingLeft ? m_position.x - 4.0f : m_position.x + 22.0f;
+                float orbY = m_position.y + 8.0f;
+                DrawCircle(static_cast<int>(orbX), static_cast<int>(orbY), 4.0f, Color{ 140, 40, 190, 200 });
+                DrawCircleLines(static_cast<int>(orbX), static_cast<int>(orbY), 7.0f, Color{ 220, 100, 255, 230 });
+            }
+            break;
+        }
+
+        case EnemyType::BOSS_EVIL_CLONE: {
+            if (m_cloneState == CloneState::DEAD_WITHERED) return;
+
+            SpriteId spr = SPR_CLONE_IDLE;
+            if (m_cloneState == CloneState::IDLE) {
+                spr = (m_animFrame == 0 ? SPR_CLONE_WALK_0 : SPR_CLONE_WALK_1);
+            } else if (m_cloneState == CloneState::THROW_STAND) {
+                spr = SPR_CLONE_THROW_STAND;
+            } else if (m_cloneState == CloneState::THROW_CROUCH) {
+                spr = SPR_CLONE_THROW_CROUCH;
+            } else if (m_cloneState == CloneState::JUMP_LEAP) {
+                spr = SPR_CLONE_JUMP;
+            } else if (m_cloneState == CloneState::CHANNEL_WRATH) {
+                spr = SPR_CLONE_CHANNEL;
+            } else if (m_cloneState == CloneState::MELEE_STRIKE) {
+                spr = SPR_CLONE_MELEE_STRIKE;
+            } else if (m_cloneState == CloneState::KNEEL || m_cloneState == CloneState::WITHERING) {
+                spr = SPR_CLONE_KNEEL;
+            }
+
+            if (hurtFlash && m_cloneState != CloneState::KNEEL && m_cloneState != CloneState::WITHERING) {
+                spr = SPR_CLONE_HURT;
+            }
+
+            // Drop shadow
+            if (m_cloneState != CloneState::JUMP_LEAP && m_cloneState != CloneState::WITHERING) {
+                GraphicsManager::DrawDropShadow(m_position.x + 14.0f, m_position.y + 31.0f, 22.0f, 5.0f);
+            }
+
+            // Draw Dark Aura around Clone
+            if (m_cloneState != CloneState::WITHERING && m_cloneState != CloneState::KNEEL) {
+                float pulse = 0.5f + 0.5f * sinf(static_cast<float>(GetTime()) * 12.0f);
+                Color auraCol = ColorAlpha(Color{ 130, 25, 180, 255 }, 0.25f + pulse * 0.25f);
+                DrawRectangleLines(static_cast<int>(m_position.x + 2.0f), static_cast<int>(m_position.y + 2.0f), 24, 28, auraCol);
+            }
+
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+
+            // Channeling Wrath dark energy rings
+            if (m_cloneState == CloneState::CHANNEL_WRATH) {
+                float pulseR = 12.0f + 16.0f * sinf(static_cast<float>(GetTime()) * 16.0f);
+                DrawCircleLines(static_cast<int>(m_position.x + 14.0f), static_cast<int>(m_position.y + 16.0f), fabsf(pulseR), Color{ 200, 60, 255, 230 });
+                DrawCircleLines(static_cast<int>(m_position.x + 14.0f), static_cast<int>(m_position.y + 16.0f), fabsf(pulseR) * 0.6f, Color{ 255, 50, 100, 200 });
+                GraphicsManager::DrawSpark(m_position.x + 14.0f, m_position.y + 10.0f, 3.0f, Color{ 255, 200, 255, 255 });
+            }
+
+            // Melee strike streak
+            if (m_cloneState == CloneState::MELEE_STRIKE && m_attackHitboxActive) {
+                float mx = m_facingLeft ? m_position.x - 8.0f : m_position.x + 26.0f;
+                DrawCircleLines(static_cast<int>(mx), static_cast<int>(m_position.y + 14.0f), 14.0f, Color{ 180, 30, 80, 240 });
+            }
+            break;
+        }
     }
 }
 
@@ -1032,6 +1508,7 @@ void EnemyManager::Reset(int stageId) {
     m_enemies.clear();
     m_arrows.clear();
     m_daggers.clear();
+    m_darkProjectiles.clear();
     m_particles.clear();
     SpawnStageEnemies(stageId);
 }
@@ -1110,6 +1587,109 @@ void EnemyManager::SpawnStageEnemies(int stageId) {
 
         // 9. Stage 3 Final Boss: Supreme Legatus / Tribunal Praetor Longinus in the Summit Arena
         m_enemies.emplace_back(EnemyType::BOSS_TRIBUNAL_PRAETOR, Vector2{ 1460.0f, GROUND_Y - 48.0f }, 1160.0f, 1500.0f);
+    } else if (stageId == 4) {
+        // =========================================================================
+        // STAGE 4: VALLEY OF THE KIDRON (Dark Ravine & Moonlight Footbridges)
+        // =========================================================================
+        // 1. Starting Tormentor Guard on ravine floor
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 180.0f, GROUND_Y - 30.0f }, 110.0f, 240.0f);
+
+        // 2. Heavy Legionary patrolling beneath footbridge 1
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 340.0f, GROUND_Y - 32.0f }, 280.0f, 400.0f);
+
+        // 3. Archer on high suspended footbridge over chasm
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 540.0f, 7.0f * TILE_SIZE - 30.0f }, 540.0f, 540.0f);
+
+        // 4. Tormentor Guard on chasm floor
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 720.0f, GROUND_Y - 30.0f }, 660.0f, 780.0f);
+
+        // 5. Sicarii Assassin on high rock tomb ledge
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 880.0f, 48.0f }, 820.0f, 960.0f);
+
+        // 6. Heavy Legionary guarding lower path
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1060.0f, GROUND_Y - 32.0f }, 1000.0f, 1140.0f);
+
+        // 7. Tormentor Guard near gate approach
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 1280.0f, GROUND_Y - 30.0f }, 1220.0f, 1360.0f);
+
+        // 8. Archer on rock parapet
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1500.0f, 6.0f * TILE_SIZE - 30.0f }, 1500.0f, 1500.0f);
+
+        // 9. Heavy Legionary before Ravine Portcullis
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1740.0f, GROUND_Y - 32.0f }, 1680.0f, 1820.0f);
+
+        // 10. Tormentor Guard guarding portcullis
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 1960.0f, GROUND_Y - 30.0f }, 1900.0f, 2040.0f);
+
+        // 11. Stage 4 Boss: Tormentor Decurion Brutus in Ravine Arena
+        m_enemies.emplace_back(EnemyType::BOSS_GLADIATOR, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
+    } else if (stageId == 5) {
+        // =========================================================================
+        // STAGE 5: ROYAL CYPRESS HEDGE MAZE (Labyrinth & Marble Terraces)
+        // =========================================================================
+        // 1. Thorn Sicarii crouching atop hedge arch
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 220.0f, 7.0f * TILE_SIZE - 28.0f }, 160.0f, 280.0f);
+
+        // 2. Heavy Legionary patrolling marble promenade
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 380.0f, GROUND_Y - 32.0f }, 320.0f, 440.0f);
+
+        // 3. Corrupted Priest casting dark orbs by marble fountain
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 560.0f, GROUND_Y - 30.0f }, 500.0f, 620.0f);
+
+        // 4. Thorn Sicarii ambushing from high Tier 2 hedge
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 760.0f, 6.0f * TILE_SIZE - 28.0f }, 700.0f, 820.0f);
+
+        // 5. Archer atop cypress terrace
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 920.0f, 6.0f * TILE_SIZE - 30.0f }, 920.0f, 920.0f);
+
+        // 6. Heavy Legionary near fountain
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1120.0f, GROUND_Y - 32.0f }, 1060.0f, 1180.0f);
+
+        // 7. Corrupted Priest casting from urn alcove
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1340.0f, GROUND_Y - 30.0f }, 1280.0f, 1400.0f);
+
+        // 8. Thorn Sicarii atop labyrinth wall
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 1520.0f, 6.0f * TILE_SIZE - 28.0f }, 1460.0f, 1580.0f);
+
+        // 9. Heavy Legionary before maze gate
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1740.0f, GROUND_Y - 32.0f }, 1680.0f, 1800.0f);
+
+        // 10. Corrupted Priest guarding high plaza
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1960.0f, GROUND_Y - 30.0f }, 1900.0f, 2020.0f);
+
+        // 11. Stage 5 Boss: High Inquisitor Malchus in the Marble Plaza Arena
+        m_enemies.emplace_back(EnemyType::BOSS_TEMPLE_COMMANDER, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
+    } else if (stageId == 6) {
+        // =========================================================================
+        // STAGE 6: THE GARDEN OF GETHSEMANE (Sacred Olive Grove & Stone of Agony)
+        // =========================================================================
+        // 1. Thorn Sicarii crouching on first olive tree branch
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 220.0f, 8.0f * TILE_SIZE - 28.0f }, 160.0f, 280.0f);
+
+        // 2. Tormentor Guard walking through nocturnal grove
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 380.0f, GROUND_Y - 30.0f }, 320.0f, 440.0f);
+
+        // 3. Corrupted Priest casting dark orbs from stone terrace
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 540.0f, 9.0f * TILE_SIZE - 30.0f }, 480.0f, 600.0f);
+
+        // 4. Thorn Sicarii on high olive branch canopy
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 720.0f, 7.0f * TILE_SIZE - 28.0f }, 660.0f, 780.0f);
+
+        // 5. Heavy Legionary guarding mossy stone path
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 920.0f, GROUND_Y - 32.0f }, 860.0f, 980.0f);
+
+        // 6. Tormentor Guard with torch before sanctuary gate
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 1140.0f, GROUND_Y - 30.0f }, 1080.0f, 1200.0f);
+
+        // 7. Corrupted Priest at sanctuary arch
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1340.0f, GROUND_Y - 30.0f }, 1280.0f, 1400.0f);
+
+        // 8. Thorn Sicarii on lantern terrace
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 1500.0f, 8.0f * TILE_SIZE - 28.0f }, 1440.0f, 1560.0f);
+
+        // 9. FINAL BOSS: Christus Tenebris (Evil Genius Clone of Jesus)
+        // Fighting under the ancient Gethsemane Olive Tree and Stone of Agony Altar!
+        m_enemies.emplace_back(EnemyType::BOSS_EVIL_CLONE, Vector2{ 1920.0f, GROUND_Y - 32.0f }, 1640.0f, 2000.0f);
     } else {
         // =========================================================================
         // STAGE 1: JERUSALEM OUTSKIRTS & CITADEL APPROACH
@@ -1227,6 +1807,13 @@ void EnemyManager::Update(float dt, const Vector2& playerPos, Level& level, bool
                 m_daggers.push_back({ daggerPos, daggerVelX, true, 0.0f });
                 AudioManager::PlaySfx(SFX_NAIL_THROW);
             }
+
+            Vector2 darkPos;
+            float dVelX, dVelY;
+            bool isSpike;
+            if (enemy.CheckAndClearJustFiredDark(darkPos, dVelX, dVelY, isSpike)) {
+                m_darkProjectiles.push_back({ darkPos, dVelX, dVelY, isSpike, true, 0.0f });
+            }
         }
     }
 
@@ -1252,6 +1839,23 @@ void EnemyManager::Update(float dt, const Vector2& playerPos, Level& level, bool
         }
     }
     m_daggers.erase(std::remove_if(m_daggers.begin(), m_daggers.end(), [](const EnemyDagger& d) { return !d.active; }), m_daggers.end());
+
+    // 6. Update Dark Projectiles (Priest dark orbs & Evil Clone dark spikes)
+    for (auto& dp : m_darkProjectiles) {
+        if (dp.active) {
+            dp.timer += dt;
+            dp.position.x += dp.velocityX * dt;
+            dp.position.y += dp.velocityY * dt;
+            if (dp.isSpike) {
+                if (dp.timer >= 0.85f) dp.active = false;
+            } else {
+                if (dp.position.x < playerPos.x - 260.0f || dp.position.x > playerPos.x + 260.0f || dp.timer >= 2.8f) {
+                    dp.active = false;
+                }
+            }
+        }
+    }
+    m_darkProjectiles.erase(std::remove_if(m_darkProjectiles.begin(), m_darkProjectiles.end(), [](const DarkProjectile& d) { return !d.active; }), m_darkProjectiles.end());
 }
 
 void EnemyManager::CheckPlayerAttacks(Player& player) {
@@ -1350,6 +1954,20 @@ void EnemyManager::CheckPlayerDamage(Player& player, bool inBossFight) {
             }
         }
     }
+
+    // 4. Dark projectiles (Corrupted Priest dark orbs & Evil Clone dark spikes)
+    for (auto& dp : m_darkProjectiles) {
+        if (dp.active) {
+            Rectangle dpBox = dp.isSpike ? 
+                Rectangle{ dp.position.x - 6.0f, dp.position.y - 14.0f, 12.0f, 16.0f } :
+                Rectangle{ dp.position.x - 5.0f, dp.position.y - 5.0f, 10.0f, 10.0f };
+            if (CheckCollisionRecs(playerBox, dpBox)) {
+                dp.active = false;
+                player.TakeDamage(1, inBossFight);
+                return;
+            }
+        }
+    }
 }
 
 float EnemyManager::GetClosestEnemyDistance(const Vector2& playerPos, bool playerFacingLeft, bool& outInFront) const {
@@ -1426,6 +2044,23 @@ void EnemyManager::Draw() {
             DrawLineEx({ tailX, dagger.position.y + 4.0f }, { headX, dagger.position.y + 4.0f }, 2.0f, COLOR_SICARII_BLADE);
             GraphicsManager::DrawSprite(SPR_SICARII_DAGGER, dagger.position.x - 4.0f, dagger.position.y, dagger.velocityX < 0);
             GraphicsManager::DrawSpark(dagger.position.x, dagger.position.y + 4.0f, 1.5f, Color{ 255, 255, 255, 220 });
+        }
+    }
+
+    // Draw Dark Projectiles (Priest dark orbs & Evil Clone spikes)
+    for (const auto& dp : m_darkProjectiles) {
+        if (dp.active) {
+            if (dp.isSpike) {
+                // Rising dark crystal spike
+                GraphicsManager::DrawSprite(SPR_DARK_SPIKE, dp.position.x - 8.0f, dp.position.y - 16.0f);
+                DrawCircleLines(static_cast<int>(dp.position.x), static_cast<int>(dp.position.y - 8.0f), 8.0f, Color{ 220, 80, 255, 200 });
+            } else {
+                // Streaking dark purple orb
+                float dir = dp.velocityX > 0 ? 1.0f : -1.0f;
+                DrawLineEx({ dp.position.x - dir * 12.0f, dp.position.y + 4.0f }, { dp.position.x + dir * 4.0f, dp.position.y + 4.0f }, 3.0f, Color{ 140, 30, 200, 180 });
+                GraphicsManager::DrawSprite(SPR_DARK_ORB, dp.position.x - 6.0f, dp.position.y);
+                GraphicsManager::DrawSpark(dp.position.x, dp.position.y + 4.0f, 2.0f, Color{ 240, 180, 255, 240 });
+            }
         }
     }
 

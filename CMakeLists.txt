@@ -41,6 +41,10 @@ set(SOURCE_FILES
     src/Player.cpp
     src/Enemies.h
     src/Enemies.cpp
+    src/BonusStage.h
+    src/BonusStage.cpp
+    src/Mission2Graphics.h
+    src/Mission2Graphics.cpp
 )
 
 add_executable(Nazarene ${SOURCE_FILES})

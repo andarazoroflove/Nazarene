@@ -6,6 +6,7 @@
 #include "Level.h"
 #include "Player.h"
 #include "Enemies.h"
+#include "BonusStage.h"
 #include <cmath>
 #include <cstdio>
 #include <algorithm>
@@ -14,6 +15,7 @@ enum class GameState {
     TITLE,
     MISSION_MAP,
     GAMEPLAY,
+    BONUS_STAGE,
     GAMEOVER,
     VICTORY
 };
@@ -38,6 +40,7 @@ int main() {
     Level level;
     Player player;
     EnemyManager enemyManager;
+    BonusStage bonusStage;
     InputState input;
 
     GameState gameState = GameState::TITLE;
@@ -47,10 +50,11 @@ int main() {
     float coinNoticeTimer = 0.0f;
     float continueCountdown = 9.9f;
 
-    int currentMission = 1;
-    bool mission1Cleared = false;
-    bool mission2Cleared = false;
-    bool mission3Cleared = false;
+    int missionNumber = 1; // 1 = Jerusalem Campaign, 2 = Gethsemane Outskirts
+    int currentArea = 1;   // 1, 2, or 3
+    bool area1Cleared = false;
+    bool area2Cleared = false;
+    bool area3Cleared = false;
     float missionMapTimer = 0.0f;
 
     float gateNoticeTimer = 0.0f;
@@ -71,11 +75,17 @@ int main() {
     float celestialFadeAlpha = 0.0f;
     float rainbowAlpha = 0.0f;
 
-    auto StartMission = [&](int mission) {
-        currentMission = mission;
-        level.Reset(mission);
-        player.Reset(mission == 1);
-        enemyManager.Reset(mission);
+    auto GetCurrentStageId = [&]() {
+        return (missionNumber == 1) ? currentArea : (3 + currentArea);
+    };
+
+    auto StartMission = [&](int mNum, int aNum) {
+        missionNumber = mNum;
+        currentArea = aNum;
+        int stageId = GetCurrentStageId();
+        level.Reset(stageId);
+        player.Reset(mNum == 1 && aNum == 1);
+        enemyManager.Reset(stageId);
         camera.target.x = 0.0f;
         gateNoticeTimer = 0.0f;
         victoryTimer = 0.0f;
@@ -97,12 +107,13 @@ int main() {
 
     auto ResetGame = [&](bool fullReset) {
         if (fullReset) {
-            currentMission = 1;
-            mission1Cleared = false;
-            mission2Cleared = false;
-            mission3Cleared = false;
+            missionNumber = 1;
+            currentArea = 1;
+            area1Cleared = false;
+            area2Cleared = false;
+            area3Cleared = false;
         }
-        StartMission(currentMission);
+        StartMission(missionNumber, currentArea);
     };
 
     // 5. Main Game Loop
@@ -135,10 +146,11 @@ int main() {
                     if (credits > 0) {
                         credits--;
                         AudioManager::PlaySfx(SFX_COIN_INSERT);
-                        currentMission = 1;
-                        mission1Cleared = false;
-                        mission2Cleared = false;
-                        mission3Cleared = false;
+                        missionNumber = 1;
+                        currentArea = 1;
+                        area1Cleared = false;
+                        area2Cleared = false;
+                        area3Cleared = false;
                         gameState = GameState::MISSION_MAP;
                         missionMapTimer = 0.0f;
                     } else {
@@ -153,7 +165,7 @@ int main() {
                 missionMapTimer += dt;
                 // Allow pressing Start, Jump, Attack to immediately embark, or auto-start after 4.2 seconds
                 if (missionMapTimer >= 0.5f && (input.startPressed || input.jumpPressed || input.attackPressed || missionMapTimer >= 4.2f)) {
-                    StartMission(currentMission);
+                    StartMission(missionNumber, currentArea);
                     gameState = GameState::GAMEPLAY;
                     AudioManager::PlaySfx(SFX_VICTORY);
                 }
@@ -162,6 +174,7 @@ int main() {
 
             case GameState::GAMEPLAY: {
                 bool screenFrozen = player.IsWrathScreenFrozen();
+                int currentStage = GetCurrentStageId();
 
                 // Check distance to closest enemy for auto-melee check
                 bool enemyInFront = false;
@@ -193,8 +206,8 @@ int main() {
                     level.UnlockArena();
                 }
 
-                // Stage 3: As soon as player finds the boss / approaches the summit gate, clouds of heaven roll in immediately!
-                if (currentMission == 3) {
+                // Stage 3 & Stage 6: As soon as player finds the boss / approaches gate, clouds of heaven roll in!
+                if (currentStage == 3 || currentStage == 6) {
                     if (player.GetPosition().x >= (level.GetArenaGateX() - 100.0f) || level.IsArenaLockedDown()) {
                         cloudCoverage = std::min(1.0f, cloudCoverage + 0.65f * dt);
                     }
@@ -225,7 +238,7 @@ int main() {
                 }
 
                 // Update storm clouds and lightning
-                if (finishHimTriggered || (currentMission == 3 && cloudCoverage > 0.0f)) {
+                if (finishHimTriggered || ((currentStage == 3 || currentStage == 6) && cloudCoverage > 0.0f)) {
                     if (finishHimTriggered) {
                         cloudCoverage = std::min(1.0f, cloudCoverage + 0.85f * dt);
                     }
@@ -255,7 +268,7 @@ int main() {
                         cloudsPartAmount = std::min(1.0f, cloudsPartAmount + 0.75f * dt);
                         divineBeamIntensity = std::min(1.0f, divineBeamIntensity + 0.85f * dt);
 
-                        if (currentMission == 3) {
+                        if (currentStage == 3 || currentStage == 6) {
                             rainbowAlpha = std::min(1.0f, rainbowAlpha + 0.80f * dt);
                         }
 
@@ -263,8 +276,8 @@ int main() {
                             ascensionStarted = true;
                             AudioManager::PlaySfx(SFX_HOLY_BEAM);
                             AudioManager::PlaySfx(SFX_ANGEL_CHOIR);
-                            // In Stage 3, Jesus ascends diagonally towards opposite side of screen!
-                            bool diagonal = (currentMission == 3);
+                            // In Stage 3 & Stage 6, Jesus ascends diagonally towards opposite side of screen!
+                            bool diagonal = (currentStage == 3 || currentStage == 6);
                             bool toRight = (player.GetPosition().x < level.GetArenaMinX() + (level.GetArenaMaxX() - level.GetArenaMinX()) * 0.5f);
                             player.StartAscension(diagonal, toRight);
                         }
@@ -278,22 +291,41 @@ int main() {
                         }
 
                         if (ascensionSequenceTimer >= 7.2f || celestialFadeAlpha >= 1.0f) {
-                            if (currentMission == 1) {
-                                mission1Cleared = true;
-                                currentMission = 2;
-                                gameState = GameState::MISSION_MAP;
-                                missionMapTimer = 0.0f;
-                            } else if (currentMission == 2) {
-                                mission2Cleared = true;
-                                currentMission = 3;
-                                gameState = GameState::MISSION_MAP;
-                                missionMapTimer = 0.0f;
+                            if (missionNumber == 1) {
+                                if (currentArea == 1) {
+                                    area1Cleared = true;
+                                    currentArea = 2;
+                                    gameState = GameState::MISSION_MAP;
+                                    missionMapTimer = 0.0f;
+                                } else if (currentArea == 2) {
+                                    area2Cleared = true;
+                                    currentArea = 3;
+                                    gameState = GameState::MISSION_MAP;
+                                    missionMapTimer = 0.0f;
+                                } else {
+                                    // Stage 3 cleared! Launch BONUS STAGE!
+                                    area3Cleared = true;
+                                    gameState = GameState::BONUS_STAGE;
+                                    bonusStage.Reset();
+                                }
                             } else {
-                                // Final Board #3 cleared! Return to splash screen!
-                                mission3Cleared = true;
-                                currentMission = 1;
-                                gameState = GameState::TITLE;
-                                coinNoticeTimer = 0.0f;
+                                // Mission 2
+                                if (currentArea == 1) {
+                                    area1Cleared = true;
+                                    currentArea = 2;
+                                    gameState = GameState::MISSION_MAP;
+                                    missionMapTimer = 0.0f;
+                                } else if (currentArea == 2) {
+                                    area2Cleared = true;
+                                    currentArea = 3;
+                                    gameState = GameState::MISSION_MAP;
+                                    missionMapTimer = 0.0f;
+                                } else {
+                                    // Stage 6 cleared! Evil Clone defeated and redeemed!
+                                    area3Cleared = true;
+                                    gameState = GameState::VICTORY;
+                                    victoryTimer = 0.0f;
+                                }
                             }
                         }
                     }
@@ -329,6 +361,26 @@ int main() {
                         gameState = GameState::GAMEOVER;
                         continueCountdown = 9.9f;
                     }
+                }
+                break;
+            }
+
+            case GameState::BONUS_STAGE: {
+                int pLives = player.GetLives();
+                int pScore = player.GetScore();
+                bonusStage.Update(dt, input, pLives, pScore);
+                if (pLives > player.GetLives()) player.AddLives(pLives - player.GetLives());
+                if (pScore > player.GetScore()) player.AddScore(pScore - player.GetScore());
+
+                if (bonusStage.IsFinished()) {
+                    // Advance to Mission 2!
+                    missionNumber = 2;
+                    currentArea = 1;
+                    area1Cleared = false;
+                    area2Cleared = false;
+                    area3Cleared = false;
+                    gameState = GameState::MISSION_MAP;
+                    missionMapTimer = 0.0f;
                 }
                 break;
             }
@@ -375,8 +427,8 @@ int main() {
 
             case GameState::VICTORY: {
                 victoryTimer += dt;
-                // After 2.5 seconds or immediately on button press, return back to main screen
-                if (victoryTimer >= 2.5f || input.startPressed || input.jumpPressed || input.attackPressed || input.coinPressed) {
+                // After 4.0 seconds or immediately on button press, return back to main screen
+                if (victoryTimer >= 4.0f || input.startPressed || input.jumpPressed || input.attackPressed || input.coinPressed) {
                     ResetGame(true);
                     gameState = GameState::TITLE;
                 }
@@ -387,8 +439,9 @@ int main() {
         // Audio System Update
         bool inArena = level.IsArenaLockedDown();
         bool bossWithering = (enemyManager.GetBoss() && enemyManager.GetBoss()->IsWithering());
+        int curStage = GetCurrentStageId();
         if (!bossWithering && !ascensionStarted) {
-            AudioManager::Update(inArena, gameState == GameState::GAMEOVER, gameState == GameState::VICTORY);
+            AudioManager::Update(inArena, gameState == GameState::GAMEOVER, gameState == GameState::VICTORY, curStage, gameState == GameState::BONUS_STAGE);
         }
 
         // --- Render to 320x224 Off-Screen Target Texture ---
@@ -453,25 +506,30 @@ int main() {
             int csw = MeasureText(credStr, 10);
             DrawText(credStr, VIRTUAL_WIDTH - csw - 8, VIRTUAL_HEIGHT - 16, 10, COLOR_ROMAN_GOLD);
         } else if (gameState == GameState::MISSION_MAP) {
-            // Authentic Shinobi Arcade Jerusalem Mission Map Screen
-            GraphicsManager::DrawMissionMap(currentMission, mission1Cleared, mission2Cleared, mission3Cleared, static_cast<float>(GetTime()));
+            // Authentic Shinobi Arcade Jerusalem & Gethsemane Mission Map Screens
+            GraphicsManager::DrawMissionMap(missionNumber, currentArea, area1Cleared, area2Cleared, area3Cleared, static_cast<float>(GetTime()));
+        } else if (gameState == GameState::BONUS_STAGE) {
+            // Sega Shinobi-Style 30-Second Bonus Stage: Feeding the 5,000 on the Mount of Beatitudes
+            bonusStage.Draw();
         } else {
-            // Gameplay / Victory / Gameover In-World Rendering
-            // 1. Parallax Sky & Midground (Supports Stage 1 Streets & Stage 2 Temple)
-            GraphicsManager::DrawParallaxBackground(camera.target.x, static_cast<float>(GetTime()), level.GetStage());
+            int curStage = GetCurrentStageId();
 
-            // 1b. Apocalyptic Storm Clouds (rolling in when Boss is at 1 HP pip)
+            // Gameplay / Victory / Gameover In-World Rendering
+            // 1. Parallax Sky & Midground (Supports all Stages 1 through 6)
+            GraphicsManager::DrawParallaxBackground(camera.target.x, static_cast<float>(GetTime()), curStage);
+
+            // 1b. Apocalyptic Storm Clouds (rolling in when Boss is at 1 HP pip or final stages)
             if (cloudCoverage > 0.0f) {
-                GraphicsManager::DrawStormClouds(cloudCoverage, GetTime(), lightningFlashTimer > 0.0f);
+                GraphicsManager::DrawStormClouds(cloudCoverage, static_cast<float>(GetTime()), lightningFlashTimer > 0.0f);
             }
 
             // 1c. Parted Clouds & Divine Ascension Light Pillar
             if (divineBeamIntensity > 0.0f || cloudsPartAmount > 0.0f) {
                 float jesusScreenX = player.GetPosition().x - camera.target.x + 14.0f;
-                GraphicsManager::DrawDivineAscensionBeam(jesusScreenX, divineBeamIntensity, cloudsPartAmount, GetTime());
+                GraphicsManager::DrawDivineAscensionBeam(jesusScreenX, divineBeamIntensity, cloudsPartAmount, static_cast<float>(GetTime()));
             }
 
-            // Rainbow Arc (Stage 3 Finale)
+            // Rainbow Arc (Stage 3 & Stage 6 Finale)
             if (rainbowAlpha > 0.0f) {
                 GraphicsManager::DrawRainbow(rainbowAlpha, static_cast<float>(GetTime()));
             }
@@ -493,7 +551,7 @@ int main() {
             // 3b. "FINISH HIM!" Arcade Banner
             if (finishHimBannerTimer > 0.0f) {
                 float bannerA = std::min(1.0f, finishHimBannerTimer);
-                GraphicsManager::DrawFinishHimBanner(GetTime(), bannerA);
+                GraphicsManager::DrawFinishHimBanner(static_cast<float>(GetTime()), bannerA);
             }
 
             // 4. Arcade HUD (Top Screen)
@@ -534,12 +592,19 @@ int main() {
                 DrawRectangleLines(218, 5, 10, 10, Color{ 80, 75, 70, 255 });
             }
 
-            // Loaves and Fishes Baskets (X/4) / Sacred Censers in Stage 2 / Sacred Relics in Stage 3
-            if (level.GetStage() == 2 || level.GetStage() == 3) {
-                GraphicsManager::DrawSprite(SPR_CENSER_GOLD, 244.0f, 2.0f);
-            } else {
-                GraphicsManager::DrawSprite(SPR_ICON_BASKET, 246.0f, 2.0f);
+            // Stage Pickups: Baskets (1), Censers (2, 3), Pitchers (4), Wreaths (5), Chalices (6)
+            SpriteId hudPickupSpr = SPR_ICON_BASKET;
+            if (curStage == 2 || curStage == 3) {
+                hudPickupSpr = SPR_CENSER_GOLD;
+            } else if (curStage == 4) {
+                hudPickupSpr = SPR_SILVER_PITCHER;
+            } else if (curStage == 5) {
+                hudPickupSpr = SPR_OLIVE_WREATH;
+            } else if (curStage == 6) {
+                hudPickupSpr = SPR_SACRED_CHALICE;
             }
+            GraphicsManager::DrawSprite(hudPickupSpr, 244.0f, 2.0f);
+
             char basketText[16];
             snprintf(basketText, sizeof(basketText), "%d/%d", level.GetBasketsCollectedCount(), level.GetTotalBasketsCount());
             DrawText(basketText, 268, 5, 10, level.AreAllBasketsCollected() ? Color{ 80, 255, 120, 255 } : COLOR_ROMAN_GOLD);
@@ -556,12 +621,17 @@ int main() {
                     DrawRectangle(50, VIRTUAL_HEIGHT - 18, VIRTUAL_WIDTH - 100, 14, COLOR_HUD_BG);
                     DrawRectangleLines(50, VIRTUAL_HEIGHT - 18, VIRTUAL_WIDTH - 100, 14, COLOR_ROMAN_CRIMSON);
 
-                    const char* bossName = (level.GetStage() == 2) ? "MALCHUS" : (level.GetStage() == 3 ? "PRAETOR" : "BRUTUS");
+                    const char* bossName = "BRUTUS";
+                    if (curStage == 2) bossName = "MALCHUS";
+                    else if (curStage == 3) bossName = "PRAETOR";
+                    else if (curStage == 4) bossName = "DECURION";
+                    else if (curStage == 5) bossName = "INQUISITOR";
+                    else if (curStage == 6) bossName = "CHRISTUS TENEBRIS";
                     DrawText(bossName, 56, VIRTUAL_HEIGHT - 16, 10, COLOR_ROMAN_GOLD);
 
                     int maxBossPips = b->GetMaxHp();
                     int curBossPips = b->GetHp();
-                    int barStartX = 135;
+                    int barStartX = 145;
                     int pipW = 7;
                     for (int p = 0; p < maxBossPips; ++p) {
                         if (p < curBossPips) {
@@ -581,9 +651,13 @@ int main() {
 
             // 6. In-game Alerts & Exit Arrow
             if (gateNoticeTimer > 0.0f && !level.IsArenaUnlocked()) {
-                const char* msg = (level.GetStage() == 2) ? "COLLECT ALL 4 SACRED CENSERS TO UNLOCK VEIL!" : 
-                                  (level.GetStage() == 3) ? "COLLECT ALL 4 SACRED RELICS TO UNLOCK PORTCULLIS!" : 
-                                                            "COLLECT ALL 4 BASKETS TO UNLOCK GATE!";
+                const char* msg = "COLLECT ALL 4 BASKETS TO UNLOCK GATE!";
+                if (curStage == 2) msg = "COLLECT ALL 4 SACRED CENSERS TO UNLOCK VEIL!";
+                else if (curStage == 3) msg = "COLLECT ALL 4 SACRED RELICS TO UNLOCK PORTCULLIS!";
+                else if (curStage == 4) msg = "COLLECT ALL 4 SILVER PITCHERS TO UNLOCK RAVINE BRIDGE!";
+                else if (curStage == 5) msg = "COLLECT ALL 4 OLIVE WREATHS TO UNLOCK MAZE GATE!";
+                else if (curStage == 6) msg = "COLLECT ALL 4 SACRED CHALICES TO UNLOCK GETHSEMANE GROVE!";
+
                 int mw = MeasureText(msg, 10);
                 DrawRectangle((VIRTUAL_WIDTH - mw) / 2 - 6, 40, mw + 12, 16, Color{ 20, 15, 25, 230 });
                 DrawRectangleLines((VIRTUAL_WIDTH - mw) / 2 - 6, 40, mw + 12, 16, COLOR_ROMAN_CRIMSON);
@@ -594,8 +668,8 @@ int main() {
             Enemy* b = enemyManager.GetBoss();
             bool showPhase1Follow = (b && (b->GetBossWhipState() == BossWhipState::PHASE1_WALK_OFF || b->HasPhase1WalkedOff()) && !level.IsArenaLockedDown());
             if (showPhase1Follow) {
-                float bob = sinf(GetTime() * 9.0f) * 4.0f;
-                float alpha = 0.85f + 0.15f * sinf(GetTime() * 12.0f);
+                float bob = sinf(static_cast<float>(GetTime()) * 9.0f) * 4.0f;
+                float alpha = 0.85f + 0.15f * sinf(static_cast<float>(GetTime()) * 12.0f);
                 Color arrowCol = ColorAlpha(COLOR_GOLD_BRIGHT, alpha);
                 Color bgCol = ColorAlpha(BLACK, 0.75f);
 
@@ -612,7 +686,7 @@ int main() {
                 DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 22, 6, 12, 235 });
 
                 // Dramatic flashing "RESURRECT??" title with arcade glow
-                float flashTime = GetTime() * 5.0f;
+                float flashTime = static_cast<float>(GetTime()) * 5.0f;
                 bool flashOn = (static_cast<int>(flashTime) % 2 == 0);
                 Color resColor = flashOn ? COLOR_GOLD_BRIGHT : COLOR_ROBE_WHITE;
                 Color glowColor = flashOn ? Color{ 245, 55, 65, 220 } : Color{ 160, 20, 30, 160 };
@@ -647,7 +721,7 @@ int main() {
                 DrawText(countStr, nx, ny, 34, countCol);
 
                 // Blinking Action Prompt Pill
-                bool promptBlink = (static_cast<int>(GetTime() * 3.5f) % 2 == 0);
+                bool promptBlink = (static_cast<int>(static_cast<float>(GetTime()) * 3.5f) % 2 == 0);
                 if (credits > 0) {
                     if (promptBlink) {
                         const char* prompt = "PRESS START TO RESURRECT!";
@@ -690,14 +764,14 @@ int main() {
                 int vw = MeasureText(vicTitle, 20);
                 DrawText(vicTitle, (VIRTUAL_WIDTH - vw) / 2, 45, 20, COLOR_ROMAN_GOLD);
 
-                const char* vicSub1 = "ALL MISSIONS COMPLETED - JERUSALEM FREED!";
+                const char* vicSub1 = "GETHSEMANE CONQUERED - THE EVIL CLONE OVERCOME!";
                 DrawText(vicSub1, (VIRTUAL_WIDTH - MeasureText(vicSub1, 10)) / 2, 75, 10, COLOR_ROBE_WHITE);
 
-                const char* vicSub2 = "THE NAZARENE HAST ASCENDED INTO GLORY";
+                const char* vicSub2 = "THE NAZARENE'S DIVINE MISSION IS FULFILLED";
                 DrawText(vicSub2, (VIRTUAL_WIDTH - MeasureText(vicSub2, 10)) / 2, 95, 10, COLOR_GOLD_BRIGHT);
 
                 char vicScore[48];
-                snprintf(vicScore, sizeof(vicScore), "FINAL SCORE: %06d", player.GetScore() + 30000);
+                snprintf(vicScore, sizeof(vicScore), "FINAL SCORE: %06d", player.GetScore() + 50000);
                 DrawText(vicScore, (VIRTUAL_WIDTH - MeasureText(vicScore, 10)) / 2, 125, 10, COLOR_ROMAN_GOLD);
 
                 const char* contPrompt = "RETURNING TO MAIN SCREEN...";

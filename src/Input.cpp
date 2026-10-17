@@ -3,6 +3,8 @@
 
 void InputHandler::Update(InputState& outState) {
     // Reset edge triggers
+    outState.upPressed = false;
+    outState.downPressed = false;
     outState.jumpPressed = false;
     outState.attackPressed = false;
     outState.wrathPressed = false;
@@ -15,6 +17,8 @@ void InputHandler::Update(InputState& outState) {
     bool kbRight = IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D);
     bool kbUp    = IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W);
     bool kbDown  = IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S);
+    bool kbUpPressed   = IsKeyPressed(KEY_UP)   || IsKeyPressed(KEY_W);
+    bool kbDownPressed = IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S);
 
     bool kbJumpPressed = IsKeyPressed(KEY_SPACE);
     bool kbJumpDown    = IsKeyDown(KEY_SPACE);
@@ -34,6 +38,8 @@ void InputHandler::Update(InputState& outState) {
     bool gpRight = false;
     bool gpUp = false;
     bool gpDown = false;
+    bool gpUpPressed = false;
+    bool gpDownPressed = false;
     bool gpJumpPressed = false;
     bool gpJumpDown = false;
     bool gpAttackPressed = false;
@@ -52,6 +58,8 @@ void InputHandler::Update(InputState& outState) {
         if (IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) gpRight = true;
         if (IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_UP))    gpUp = true;
         if (IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_FACE_DOWN))  gpDown = true;
+        if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_UP))   gpUpPressed = true;
+        if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) gpDownPressed = true;
 
         // Left Analog Stick (Axes 0 and 1 - Standard for All Gamepads)
         float stickX = GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_X);
@@ -115,6 +123,8 @@ void InputHandler::Update(InputState& outState) {
     outState.right = kbRight || gpRight;
     outState.up    = kbUp    || gpUp;
     outState.down  = kbDown  || gpDown;
+    outState.upPressed   = kbUpPressed   || gpUpPressed;
+    outState.downPressed = kbDownPressed || gpDownPressed;
 
     outState.jumpPressed = kbJumpPressed || gpJumpPressed;
     outState.jumpDown    = kbJumpDown    || gpJumpDown;

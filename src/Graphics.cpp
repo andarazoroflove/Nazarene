@@ -3556,7 +3556,7 @@ void GraphicsManager::LoadExternal16BitSprites() {
         { SPR_SICARII_STAND, "spr_sicarii_stand.png" },
         { SPR_SICARII_SLASH, "spr_sicarii_slash.png" },
         { SPR_SICARII_THROW, "spr_sicarii_throw.png" },
-        { SPR_SICARII_HURT, "spr_sicarii_stand.png" },
+        { SPR_SICARII_HURT, "spr_sicarii_hurt.png" },
 
         { SPR_TEMPLE_BOSS_IDLE, "spr_temple_boss_idle.png" },
         { SPR_TEMPLE_BOSS_WALK_0, "spr_temple_boss_walk_0.png" },

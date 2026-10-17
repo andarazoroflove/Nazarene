@@ -3483,6 +3483,12 @@ void GraphicsManager::InitSpriteBaseSizes() {
     for (int i = SPR_LICTOR_WALK_0; i <= SPR_LICTOR_HURT; ++i) {
         s_baseWidth[i] = 28; s_baseHeight[i] = 36;
     }
+    for (int i = SPR_PREFECT_IDLE; i <= SPR_PREFECT_KNEEL; ++i) {
+        s_baseWidth[i] = 32; s_baseHeight[i] = 42;
+    }
+    for (int i = SPR_ADVOCATE_IDLE; i <= SPR_ADVOCATE_KNEEL; ++i) {
+        s_baseWidth[i] = 30; s_baseHeight[i] = 38;
+    }
     for (int i = SPR_PILATE_IDLE; i <= SPR_PILATE_KNEEL_WASH; ++i) {
         s_baseWidth[i] = 36; s_baseHeight[i] = 44;
     }
@@ -3490,9 +3496,8 @@ void GraphicsManager::InitSpriteBaseSizes() {
     s_baseWidth[SPR_GOLDEN_STYLUS_BLADE] = 14; s_baseHeight[SPR_GOLDEN_STYLUS_BLADE] = 8;
     s_baseWidth[SPR_SHOUT_WAVE] = 16; s_baseHeight[SPR_SHOUT_WAVE] = 16;
     s_baseWidth[SPR_ROMAN_SCROLL] = 16; s_baseHeight[SPR_ROMAN_SCROLL] = 16;
-    s_baseWidth[SPR_CAESAR_SEAL] = 16; s_baseHeight[SPR_CAESAR_SEAL] = 16;
-    s_baseWidth[SPR_PILATE_EWER] = 16; s_baseHeight[SPR_PILATE_EWER] = 16;
-    s_baseWidth[SPR_NAIL] = 8; s_baseHeight[SPR_NAIL] = 8;
+    s_baseWidth[SPR_CAESAR_SEAL] = 14; s_baseHeight[SPR_CAESAR_SEAL] = 14;
+    s_baseWidth[SPR_PILATE_EWER] = 16; s_baseHeight[SPR_PILATE_EWER] = 18;
     s_baseWidth[SPR_ARROW] = 16; s_baseHeight[SPR_ARROW] = 8;
     s_baseWidth[SPR_WHIP_HEAD] = 14; s_baseHeight[SPR_WHIP_HEAD] = 14;
     s_baseWidth[SPR_BASKET_LOAVES_FISHES] = 22; s_baseHeight[SPR_BASKET_LOAVES_FISHES] = 18;
@@ -3537,8 +3542,8 @@ void GraphicsManager::LoadExternal16BitSprites() {
         { SPR_HEAVY_HURT, "spr_heavy_hurt.png" },
 
         { SPR_BOSS_IDLE, "spr_boss_idle.png" },
-        { SPR_BOSS_WALK_0, "spr_boss_idle.png" },
-        { SPR_BOSS_WALK_1, "spr_boss_idle.png" },
+        { SPR_BOSS_WALK_0, "spr_boss_walk_0.png" },
+        { SPR_BOSS_WALK_1, "spr_boss_walk_1.png" },
         { SPR_BOSS_WHIP_PREPARE, "spr_boss_whip_prepare.png" },
         { SPR_BOSS_WHIP_CRACK, "spr_boss_whip_crack.png" },
         { SPR_BOSS_WHIP_SLAM, "spr_boss_whip_slam.png" },
@@ -3553,27 +3558,163 @@ void GraphicsManager::LoadExternal16BitSprites() {
         { SPR_SICARII_THROW, "spr_sicarii_throw.png" },
         { SPR_SICARII_HURT, "spr_sicarii_stand.png" },
 
+        { SPR_TEMPLE_BOSS_IDLE, "spr_temple_boss_idle.png" },
+        { SPR_TEMPLE_BOSS_WALK_0, "spr_temple_boss_walk_0.png" },
+        { SPR_TEMPLE_BOSS_WALK_1, "spr_temple_boss_walk_1.png" },
+        { SPR_TEMPLE_BOSS_SLASH, "spr_temple_boss_slash.png" },
+        { SPR_TEMPLE_BOSS_SLAM, "spr_temple_boss_slam.png" },
+        { SPR_TEMPLE_BOSS_HURT, "spr_temple_boss_hurt.png" },
+        { SPR_TEMPLE_BOSS_KNEEL, "spr_temple_boss_hurt.png" },
+
+        { SPR_TRIBUNAL_IDLE, "spr_tribunal_idle.png" },
+        { SPR_TRIBUNAL_WALK_0, "spr_tribunal_walk_0.png" },
+        { SPR_TRIBUNAL_WALK_1, "spr_tribunal_walk_1.png" },
+        { SPR_TRIBUNAL_SLASH, "spr_tribunal_slash.png" },
+        { SPR_TRIBUNAL_SLAM, "spr_tribunal_slam.png" },
+        { SPR_TRIBUNAL_HURT, "spr_tribunal_hurt.png" },
+        { SPR_TRIBUNAL_KNEEL, "spr_tribunal_hurt.png" },
+
+        // Bonus Stage: Mount of Beatitudes
+        { SPR_VILLAGER_ELDER_RUN_0, "spr_villager_elder_run_0.png" },
+        { SPR_VILLAGER_ELDER_RUN_1, "spr_villager_elder_run_1.png" },
+        { SPR_VILLAGER_WOMAN_RUN_0, "spr_villager_woman_run_0.png" },
+        { SPR_VILLAGER_WOMAN_RUN_1, "spr_villager_woman_run_1.png" },
+        { SPR_VILLAGER_YOUTH_RUN_0, "spr_villager_youth_run_0.png" },
+        { SPR_VILLAGER_YOUTH_RUN_1, "spr_villager_youth_run_1.png" },
+        { SPR_VILLAGER_BEGGAR_RUN_0, "spr_villager_beggar_run_0.png" },
+        { SPR_VILLAGER_BEGGAR_RUN_1, "spr_villager_beggar_run_1.png" },
+        { SPR_VILLAGER_SATISFIED, "spr_villager_satisfied.png" },
+        { SPR_JESUS_BASKET_AIM, "spr_jesus_basket_aim.png" },
+        { SPR_JESUS_BASKET_THROW, "spr_jesus_basket_throw.png" },
+
+        // Mission 2: Gethsemane Enemies
+        { SPR_TORMENTOR_WALK_0, "spr_tormentor_walk_0.png" },
+        { SPR_TORMENTOR_WALK_1, "spr_tormentor_walk_1.png" },
+        { SPR_TORMENTOR_ATTACK, "spr_tormentor_attack.png" },
+        { SPR_TORMENTOR_HURT, "spr_tormentor_hurt.png" },
+
+        { SPR_THORN_SICARII_CROUCH, "spr_thorn_sicarii_crouch.png" },
+        { SPR_THORN_SICARII_LEAP, "spr_thorn_sicarii_leap.png" },
+        { SPR_THORN_SICARII_SLASH, "spr_thorn_sicarii_slash.png" },
+        { SPR_THORN_SICARII_HURT, "spr_thorn_sicarii_hurt.png" },
+
+        { SPR_CORRUPTED_PRIEST_STAND, "spr_corrupted_priest_stand.png" },
+        { SPR_CORRUPTED_PRIEST_CAST, "spr_corrupted_priest_cast.png" },
+        { SPR_CORRUPTED_PRIEST_HURT, "spr_corrupted_priest_hurt.png" },
+        { SPR_DARK_ORB, "spr_dark_orb.png" },
+        { SPR_DARK_SPIKE, "spr_dark_spike.png" },
+
+        { SPR_CLONE_IDLE, "spr_clone_idle.png" },
+        { SPR_CLONE_WALK_0, "spr_clone_walk_0.png" },
+        { SPR_CLONE_WALK_1, "spr_clone_walk_1.png" },
+        { SPR_CLONE_JUMP, "spr_clone_idle.png" },
+        { SPR_CLONE_THROW_STAND, "spr_clone_channel.png" },
+        { SPR_CLONE_THROW_CROUCH, "spr_clone_channel.png" },
+        { SPR_CLONE_MELEE_STRIKE, "spr_clone_channel.png" },
+        { SPR_CLONE_CHANNEL, "spr_clone_channel.png" },
+        { SPR_CLONE_HURT, "spr_clone_hurt.png" },
+        { SPR_CLONE_KNEEL, "spr_clone_hurt.png" },
+
+        { SPR_SILVER_PITCHER, "spr_silver_pitcher.png" },
+        { SPR_OLIVE_WREATH, "spr_olive_wreath.png" },
+        { SPR_SACRED_CHALICE, "spr_sacred_chalice.png" },
+
+        // Mission 3: The Old City & Palace Enemies
+        { SPR_MONEY_CHANGER_WALK_0, "spr_money_changer_walk_0.png" },
+        { SPR_MONEY_CHANGER_WALK_1, "spr_money_changer_walk_1.png" },
+        { SPR_MONEY_CHANGER_ATTACK, "spr_money_changer_attack.png" },
+        { SPR_MONEY_CHANGER_HURT, "spr_money_changer_hurt.png" },
+
+        { SPR_LEVITE_ENFORCER_WALK_0, "spr_levite_enforcer_walk_0.png" },
+        { SPR_LEVITE_ENFORCER_WALK_1, "spr_levite_enforcer_walk_1.png" },
+        { SPR_LEVITE_ENFORCER_ATTACK, "spr_levite_enforcer_attack.png" },
+        { SPR_LEVITE_ENFORCER_HURT, "spr_levite_enforcer_hurt.png" },
+
+        { SPR_BARABBAS_IDLE, "spr_barabbas_idle.png" },
+        { SPR_BARABBAS_WALK_0, "spr_barabbas_walk_0.png" },
+        { SPR_BARABBAS_WALK_1, "spr_barabbas_walk_1.png" },
+        { SPR_BARABBAS_SLASH, "spr_barabbas_slash.png" },
+        { SPR_BARABBAS_SLAM, "spr_barabbas_slam.png" },
+        { SPR_BARABBAS_HURT, "spr_barabbas_hurt.png" },
+        { SPR_BARABBAS_KNEEL, "spr_barabbas_hurt.png" },
+
+        { SPR_CAIAPHAS_STAND, "spr_caiaphas_stand.png" },
+        { SPR_CAIAPHAS_CAST, "spr_caiaphas_cast.png" },
+        { SPR_CAIAPHAS_HURT, "spr_caiaphas_hurt.png" },
+        { SPR_CAIAPHAS_KNEEL, "spr_caiaphas_hurt.png" },
+        { SPR_CAIAPHAS_LIGHTNING, "spr_caiaphas_lightning.png" },
+
         { SPR_JUDAS_IDLE, "spr_judas_idle.png" },
-        { SPR_JUDAS_WALK_0, "spr_judas_idle.png" },
-        { SPR_JUDAS_WALK_1, "spr_judas_idle.png" },
+        { SPR_JUDAS_WALK_0, "spr_judas_walk_0.png" },
+        { SPR_JUDAS_WALK_1, "spr_judas_walk_1.png" },
         { SPR_JUDAS_TOSS_SILVER, "spr_judas_toss_silver.png" },
         { SPR_JUDAS_DASH, "spr_judas_dash.png" },
         { SPR_JUDAS_STAB, "spr_judas_stab.png" },
-        { SPR_JUDAS_HURT, "spr_judas_idle.png" },
+        { SPR_JUDAS_HURT, "spr_judas_hurt.png" },
+        { SPR_JUDAS_KNEEL, "spr_judas_hurt.png" },
+
+        { SPR_SILVER_COIN_PROJECTILE, "spr_silver_coin_projectile.png" },
+        { SPR_BLOOD_SHOCKWAVE, "spr_blood_shockwave.png" },
+        { SPR_BITTER_HERBS, "spr_bitter_herbs.png" },
+        { SPR_PASSOVER_MATZOT, "spr_passover_matzot.png" },
+        { SPR_HOLY_GRAIL, "spr_holy_grail.png" },
+
+        // Mission 4: The Judgment of Pontius Pilate
+        { SPR_SIGNIFER_WALK_0, "spr_signifer_walk_0.png" },
+        { SPR_SIGNIFER_WALK_1, "spr_signifer_walk_1.png" },
+        { SPR_SIGNIFER_ATTACK, "spr_signifer_attack.png" },
+        { SPR_SIGNIFER_HURT, "spr_signifer_hurt.png" },
+
+        { SPR_PRAETORIAN_WALK_0, "spr_praetorian_walk_0.png" },
+        { SPR_PRAETORIAN_WALK_1, "spr_praetorian_walk_1.png" },
+        { SPR_PRAETORIAN_SHIELD_BASH, "spr_praetorian_shield_bash.png" },
+        { SPR_PRAETORIAN_HURT, "spr_praetorian_hurt.png" },
+
+        { SPR_LICTOR_WALK_0, "spr_lictor_walk_0.png" },
+        { SPR_LICTOR_WALK_1, "spr_lictor_walk_1.png" },
+        { SPR_LICTOR_FASCES_SWING, "spr_lictor_fasces_swing.png" },
+        { SPR_LICTOR_HURT, "spr_lictor_hurt.png" },
+
+        { SPR_PREFECT_IDLE, "spr_prefect_idle.png" },
+        { SPR_PREFECT_WALK_0, "spr_prefect_walk_0.png" },
+        { SPR_PREFECT_WALK_1, "spr_prefect_walk_1.png" },
+        { SPR_PREFECT_SLASH, "spr_prefect_slash.png" },
+        { SPR_PREFECT_SHIELD_RUSH, "spr_prefect_slash.png" },
+        { SPR_PREFECT_HURT, "spr_prefect_hurt.png" },
+        { SPR_PREFECT_KNEEL, "spr_prefect_hurt.png" },
+
+        { SPR_ADVOCATE_IDLE, "spr_advocate_idle.png" },
+        { SPR_ADVOCATE_CAST, "spr_advocate_cast.png" },
+        { SPR_ADVOCATE_SHOUT, "spr_advocate_shout.png" },
+        { SPR_ADVOCATE_HURT, "spr_advocate_hurt.png" },
+        { SPR_ADVOCATE_KNEEL, "spr_advocate_hurt.png" },
+        { SPR_SHOUT_WAVE, "spr_shout_wave.png" },
 
         { SPR_PILATE_IDLE, "spr_pilate_idle.png" },
-        { SPR_PILATE_WALK_0, "spr_pilate_idle.png" },
-        { SPR_PILATE_WALK_1, "spr_pilate_idle.png" },
+        { SPR_PILATE_WALK_0, "spr_pilate_walk_0.png" },
+        { SPR_PILATE_WALK_1, "spr_pilate_walk_1.png" },
         { SPR_PILATE_BASIN_SPLASH, "spr_pilate_basin.png" },
         { SPR_PILATE_SLASH, "spr_pilate_gavel_strike.png" },
+        { SPR_PILATE_STYLUS_BEAM, "spr_pilate_gavel_strike.png" },
+        { SPR_PILATE_TELEPORT, "spr_pilate_idle.png" },
+        { SPR_PILATE_HURT, "spr_pilate_hurt.png" },
+        { SPR_PILATE_KNEEL_WASH, "spr_pilate_basin.png" },
+
+        { SPR_WATER_DROPLET, "spr_water_droplet.png" },
+        { SPR_GOLDEN_STYLUS_BLADE, "spr_golden_stylus_blade.png" },
+        { SPR_ROMAN_SCROLL, "spr_roman_scroll.png" },
+        { SPR_CAESAR_SEAL, "spr_caesar_seal.png" },
+        { SPR_PILATE_EWER, "spr_pilate_ewer.png" },
 
         { SPR_ARROW, "spr_arrow.png" },
+        { SPR_WHIP_HEAD, "spr_whip_head.png" },
         { SPR_BREAD_LOAF, "spr_bread_loaf.png" },
         { SPR_FISH_PROJECTILE, "spr_fish_projectile.png" },
-        { SPR_SILVER_COIN_PROJECTILE, "spr_silver_coin_projectile.png" },
+        { SPR_BASKET_LOAVES_FISHES, "spr_basket_loaves_fishes.png" },
+        { SPR_CENSER_GOLD, "spr_censer_gold.png" },
         { SPR_ICON_HEART, "spr_icon_heart.png" },
         { SPR_ICON_WRATH, "spr_icon_wrath.png" },
-        { SPR_BASKET_LOAVES_FISHES, "spr_basket_loaves_fishes.png" },
+        { SPR_ICON_BASKET, "spr_basket_loaves_fishes.png" },
     };
 
     for (const auto& e : entries) {

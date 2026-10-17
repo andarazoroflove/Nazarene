@@ -597,25 +597,505 @@ def create_projectiles_and_items():
     img_bsk.save("assets/sprites/spr_basket_loaves_fishes.png", "PNG")
     print("Generated 16-bit projectiles and items!")
 
-# Archers
-create_roman_archer("spr_archer_stand")
-create_roman_archer("spr_archer_duck", is_duck=True)
-create_roman_archer("spr_archer_fire", is_fire=True)
-create_roman_archer("spr_archer_hurt", is_hurt=True)
+def create_temple_boss(frame_name, walk_phase=0, is_slash=False, is_slam=False, is_hurt=False):
+    W, H = 160, 192
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = 82, 46
 
-# Heavies
-create_roman_heavy("spr_heavy_walk_0", walk_phase=0)
-create_roman_heavy("spr_heavy_walk_1", walk_phase=1)
-create_roman_heavy("spr_heavy_attack", is_attack=True)
-create_roman_heavy("spr_heavy_hurt", is_hurt=True)
+    # Gilded High-Priest Guard Helmet with Temple Menorah Emblem
+    draw.ellipse([cx - 20, head_y - 24, cx + 20, head_y + 12], fill=PAL_GOLD[1], outline=PAL_GOLD[5], width=2)
+    draw.line([(cx, head_y - 20), (cx, head_y - 4)], fill=PAL_GOLD[0], width=3)
 
-# Sicarii
-create_sicarii("spr_sicarii_stand")
-create_sicarii("spr_sicarii_slash", is_slash=True)
-create_sicarii("spr_sicarii_throw", is_throw=True)
-create_sicarii("spr_sicarii_wall_cling", is_cling=True)
+    # Face & Beard
+    draw.ellipse([cx - 14, head_y - 10, cx + 14, head_y + 12], fill=PAL_SKIN[2])
+    draw.polygon([(cx - 12, head_y + 6), (cx + 12, head_y + 6), (cx, head_y + 24)], fill=PAL_HAIR[2])
 
-# Projectiles and UI
-create_projectiles_and_items()
+    # Burnished Golden Temple Cuirass & Tyrian Purple Sash
+    draw.polygon([(cx - 26, torso_y - 12), (cx + 26, torso_y - 12), (cx + 22, torso_y + 38), (cx - 22, torso_y + 38)], fill=PAL_GOLD[2], outline=PAL_GOLD[5], width=2)
+    draw.arc([cx - 20, torso_y - 4, cx - 2, torso_y + 14], 0, 180, fill=PAL_GOLD[0], width=2)
+    draw.arc([cx + 2, torso_y - 4, cx + 20, torso_y + 14], 0, 180, fill=PAL_GOLD[0], width=2)
+    # Purple sash
+    draw.polygon([(cx - 24, torso_y + 24), (cx + 24, torso_y + 28), (cx + 20, torso_y + 38), (cx - 20, torso_y + 34)], fill=(120, 25, 110, 255))
 
-print("16-Bit Arcade Sprites Generation Complete!")
+    # Muscular Greaved Legs
+    stride = math.sin(walk_phase * math.pi / 2.0) * 12.0
+    draw_limb_3tone(draw, (cx - 14, torso_y + 38), (cx - 14 + int(stride), ground_y - 4), 9, 7, PAL_BRONZE)
+    draw_limb_3tone(draw, (cx + 14, torso_y + 38), (cx + 14 - int(stride), ground_y - 4), 9, 7, PAL_BRONZE)
+
+    # Great Temple Mace (Heavy Spiked Golden Morningstar)
+    if is_slash or is_slam:
+        mace_x = cx - 48
+        mace_y = torso_y - 10
+        draw.line([(cx - 22, torso_y), (mace_x, mace_y)], fill=(140, 95, 45, 255), width=6)
+        draw.ellipse([mace_x - 14, mace_y - 14, mace_x + 14, mace_y + 14], fill=PAL_GOLD[0], outline=PAL_GOLD[4], width=2)
+        # Spikes
+        for angle in range(0, 360, 45):
+            rad = math.radians(angle)
+            sx = mace_x + math.cos(rad) * 20
+            sy = mace_y + math.sin(rad) * 20
+            draw.line([(mace_x, mace_y), (sx, sy)], fill=PAL_GOLD[0], width=3)
+    else:
+        draw.line([(cx - 22, torso_y), (cx - 36, ground_y - 10)], fill=(140, 95, 45, 255), width=5)
+        draw.ellipse([cx - 44, ground_y - 24, cx - 28, ground_y - 4], fill=PAL_GOLD[0], outline=PAL_GOLD[4])
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+def create_tribunal_boss(frame_name, walk_phase=0, is_slash=False, is_slam=False, is_hurt=False):
+    W, H = 160, 192
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = 82, 46
+
+    # Gilded Crest & Corinthian Praetor Helmet
+    draw.polygon([(cx - 24, head_y - 32), (cx + 24, head_y - 32), (cx, head_y - 16)], fill=PAL_CRIMSON[1], outline=PAL_CRIMSON[5])
+    draw.ellipse([cx - 18, head_y - 18, cx + 18, head_y + 12], fill=PAL_GOLD[1], outline=PAL_GOLD[4], width=2)
+
+    # Imperial Muscle Armor with Lion-head Pauldrons
+    draw.polygon([(cx - 26, torso_y - 12), (cx + 26, torso_y - 12), (cx + 22, torso_y + 38), (cx - 22, torso_y + 38)], fill=PAL_GOLD[2], outline=PAL_GOLD[5], width=2)
+    # Lion pauldrons
+    draw.ellipse([cx - 34, torso_y - 16, cx - 18, torso_y + 4], fill=PAL_GOLD[0], outline=PAL_GOLD[4])
+    draw.ellipse([cx + 18, torso_y - 16, cx + 34, torso_y + 4], fill=PAL_GOLD[0], outline=PAL_GOLD[4])
+
+    # Flowing Scarlet Cape
+    draw.polygon([(cx - 26, torso_y - 8), (cx - 56, torso_y + 64), (cx - 24, ground_y - 10), (cx + 26, torso_y - 8)], fill=PAL_CRIMSON[2], outline=PAL_CRIMSON[5])
+
+    # Legs & Greaves
+    stride = math.sin(walk_phase * math.pi / 2.0) * 12.0
+    draw_limb_3tone(draw, (cx - 14, torso_y + 38), (cx - 14 + int(stride), ground_y - 4), 9, 7, PAL_BRONZE)
+    draw_limb_3tone(draw, (cx + 14, torso_y + 38), (cx + 14 - int(stride), ground_y - 4), 9, 7, PAL_BRONZE)
+
+    # Holy Lance (Pilum of Longinus)
+    draw.line([(cx + 24, torso_y - 50), (cx + 24, ground_y)], fill=(120, 75, 35, 255), width=5)
+    draw.polygon([(cx + 19, torso_y - 50), (cx + 29, torso_y - 50), (cx + 24, torso_y - 74)], fill=PAL_STEEL[0], outline=PAL_STEEL[4])
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+def create_tormentor(frame_name, walk_phase=0, is_attack=False, is_hurt=False):
+    W, H = 112, 144
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = 68, 38
+
+    # Scarred Face & Hood
+    draw.polygon([(cx - 14, head_y - 16), (cx + 14, head_y - 16), (cx + 12, head_y + 14), (cx - 12, head_y + 14)], fill=(65, 45, 35, 255), outline=(30, 20, 15, 255))
+    draw.ellipse([cx - 10, head_y - 8, cx + 10, head_y + 8], fill=PAL_SKIN[3])
+    draw.line([(cx - 6, head_y - 4), (cx + 4, head_y + 6)], fill=(180, 40, 40, 255), width=2) # Battle scar
+
+    # Executioner's Heavy Leather Vest
+    draw.polygon([(cx - 16, torso_y - 6), (cx + 16, torso_y - 6), (cx + 18, torso_y + 32), (cx - 18, torso_y + 32)], fill=(75, 45, 30, 255), outline=(35, 20, 10, 255), width=2)
+    # Iron studs
+    for y in range(torso_y, torso_y + 28, 8):
+        draw.point((cx - 8, y), fill=PAL_STEEL[1])
+        draw.point((cx + 8, y), fill=PAL_STEEL[1])
+
+    # Legs & Heavy Boots
+    stride = math.sin(walk_phase * math.pi / 2.0) * 12.0
+    draw_limb_3tone(draw, (cx - 8, torso_y + 32), (cx - 8 + int(stride), ground_y - 4), 6, 5, PAL_SKIN)
+    draw_limb_3tone(draw, (cx + 8, torso_y + 32), (cx + 8 - int(stride), ground_y - 4), 6, 5, PAL_SKIN)
+
+    # Left Hand: Flaming Pitch Torch (Glowing dynamic fire)
+    torch_x, torch_y = cx + 26, torso_y - 10
+    draw.line([(cx + 16, torso_y), (torch_x, torch_y + 18)], fill=(110, 70, 35, 255), width=4)
+    # Flame corona
+    for r, col in [(16, (255, 90, 20, 90)), (11, (255, 170, 30, 160)), (6, (255, 245, 120, 230))]:
+        draw.ellipse([torch_x - r, torch_y - r, torch_x + r, torch_y + r], fill=col)
+
+    # Right Hand: Spiked Cudgel
+    cudgel_x = cx - 26 if not is_attack else cx - 44
+    draw.line([(cx - 16, torso_y), (cudgel_x, torso_y - 12)], fill=(80, 50, 25, 255), width=6)
+    draw.ellipse([cudgel_x - 8, torso_y - 20, cudgel_x + 8, torso_y - 4], fill=(45, 48, 55, 255), outline=PAL_STEEL[1], width=2)
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+def create_thorn_sicarii(frame_name, is_crouch=False, is_slash=False):
+    W, H = 112, 128
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = (60, 32) if not is_crouch else (80, 52)
+
+    # Camouflaged Forest Vine & Ivy Cowl
+    draw.polygon([(cx - 16, head_y - 14), (cx + 16, head_y - 14), (cx + 12, head_y + 16), (cx - 12, head_y + 16)], fill=(38, 58, 32, 255), outline=(15, 28, 12, 255))
+    # Glowing predatory emerald eyes
+    draw.ellipse([cx - 7, head_y, cx - 3, head_y + 4], fill=(120, 255, 140, 255))
+    draw.ellipse([cx + 3, head_y, cx + 7, head_y + 4], fill=(120, 255, 140, 255))
+
+    # Tunic with thorny bramble wraps
+    draw.polygon([(cx - 14, torso_y - 6), (cx + 14, torso_y - 6), (cx + 16, torso_y + 28), (cx - 16, torso_y + 28)], fill=(48, 68, 38, 255), outline=(20, 32, 16, 255))
+    draw.line([(cx - 14, torso_y), (cx + 14, torso_y + 20)], fill=(125, 95, 45, 255), width=2) # Vine
+
+    # Legs & Boots
+    draw_limb_3tone(draw, (cx - 8, torso_y + 28), (cx - 8, ground_y - 4), 6, 4, PAL_SKIN)
+    draw_limb_3tone(draw, (cx + 8, torso_y + 28), (cx + 8, ground_y - 4), 6, 4, PAL_SKIN)
+
+    # Serrated Poison Thorn Blades
+    draw.polygon([(cx - 28, torso_y - 12), (cx - 14, torso_y), (cx - 36, torso_y + 8)], fill=(130, 215, 150, 255), outline=(30, 75, 40, 255))
+    draw.polygon([(cx + 28, torso_y - 12), (cx + 14, torso_y), (cx + 36, torso_y + 8)], fill=(130, 215, 150, 255), outline=(30, 75, 40, 255))
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+def create_corrupted_priest(frame_name, is_cast=False, is_hurt=False):
+    W, H = 112, 144
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = 66, 36
+
+    # Dark Ritualistic Talit / Hood (Charcoal with Tattered Purple Ribbons)
+    draw.polygon([(cx - 18, head_y - 16), (cx + 18, head_y - 16), (cx + 16, head_y + 22), (cx - 16, head_y + 22)], fill=(42, 28, 55, 255), outline=(18, 10, 26, 255))
+    # Pallid, corrupted skin & glowing dark void eyes
+    draw.ellipse([cx - 10, head_y - 8, cx + 10, head_y + 10], fill=(190, 180, 195, 255))
+    draw.ellipse([cx - 7, head_y - 2, cx - 3, head_y + 2], fill=(220, 40, 255, 255))
+    draw.ellipse([cx + 3, head_y - 2, cx + 7, head_y + 2], fill=(220, 40, 255, 255))
+
+    # Long Dark Robes with Tattered Hem
+    draw.polygon([(cx - 16, torso_y - 6), (cx + 16, torso_y - 6), (cx + 22, ground_y - 4), (cx - 22, ground_y - 4)], fill=(32, 22, 44, 255), outline=(15, 8, 22, 255))
+    # Tattered hem cuts
+    for x in range(cx - 20, cx + 20, 6):
+        draw.line([(x, ground_y - 10), (x + 3, ground_y - 4)], fill=(160, 50, 200, 255), width=2)
+
+    # Channeling Dark Occult Orbs
+    orb_x = cx - 30 if is_cast else cx - 18
+    orb_y = torso_y - 8
+    draw_limb_3tone(draw, (cx - 14, torso_y), (orb_x + 8, orb_y + 12), 5, 4, (180, 175, 190, 255))
+    # Violet Dark Energy Pulsing Orb
+    for r, col in [(18, (160, 30, 220, 70)), (12, (200, 60, 255, 160)), (6, (255, 220, 255, 240))]:
+        draw.ellipse([orb_x - r, orb_y - r, orb_x + r, orb_y + r], fill=col)
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+def create_clone_boss(frame_name, walk_phase=0, is_channel=False, is_attack=False, is_hurt=False):
+    # Shadow Inverted Jesus (Christus Tenebris)
+    W, H = 112, 144
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = 68, 38
+
+    # Unholy Dark Violet Halo with crackling lightning
+    halo_r = 26
+    for r in range(halo_r, 0, -2):
+        alpha = int(50 * (r / halo_r) + 110 * (1.0 - r / halo_r))
+        draw.ellipse([cx - r, head_y - r - 4, cx + r, head_y + r - 4], fill=(140, 20, 220, alpha))
+    draw.ellipse([cx - halo_r, head_y - halo_r - 4, cx + halo_r, head_y + halo_r - 4], outline=(240, 80, 255, 220), width=2)
+
+    # Pale Ashen Face & Dark Hair
+    draw.ellipse([cx - 18, head_y - 12, cx + 18, head_y + 24], fill=(28, 22, 32, 255))
+    draw.ellipse([cx - 12, head_y - 14, cx + 12, head_y + 12], fill=(200, 195, 210, 255))
+    # Glowing Crimson Demon Eyes
+    draw.ellipse([cx - 7, head_y - 3, cx - 2, head_y + 2], fill=(255, 30, 40, 255))
+    draw.ellipse([cx + 2, head_y - 3, cx + 7, head_y + 2], fill=(255, 30, 40, 255))
+
+    # Obsidian / Charcoal Tunic with Deep Wine Crimson Stole
+    draw.polygon([(cx - 14, torso_y - 6), (cx + 14, torso_y - 6), (cx + 20, ground_y - 12), (cx - 20, ground_y - 12)], fill=(30, 28, 38, 255), outline=(12, 10, 18, 255))
+    draw.polygon([(cx - 14, torso_y - 4), (cx - 4, torso_y - 6), (cx + 18, ground_y - 16), (cx + 8, ground_y - 14)], fill=(125, 12, 28, 255))
+
+    # Legs & Black Leather Sandals
+    stride = math.sin(walk_phase * math.pi / 2.0) * 14.0
+    draw_limb_3tone(draw, (cx - 8, torso_y + 24), (cx - 8 + int(stride), ground_y - 4), 7, 5, (190, 185, 200, 255))
+    draw_limb_3tone(draw, (cx + 8, torso_y + 24), (cx + 8 - int(stride), ground_y - 4), 7, 5, (190, 185, 200, 255))
+
+    # Corrupted Scourge Whip
+    draw_limb_3tone(draw, (cx + 14, torso_y), (cx + 34, torso_y + 6), 6, 4, (190, 185, 200, 255))
+    draw.line([(cx + 34, torso_y + 6), (cx + 52, torso_y - 10)], fill=(160, 30, 220, 255), width=3)
+    draw.ellipse([cx + 50, torso_y - 14, cx + 58, torso_y - 6], fill=(255, 40, 60, 255))
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+def create_barabbas_boss(frame_name, walk_phase=0, is_slash=False, is_slam=False, is_hurt=False):
+    # Massive 152 x 176 Rebel Brawler
+    W, H = 152, 176
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = 76, 40
+
+    # Wild Unkempt Mane & Fierce Beard
+    draw.ellipse([cx - 24, head_y - 20, cx + 24, head_y + 26], fill=(45, 28, 16, 255), outline=(20, 12, 8, 255))
+    draw.ellipse([cx - 14, head_y - 10, cx + 14, head_y + 12], fill=PAL_SKIN[3])
+    # War paint & ferocious scowl
+    draw.line([(cx - 8, head_y - 2), (cx + 8, head_y - 2)], fill=(20, 15, 10, 255), width=3)
+    draw.polygon([(cx - 16, head_y + 8), (cx + 16, head_y + 8), (cx, head_y + 28)], fill=(45, 28, 16, 255))
+
+    # Muscular Bare Torso with Leather Harness & Scars
+    draw.polygon([(cx - 26, torso_y - 10), (cx + 26, torso_y - 10), (cx + 20, torso_y + 36), (cx - 20, torso_y + 36)], fill=PAL_SKIN[2], outline=PAL_SKIN[5], width=2)
+    # Heavy chest muscles & harness
+    draw.arc([cx - 20, torso_y - 2, cx - 2, torso_y + 16], 0, 180, fill=PAL_SKIN[1], width=2)
+    draw.arc([cx + 2, torso_y - 2, cx + 20, torso_y + 16], 0, 180, fill=PAL_SKIN[1], width=2)
+    draw.line([(cx - 22, torso_y - 8), (cx + 18, torso_y + 34)], fill=(75, 45, 25, 255), width=4)
+
+    # Broken Iron Manacles with Dangling Chains on Wrists!
+    arm_l = (cx - 40, torso_y + 8) if not is_slash else (cx - 52, torso_y - 16)
+    arm_r = (cx + 40, torso_y + 8) if not is_slash else (cx + 52, torso_y - 16)
+    draw_limb_3tone(draw, (cx - 22, torso_y), arm_l, 9, 7, PAL_SKIN)
+    draw_limb_3tone(draw, (cx + 22, torso_y), arm_r, 9, 7, PAL_SKIN)
+    # Heavy iron wrist cuffs
+    draw.rectangle([arm_l[0] - 6, arm_l[1] - 6, arm_l[0] + 6, arm_l[1] + 6], fill=PAL_STEEL[3], outline=PAL_STEEL[5])
+    draw.rectangle([arm_r[0] - 6, arm_r[1] - 6, arm_r[0] + 6, arm_r[1] + 6], fill=PAL_STEEL[3], outline=PAL_STEEL[5])
+    # Dangling broken chain links swinging from cuffs
+    for i in range(3):
+        draw.ellipse([arm_l[0] - 3, arm_l[1] + 8 + i * 6, arm_l[0] + 3, arm_l[1] + 14 + i * 6], outline=PAL_STEEL[1], width=2)
+        draw.ellipse([arm_r[0] - 3, arm_r[1] + 8 + i * 6, arm_r[0] + 3, arm_r[1] + 14 + i * 6], outline=PAL_STEEL[1], width=2)
+
+    # Dual Brutal Falchion Cleavers
+    draw.polygon([(arm_l[0] - 2, arm_l[1] - 4), (arm_l[0] - 16, arm_l[1] - 38), (arm_l[0] - 32, arm_l[1] - 28), (arm_l[0] - 6, arm_l[1] + 2)], fill=PAL_STEEL[0], outline=PAL_STEEL[4], width=2)
+    draw.polygon([(arm_r[0] + 2, arm_r[1] - 4), (arm_r[0] + 16, arm_r[1] - 38), (arm_r[0] + 32, arm_r[1] - 28), (arm_r[0] + 6, arm_r[1] + 2)], fill=PAL_STEEL[0], outline=PAL_STEEL[4], width=2)
+
+    # Massive Legs & Wrapped Sandals
+    stride = math.sin(walk_phase * math.pi / 2.0) * 12.0
+    draw_limb_3tone(draw, (cx - 12, torso_y + 36), (cx - 14 + int(stride), ground_y - 4), 9, 7, PAL_SKIN)
+    draw_limb_3tone(draw, (cx + 12, torso_y + 36), (cx + 14 - int(stride), ground_y - 4), 9, 7, PAL_SKIN)
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+def create_caiaphas_boss(frame_name, is_cast=False, is_hurt=False):
+    W, H = 128, 160
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = 70, 36
+
+    # High Priest Golden Miter (Headdress) with Golden Crown Plate ("Holiness unto the Lord")
+    draw.polygon([(cx - 18, head_y - 24), (cx + 18, head_y - 24), (cx + 14, head_y + 8), (cx - 14, head_y + 8)], fill=(240, 245, 255, 255), outline=PAL_GOLD[4], width=2)
+    draw.rectangle([cx - 16, head_y - 14, cx + 16, head_y - 6], fill=PAL_GOLD[0], outline=PAL_GOLD[4])
+
+    # Robe of the Ephod (Celestial Blue with Gold Fringe)
+    draw.polygon([(cx - 18, torso_y - 8), (cx + 18, torso_y - 8), (cx + 24, ground_y - 6), (cx - 24, ground_y - 6)], fill=(32, 85, 160, 255), outline=(12, 35, 75, 255), width=2)
+
+    # Sacred Hoshen Breastplate with 12 Radiant Gemstones!
+    bp_x, bp_y = cx - 14, torso_y - 2
+    draw.rectangle([bp_x, bp_y, bp_x + 28, bp_y + 24], fill=PAL_GOLD[1], outline=PAL_GOLD[4], width=2)
+    gem_cols = [
+        (255, 60, 60), (255, 220, 60), (60, 255, 120), (60, 200, 255),
+        (220, 60, 255), (255, 140, 40), (40, 240, 200), (180, 255, 80),
+        (255, 180, 220), (120, 60, 255), (255, 240, 180), (180, 140, 90)
+    ]
+    for idx, col in enumerate(gem_cols):
+        gx = bp_x + 3 + (idx % 4) * 6
+        gy = bp_y + 3 + (idx // 4) * 7
+        draw.rectangle([gx, gy, gx + 4, gy + 4], fill=col)
+
+    # Arms raised calling down judgment lightning
+    if is_cast:
+        draw_limb_3tone(draw, (cx - 18, torso_y), (cx - 36, torso_y - 28), 6, 4, PAL_SKIN)
+        draw_limb_3tone(draw, (cx + 18, torso_y), (cx + 36, torso_y - 28), 6, 4, PAL_SKIN)
+        # Sparkles on fingertips
+        draw.ellipse([cx - 40, torso_y - 32, cx - 32, torso_y - 24], fill=(255, 255, 200, 255))
+        draw.ellipse([cx + 32, torso_y - 32, cx + 40, torso_y - 24], fill=(255, 255, 200, 255))
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+def create_signifer(frame_name, walk_phase=0, is_attack=False, is_hurt=False):
+    W, H = 120, 152
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = 70, 38
+
+    # Wolf Pelt Draped over Cassis Helmet (Wolf fangs framing face, ears on top)
+    draw.polygon([(cx - 18, head_y - 24), (cx + 18, head_y - 24), (cx + 14, head_y + 12), (cx - 14, head_y + 12)], fill=(115, 105, 95, 255), outline=(45, 40, 35, 255))
+    # Wolf ears
+    draw.polygon([(cx - 16, head_y - 24), (cx - 10, head_y - 34), (cx - 4, head_y - 24)], fill=(135, 125, 115, 255))
+    draw.polygon([(cx + 4, head_y - 24), (cx + 10, head_y - 34), (cx + 16, head_y - 24)], fill=(135, 125, 115, 255))
+    # Face slit
+    draw.rectangle([cx - 8, head_y - 4, cx + 8, head_y + 8], fill=PAL_SKIN[2])
+
+    # Lorica Squamata (Scale Armor)
+    draw.rectangle([cx - 16, torso_y - 6, cx + 16, torso_y + 26], fill=PAL_BRONZE[1], outline=PAL_BRONZE[4])
+
+    # Legs & Caligae
+    stride = math.sin(walk_phase * math.pi / 2.0) * 12.0
+    draw_limb_3tone(draw, (cx - 8, torso_y + 26), (cx - 8 + int(stride), ground_y - 4), 6, 5, PAL_SKIN)
+    draw_limb_3tone(draw, (cx + 8, torso_y + 26), (cx + 8 - int(stride), ground_y - 4), 6, 5, PAL_SKIN)
+
+    # Towering Signum Standard (Golden Hand & Phalerae Medallions)
+    pole_x = cx + 26
+    draw.line([(pole_x, 10), (pole_x, ground_y)], fill=(130, 85, 40, 255), width=5)
+    # Golden Hand (Manus) at apex
+    draw.ellipse([pole_x - 7, 8, pole_x + 7, 24], fill=PAL_GOLD[0], outline=PAL_GOLD[4])
+    # 4 Silver Phalerae Disks along shaft
+    for dy in range(32, 80, 14):
+        draw.ellipse([pole_x - 9, dy, pole_x + 9, dy + 10], fill=PAL_STEEL[0], outline=PAL_STEEL[3])
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+def create_praetorian(frame_name, walk_phase=0, is_bash=False, is_hurt=False):
+    W, H = 128, 160
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = 74, 40
+
+    # Imperial Black & Gold Attic Helmet with Regal Purple Plume
+    draw.ellipse([cx - 20, head_y - 30, cx + 20, head_y - 14], fill=(125, 20, 120, 255), outline=(50, 8, 48, 255))
+    draw.ellipse([cx - 15, head_y - 16, cx + 15, head_y + 10], fill=(35, 32, 42, 255), outline=PAL_GOLD[1], width=2)
+
+    # Black Polished Lorica Segmentata with Gilded Joint Hinges
+    draw.rectangle([cx - 18, torso_y - 8, cx + 18, torso_y + 28], fill=(32, 30, 38, 255), outline=PAL_GOLD[2], width=2)
+    for y in range(torso_y - 4, torso_y + 24, 7):
+        draw.line([(cx - 16, y), (cx + 16, y)], fill=PAL_GOLD[1], width=2)
+
+    # Legs & Greaves
+    stride = math.sin(walk_phase * math.pi / 2.0) * 12.0
+    draw_limb_3tone(draw, (cx - 10, torso_y + 28), (cx - 10 + int(stride), ground_y - 4), 7, 5, PAL_BRONZE)
+    draw_limb_3tone(draw, (cx + 10, torso_y + 28), (cx + 10 - int(stride), ground_y - 4), 7, 5, PAL_BRONZE)
+
+    # Heavy Oval Praetorian Shield with Golden Imperial Scorpion
+    sh_x = cx + 26 if not is_bash else cx - 24
+    draw.ellipse([sh_x - 14, torso_y - 14, sh_x + 14, torso_y + 38], fill=(28, 25, 36, 255), outline=PAL_GOLD[1], width=3)
+    # Golden Scorpion Emblazoned on Shield
+    draw.circle((sh_x, torso_y + 8), 5, fill=PAL_GOLD[0])
+    draw.arc([sh_x - 8, torso_y + 6, sh_x + 8, torso_y + 20], 0, 180, fill=PAL_GOLD[0], width=2)
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+def create_lictor(frame_name, walk_phase=0, is_swing=False, is_hurt=False):
+    W, H = 112, 144
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = 68, 38
+
+    # Roman Toga draped over scarlet tunic
+    draw.ellipse([cx - 12, head_y - 12, cx + 12, head_y + 12], fill=PAL_SKIN[2])
+    draw.polygon([(cx - 16, torso_y - 6), (cx + 16, torso_y - 6), (cx + 20, ground_y - 6), (cx - 20, ground_y - 6)], fill=PAL_WHITE_ROBE[1], outline=PAL_WHITE_ROBE[4])
+
+    # Legs & Sandals
+    stride = math.sin(walk_phase * math.pi / 2.0) * 12.0
+    draw_limb_3tone(draw, (cx - 8, torso_y + 32), (cx - 8 + int(stride), ground_y - 4), 6, 5, PAL_SKIN)
+    draw_limb_3tone(draw, (cx + 8, torso_y + 32), (cx + 8 - int(stride), ground_y - 4), 6, 5, PAL_SKIN)
+
+    # Roman Fasces (Bundle of birch rods bound with scarlet thongs, enclosing bronze axe)
+    fasces_x = cx + 24 if not is_swing else cx - 36
+    draw.line([(fasces_x, 16), (fasces_x, ground_y)], fill=(160, 115, 65, 255), width=8)
+    for y in range(24, ground_y - 8, 14):
+        draw.line([(fasces_x - 5, y), (fasces_x + 5, y)], fill=PAL_CRIMSON[1], width=2) # Red straps
+    # Bronze executioner axe blade emerging from fasces bundle
+    draw.polygon([(fasces_x + 4, 22), (fasces_x + 18, 14), (fasces_x + 22, 34), (fasces_x + 4, 30)], fill=PAL_BRONZE[0], outline=PAL_BRONZE[4])
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+def create_prefect(frame_name, walk_phase=0, is_slash=False, is_rush=False, is_hurt=False):
+    W, H = 144, 176
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = 78, 42
+
+    # Prefect Equestrian Crested Galea
+    draw.ellipse([cx - 24, head_y - 30, cx + 24, head_y - 12], fill=PAL_CRIMSON[1], outline=PAL_CRIMSON[5])
+    draw.ellipse([cx - 16, head_y - 16, cx + 16, head_y + 12], fill=PAL_GOLD[1], outline=PAL_GOLD[4], width=2)
+
+    # Gilded Musculata Cuirass with Silver Gorgon Head
+    draw.polygon([(cx - 24, torso_y - 12), (cx + 24, torso_y - 12), (cx + 20, torso_y + 34), (cx - 20, torso_y + 34)], fill=PAL_GOLD[2], outline=PAL_GOLD[5], width=2)
+    draw.ellipse([cx - 8, torso_y, cx + 8, torso_y + 16], fill=PAL_STEEL[0]) # Silver medallion
+
+    # Regal Purple Cape
+    draw.polygon([(cx - 22, torso_y - 8), (cx - 48, torso_y + 60), (cx - 18, ground_y - 12), (cx + 22, torso_y - 8)], fill=(115, 20, 110, 255), outline=(45, 8, 42, 255))
+
+    # Legs & Greaves
+    stride = math.sin(walk_phase * math.pi / 2.0) * 12.0
+    draw_limb_3tone(draw, (cx - 12, torso_y + 34), (cx - 14 + int(stride), ground_y - 4), 9, 7, PAL_BRONZE)
+    draw_limb_3tone(draw, (cx + 12, torso_y + 34), (cx + 14 - int(stride), ground_y - 4), 9, 7, PAL_BRONZE)
+
+    # Spatha Heavy Sword
+    draw.line([(cx + 22, torso_y), (cx + 46, torso_y - 24)], fill=PAL_STEEL[0], width=4)
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+def create_advocate(frame_name, is_shout=False, is_hurt=False):
+    W, H = 128, 160
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, ground_y = W // 2, H - 8
+    torso_y, head_y = 70, 36
+
+    # Aristocratic Roman Prosecutor in Patrician Toga with Gold Fibula
+    draw.ellipse([cx - 14, head_y - 14, cx + 14, head_y + 14], fill=PAL_SKIN[2])
+    draw.polygon([(cx - 18, torso_y - 8), (cx + 18, torso_y - 8), (cx + 24, ground_y - 6), (cx - 24, ground_y - 6)], fill=(235, 230, 220, 255), outline=(60, 55, 50, 255))
+    draw.ellipse([cx - 12, torso_y - 6, cx - 4, torso_y + 2], fill=PAL_GOLD[0]) # Gold fibula brooch
+
+    # Holding Indictment Papyrus Scroll
+    scroll_x = cx + 24
+    draw.rectangle([scroll_x - 6, torso_y, scroll_x + 6, torso_y + 24], fill=(245, 235, 195, 255), outline=(120, 95, 45, 255))
+
+    out_path = f"assets/sprites/{frame_name}.png"
+    img.save(out_path, "PNG")
+    print(f"Generated: {out_path} ({W}x{H})")
+
+# Generate Mission 2, 3, and 4 Bosses and Enemies
+create_temple_boss("spr_temple_boss_idle")
+create_temple_boss("spr_temple_boss_slash", is_slash=True)
+create_temple_boss("spr_temple_boss_slam", is_slam=True)
+
+create_tribunal_boss("spr_tribunal_idle")
+create_tribunal_boss("spr_tribunal_slash", is_slash=True)
+create_tribunal_boss("spr_tribunal_slam", is_slam=True)
+
+create_tormentor("spr_tormentor_walk_0", walk_phase=0)
+create_tormentor("spr_tormentor_walk_1", walk_phase=1)
+create_tormentor("spr_tormentor_attack", is_attack=True)
+create_tormentor("spr_tormentor_hurt", is_hurt=True)
+
+create_thorn_sicarii("spr_thorn_sicarii_crouch", is_crouch=True)
+create_thorn_sicarii("spr_thorn_sicarii_slash", is_slash=True)
+
+create_corrupted_priest("spr_corrupted_priest_stand")
+create_corrupted_priest("spr_corrupted_priest_cast", is_cast=True)
+
+create_clone_boss("spr_clone_idle")
+create_clone_boss("spr_clone_channel", is_channel=True)
+
+create_barabbas_boss("spr_barabbas_idle")
+create_barabbas_boss("spr_barabbas_slash", is_slash=True)
+create_barabbas_boss("spr_barabbas_slam", is_slam=True)
+
+create_caiaphas_boss("spr_caiaphas_stand")
+create_caiaphas_boss("spr_caiaphas_cast", is_cast=True)
+
+create_signifer("spr_signifer_walk_0", walk_phase=0)
+create_signifer("spr_signifer_walk_1", walk_phase=1)
+create_signifer("spr_signifer_attack", is_attack=True)
+
+create_praetorian("spr_praetorian_walk_0", walk_phase=0)
+create_praetorian("spr_praetorian_shield_bash", is_bash=True)
+
+create_lictor("spr_lictor_walk_0", walk_phase=0)
+create_lictor("spr_lictor_fasces_swing", is_swing=True)
+
+create_prefect("spr_prefect_idle")
+create_prefect("spr_prefect_slash", is_slash=True)
+
+create_advocate("spr_advocate_idle")
+create_advocate("spr_advocate_shout", is_shout=True)
+
+print("All 16-Bit Arcade Enemies Generation Complete!")
+

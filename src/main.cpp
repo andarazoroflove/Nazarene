@@ -116,6 +116,9 @@ int main() {
         StartMission(missionNumber, currentArea);
     };
 
+    int crtMode = 0; // 0 = Arcade CRT (Scanlines + Mask), 1 = Soft Scanlines, 2 = Sharp Pixels
+    float crtNoticeTimer = 0.0f;
+
     // 5. Main Game Loop
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
@@ -128,6 +131,14 @@ int main() {
         if (input.toggleFullscreen) {
             ToggleFullscreen();
         }
+
+        // Toggle Arcade CRT Display Mode (F10)
+        if (IsKeyPressed(KEY_F10)) {
+            crtMode = (crtMode + 1) % 3;
+            crtNoticeTimer = 2.5f;
+            AudioManager::PlaySfx(SFX_COIN_INSERT);
+        }
+        if (crtNoticeTimer > 0.0f) crtNoticeTimer -= dt;
 
         // --- State Machine Updates ---
         switch (gameState) {
@@ -554,90 +565,117 @@ int main() {
                 GraphicsManager::DrawFinishHimBanner(static_cast<float>(GetTime()), bannerA);
             }
 
-            // 4. Arcade HUD (Top Screen)
-            DrawRectangle(0, 0, VIRTUAL_WIDTH, 20, COLOR_HUD_BG);
-            DrawLine(0, 20, VIRTUAL_WIDTH, 20, COLOR_ROMAN_DARK);
+            // 4. MAME Arcade HUD (Top Screen) - 16-Bit Architecture
+            DrawRectangle(0, 0, VIRTUAL_WIDTH, 22, Color{ 14, 12, 18, 240 });
+            DrawLine(0, 21, VIRTUAL_WIDTH, 21, COLOR_ROMAN_GOLD);
+            DrawLine(0, 22, VIRTUAL_WIDTH, 22, Color{ 35, 24, 14, 255 });
 
-            // Score
+            // 1UP Marquee (Blinking)
+            bool oneUpBlink = (static_cast<int>(GetTime() * 4.0f) % 2 == 0);
+            Color oneUpCol = oneUpBlink ? COLOR_CRIMSON_BRIGHT : COLOR_ROMAN_CRIMSON;
+            DrawText("1UP", 8, 4, 10, oneUpCol);
+
+            // Player Score (Gold Digits)
             char scoreText[32];
-            snprintf(scoreText, sizeof(scoreText), "SCORE %06d", player.GetScore());
-            DrawText(scoreText, 8, 5, 10, COLOR_ROMAN_GOLD);
+            snprintf(scoreText, sizeof(scoreText), "%06d", player.GetScore());
+            DrawText(scoreText, 32, 4, 10, COLOR_GOLD_BRIGHT);
 
-            // Player Health Pips (Hearts)
-            DrawText("LIFE", 110, 5, 10, COLOR_ROBE_WHITE);
+            // Arcade Vitality Meter (Segmented Jeweled Roman Life Bar)
+            DrawText("LIFE", 94, 4, 10, Color{ 220, 220, 230, 255 });
             int effMax = player.GetEffectiveMaxHp();
+            int curHp = player.GetHp();
+            bool lowHpFlash = (curHp == 1 && (static_cast<int>(GetTime() * 8.0f) % 2 == 0));
+
+            // Gold Outer Inset Frame
+            DrawRectangle(122, 4, 34, 12, Color{ 24, 18, 28, 255 });
+            DrawRectangleLines(122, 4, 34, 12, COLOR_ROMAN_GOLD);
+
             for (int i = 0; i < PLAYER_MAX_HP; ++i) {
-                float hx = 138.0f + i * 10.0f;
-                float hy = 6.0f;
-                if (i < player.GetHp()) {
-                    GraphicsManager::DrawSprite(SPR_ICON_HEART, hx, hy);
+                int px = 124 + i * 10;
+                int py = 6;
+                if (i < curHp) {
+                    Color pipCol = lowHpFlash ? WHITE : COLOR_CRIMSON_BRIGHT;
+                    DrawRectangle(px, py, 8, 8, pipCol);
+                    DrawRectangle(px, py, 8, 2, Color{ 255, 220, 220, 255 }); // Specular gleam
+                    DrawRectangleLines(px, py, 8, 8, Color{ 110, 15, 22, 255 });
                 } else if (i < effMax) {
-                    DrawRectangleLines(static_cast<int>(hx), static_cast<int>(hy), 8, 8, Color{ 90, 80, 80, 255 });
+                    DrawRectangle(px, py, 8, 8, Color{ 40, 32, 45, 255 });
+                    DrawRectangleLines(px, py, 8, 8, Color{ 85, 75, 90, 255 });
                 } else {
-                    // Shattered unrefillable heart slot on boss level
-                    int ix = static_cast<int>(hx);
-                    int iy = static_cast<int>(hy);
-                    DrawRectangle(ix, iy, 8, 8, Color{ 45, 10, 14, 230 });
-                    DrawRectangleLines(ix, iy, 8, 8, Color{ 160, 30, 40, 255 });
-                    DrawLine(ix + 1, iy + 1, ix + 7, iy + 7, Color{ 235, 35, 45, 255 });
-                    DrawLine(ix + 7, iy + 1, ix + 1, iy + 7, Color{ 235, 35, 45, 255 });
+                    // Shattered socket on boss level
+                    DrawRectangle(px, py, 8, 8, Color{ 25, 8, 12, 255 });
+                    DrawLine(px, py, px + 7, py + 7, Color{ 170, 25, 35, 255 });
+                    DrawLine(px + 7, py, px, py + 7, Color{ 170, 25, 35, 255 });
                 }
             }
 
-            // Divine Wrath Ninjutsu Icon
-            DrawText("WRATH", 180, 5, 10, COLOR_ROBE_WHITE);
+            // Divine Wrath Super Capsule
+            DrawText("WRATH", 166, 4, 10, Color{ 220, 220, 230, 255 });
             if (player.HasWrathAvailable()) {
-                GraphicsManager::DrawSprite(SPR_ICON_WRATH, 218.0f, 5.0f);
+                bool wPulse = (static_cast<int>(GetTime() * 6.0f) % 2 == 0);
+                Color wrathGlow = wPulse ? Color{ 80, 220, 255, 255 } : Color{ 40, 160, 255, 255 };
+                DrawRectangle(206, 4, 14, 12, Color{ 15, 35, 60, 255 });
+                DrawRectangleLines(206, 4, 14, 12, wrathGlow);
+                GraphicsManager::DrawSprite(SPR_ICON_WRATH, 208.0f, 5.0f);
             } else {
-                DrawRectangleLines(218, 5, 10, 10, Color{ 80, 75, 70, 255 });
+                DrawRectangle(206, 4, 14, 12, Color{ 25, 22, 30, 255 });
+                DrawRectangleLines(206, 4, 14, 12, Color{ 75, 70, 80, 255 });
             }
 
             // Stage Pickups: Baskets (1), Censers (2, 3), Pitchers (4), Wreaths (5), Chalices (6)
             SpriteId hudPickupSpr = SPR_ICON_BASKET;
-            if (curStage == 2 || curStage == 3) {
-                hudPickupSpr = SPR_CENSER_GOLD;
-            } else if (curStage == 4) {
-                hudPickupSpr = SPR_SILVER_PITCHER;
-            } else if (curStage == 5) {
-                hudPickupSpr = SPR_OLIVE_WREATH;
-            } else if (curStage == 6) {
-                hudPickupSpr = SPR_SACRED_CHALICE;
-            }
-            GraphicsManager::DrawSprite(hudPickupSpr, 244.0f, 2.0f);
+            if (curStage == 2 || curStage == 3) hudPickupSpr = SPR_CENSER_GOLD;
+            else if (curStage == 4) hudPickupSpr = SPR_SILVER_PITCHER;
+            else if (curStage == 5) hudPickupSpr = SPR_OLIVE_WREATH;
+            else if (curStage == 6) hudPickupSpr = SPR_SACRED_CHALICE;
+            GraphicsManager::DrawSprite(hudPickupSpr, 230.0f, 2.0f);
 
             char basketText[16];
             snprintf(basketText, sizeof(basketText), "%d/%d", level.GetBasketsCollectedCount(), level.GetTotalBasketsCount());
-            DrawText(basketText, 268, 5, 10, level.AreAllBasketsCollected() ? Color{ 80, 255, 120, 255 } : COLOR_ROMAN_GOLD);
+            Color bCol = level.AreAllBasketsCollected() ? Color{ 80, 255, 120, 255 } : COLOR_ROMAN_GOLD;
+            DrawText(basketText, 252, 4, 10, bCol);
 
-            // Lives
+            // Lives Counter
             char livesText[16];
             snprintf(livesText, sizeof(livesText), "x%d", player.GetLives());
-            DrawText(livesText, 298, 5, 10, COLOR_ROBE_WHITE);
+            DrawText("RES", 282, 4, 10, Color{ 210, 190, 160, 255 });
+            DrawText(livesText, 304, 4, 10, COLOR_GOLD_BRIGHT);
 
             // 5. Boss Health Bar (Bottom Screen when inside Arena)
             if (level.IsArenaLockedDown()) {
                 Enemy* b = enemyManager.GetBoss();
                 if (b && !b->IsWitheredDead()) {
-                    DrawRectangle(50, VIRTUAL_HEIGHT - 18, VIRTUAL_WIDTH - 100, 14, COLOR_HUD_BG);
-                    DrawRectangleLines(50, VIRTUAL_HEIGHT - 18, VIRTUAL_WIDTH - 100, 14, COLOR_ROMAN_CRIMSON);
+                    int bw = VIRTUAL_WIDTH - 60;
+                    int bx = (VIRTUAL_WIDTH - bw) / 2;
+                    int by = VIRTUAL_HEIGHT - 20;
 
-                    const char* bossName = "BRUTUS";
-                    if (curStage == 2) bossName = "MALCHUS";
-                    else if (curStage == 3) bossName = "PRAETOR";
-                    else if (curStage == 4) bossName = "DECURION";
-                    else if (curStage == 5) bossName = "INQUISITOR";
+                    DrawRectangle(bx, by, bw, 16, Color{ 16, 12, 22, 245 });
+                    DrawRectangleLines(bx, by, bw, 16, COLOR_ROMAN_GOLD);
+                    DrawRectangleLines(bx + 1, by + 1, bw - 2, 14, Color{ 60, 42, 18, 255 });
+
+                    const char* bossName = "CENTURION BRUTUS";
+                    if (curStage == 2) bossName = "COMMANDER MALCHUS";
+                    else if (curStage == 3) bossName = "PRAETOR LONGINUS";
+                    else if (curStage == 4) bossName = "TORMENTOR DECURION";
+                    else if (curStage == 5) bossName = "SHADOW INQUISITOR";
                     else if (curStage == 6) bossName = "CHRISTUS TENEBRIS";
-                    DrawText(bossName, 56, VIRTUAL_HEIGHT - 16, 10, COLOR_ROMAN_GOLD);
+
+                    DrawText(bossName, bx + 6, by + 3, 10, COLOR_GOLD_BRIGHT);
 
                     int maxBossPips = b->GetMaxHp();
                     int curBossPips = b->GetHp();
-                    int barStartX = 145;
-                    int pipW = 7;
+                    int barStartX = bx + bw - maxBossPips * 9 - 6;
+
                     for (int p = 0; p < maxBossPips; ++p) {
+                        int px = barStartX + p * 9;
+                        int py = by + 3;
                         if (p < curBossPips) {
-                            DrawRectangle(barStartX + p * 8, VIRTUAL_HEIGHT - 15, pipW, 8, COLOR_ROMAN_CRIMSON);
+                            DrawRectangle(px, py, 7, 10, COLOR_ROMAN_CRIMSON);
+                            DrawRectangle(px, py, 7, 2, Color{ 255, 120, 130, 255 });
+                            DrawRectangleLines(px, py, 7, 10, Color{ 90, 15, 22, 255 });
                         } else {
-                            DrawRectangleLines(barStartX + p * 8, VIRTUAL_HEIGHT - 15, pipW, 8, Color{ 70, 60, 60, 255 });
+                            DrawRectangle(px, py, 7, 10, Color{ 35, 28, 38, 255 });
+                            DrawRectangleLines(px, py, 7, 10, Color{ 70, 60, 75, 255 });
                         }
                     }
                 }
@@ -783,7 +821,7 @@ int main() {
 
         // --- Render Scaled Buffer to Main Window with Aspect Ratio Preservation ---
         BeginDrawing();
-        ClearBackground(BLACK);
+        ClearBackground(Color{ 10, 8, 14, 255 });
 
         int screenW = GetScreenWidth();
         int screenH = GetScreenHeight();
@@ -795,11 +833,85 @@ int main() {
         int offsetX = (screenW - scaledW) / 2;
         int offsetY = (screenH - scaledH) / 2;
 
-        // Source rectangle: note negative height because OpenGL textures are inverted vertically
+        // 1. MAME Arcade Cabinet Bezel on Pillarboxes
+        if (offsetX > 6) {
+            Color bezelDark = Color{ 22, 18, 26, 255 };
+            DrawRectangle(0, 0, offsetX, screenH, bezelDark);
+            DrawRectangle(offsetX + scaledW, 0, screenW - (offsetX + scaledW), screenH, bezelDark);
+
+            // Cabinet speaker grilles
+            for (int gy = 40; gy < screenH - 40; gy += 16) {
+                if (offsetX > 36) {
+                    DrawRectangle(offsetX - 26, gy, 18, 4, Color{ 12, 10, 16, 255 });
+                    DrawRectangle(offsetX + scaledW + 8, gy, 18, 4, Color{ 12, 10, 16, 255 });
+                }
+            }
+
+            // Coin door marquee on right side
+            if (screenW - (offsetX + scaledW) >= 110) {
+                int cx = offsetX + scaledW + 14;
+                int cy = screenH - 110;
+                DrawRectangle(cx, cy, 90, 65, Color{ 14, 12, 18, 255 });
+                DrawRectangleLines(cx, cy, 90, 65, Color{ 85, 70, 50, 255 });
+                DrawRectangle(cx + 30, cy + 18, 30, 22, Color{ 235, 110, 30, 255 });
+                DrawRectangleLines(cx + 30, cy + 18, 30, 22, Color{ 255, 190, 80, 255 });
+                DrawText("25c", cx + 37, cy + 24, 10, WHITE);
+                DrawText("INSERT COIN", cx + 12, cy + 46, 10, COLOR_ROMAN_GOLD);
+            }
+
+            // Left side system badge
+            if (offsetX >= 110) {
+                DrawText("SEGA SYSTEM 16", 12, 22, 10, COLOR_ROMAN_GOLD);
+                DrawText("MAME ARCADE", 12, 36, 10, Color{ 170, 175, 195, 255 });
+                DrawText("F10: CRT MODE", 12, screenH - 36, 10, Color{ 130, 135, 150, 255 });
+            }
+        }
+
+        // 2. Draw Game Texture
         Rectangle sourceRec = { 0.0f, 0.0f, (float)targetBuffer.texture.width, -(float)targetBuffer.texture.height };
         Rectangle destRec = { (float)offsetX, (float)offsetY, (float)scaledW, (float)scaledH };
-
         DrawTexturePro(targetBuffer.texture, sourceRec, destRec, { 0.0f, 0.0f }, 0.0f, WHITE);
+
+        // 3. Authentic Arcade CRT Raster Scanlines & Aperture Grille Mask
+        if (crtMode == 0) { // Arcade CRT
+            float lineStep = (float)scaledH / (float)VIRTUAL_HEIGHT;
+            for (int y = 0; y < VIRTUAL_HEIGHT; ++y) {
+                int sy = static_cast<int>(offsetY + y * lineStep + lineStep * 0.45f);
+                DrawRectangle(offsetX, sy, scaledW, 1, Color{ 0, 0, 0, 85 });
+            }
+            // Vertical phosphor lines
+            for (int x = 0; x < scaledW; x += 3) {
+                DrawRectangle(offsetX + x, offsetY, 1, scaledH, Color{ 0, 0, 0, 26 });
+            }
+            // Cathode Vignette Shadow on borders
+            DrawRectangleGradientV(offsetX, offsetY, scaledW, 12, Color{ 0, 0, 0, 110 }, BLANK);
+            DrawRectangleGradientV(offsetX, offsetY + scaledH - 12, scaledW, 12, BLANK, Color{ 0, 0, 0, 110 });
+            DrawRectangleGradientH(offsetX, offsetY, 12, scaledH, Color{ 0, 0, 0, 110 }, BLANK);
+            DrawRectangleGradientH(offsetX + scaledW - 12, offsetY, 12, scaledH, BLANK, Color{ 0, 0, 0, 110 });
+        } else if (crtMode == 1) { // Soft Scanlines
+            float lineStep = (float)scaledH / (float)VIRTUAL_HEIGHT;
+            for (int y = 0; y < VIRTUAL_HEIGHT; ++y) {
+                int sy = static_cast<int>(offsetY + y * lineStep + lineStep * 0.45f);
+                DrawRectangle(offsetX, sy, scaledW, 1, Color{ 0, 0, 0, 48 });
+            }
+        }
+
+        // Inner 3D CRT Glass Frame Border
+        DrawRectangleLinesEx({ (float)offsetX - 2, (float)offsetY - 2, (float)scaledW + 4, (float)scaledH + 4 }, 2.0f, Color{ 48, 38, 56, 255 });
+        DrawRectangleLinesEx({ (float)offsetX - 1, (float)offsetY - 1, (float)scaledW + 2, (float)scaledH + 2 }, 1.0f, Color{ 14, 10, 18, 255 });
+
+        // CRT Mode OSD Notification
+        if (crtNoticeTimer > 0.0f) {
+            const char* cMsg = (crtMode == 0) ? "CRT FILTER: ARCADE MONITOR" :
+                               (crtMode == 1) ? "CRT FILTER: SOFT SCANLINES" : "CRT FILTER: OFF (SHARP PIXELS)";
+            int tw = MeasureText(cMsg, 10);
+            int tx = offsetX + (scaledW - tw) / 2;
+            int ty = offsetY + scaledH - 30;
+            float a = std::min(1.0f, crtNoticeTimer);
+            DrawRectangle(tx - 8, ty - 3, tw + 16, 16, ColorAlpha(Color{ 10, 8, 14, 240 }, a));
+            DrawRectangleLines(tx - 8, ty - 3, tw + 16, 16, ColorAlpha(COLOR_GOLD_BRIGHT, a));
+            DrawText(cMsg, tx, ty, 10, ColorAlpha(COLOR_GOLD_BRIGHT, a));
+        }
 
         EndDrawing();
     }

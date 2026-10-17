@@ -17,35 +17,43 @@ enum class VillagerType {
 enum class VillagerState {
     APPROACHING,
     FED,
-    SURGED
+    SUMMIT_FED
 };
 
 struct BonusVillager {
     Vector2 position;
     float speed;
-    int lane; // 0 = Far Upper Ridge (Y=88), 1 = Middle Terrace (Y=132), 2 = Lower Foreground (Y=176)
+    int lane; // 0 = Far Upper Ridge (Y=82), 1 = Middle Terrace (Y=128), 2 = Lower Foreground (Y=174)
     VillagerType type;
     VillagerState state;
     float animTimer;
     int walkFrame;
     float fedTimer;
+    float cheerHop;
 };
 
 struct BreadFishItem {
     Vector2 position;
-    Vector2 startPos;
-    Vector2 targetPos;
-    float progress; // 0.0f -> 1.0f
-    float flightDuration;
+    Vector2 velocity;
     int targetLane;
     bool isFish;
     bool active;
-    float spinTimer;
+    float spin;
+    float life;
 };
 
 struct StarburstParticle {
     Vector2 position;
     Vector2 velocity;
+    Color color;
+    float alpha;
+    float life;
+};
+
+struct BonusScorePopup {
+    Vector2 position;
+    int score;
+    char text[32];
     Color color;
     float alpha;
     float life;
@@ -59,22 +67,24 @@ public:
     void Draw();
 
     bool IsFinished() const { return m_stageOver && m_transitionDelay <= 0.0f; }
-    bool IsPerfect() const { return m_allFed; }
+    bool IsPerfect() const { return m_allFed && m_summitBasket == 3; }
     int GetFedCount() const { return m_fedCount; }
     int GetTotalCount() const { return m_totalVillagers; }
     float GetRemainingTime() const { return m_timer; }
+    int GetSummitBaskets() const { return m_summitBasket; }
 
 private:
     float m_timer;               // Countdown from 30.0f
-    int m_aimLane;               // 0 = Top, 1 = Mid, 2 = Low
-    float m_aimLeadX;            // Horizontal targeting lead
+    int m_aimLane;               // 0 = Top (Y=82), 1 = Mid (Y=128), 2 = Low (Y=174)
     float m_tossCooldown;
     bool m_nextItemFish;         // Alternates bread and fish
     
     int m_fedCount;
     int m_totalVillagers;
+    int m_summitBasket;          // Summit reserve loaves (3 chances before basket is depleted)
+    int m_combo;                 // Consecutive successful hits
+    float m_comboTimer;
     bool m_allFed;
-    bool m_crowdSurged;
     bool m_stageOver;
     bool m_rewardGiven;
     float m_transitionDelay;
@@ -87,9 +97,10 @@ private:
     std::vector<BonusVillager> m_villagers;
     std::vector<BreadFishItem> m_projectiles;
     std::vector<StarburstParticle> m_particles;
+    std::vector<BonusScorePopup> m_popups;
 
     void SpawnWaveVillager(int lane, VillagerType type, float speed);
     void UpdateSpawns(float dt);
     void TossItem();
+    void AddScorePopup(float x, float y, int pts, const char* label, Color col);
 };
-

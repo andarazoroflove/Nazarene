@@ -5,20 +5,26 @@ void InputHandler::Update(InputState& outState) {
     // Reset edge triggers
     outState.upPressed = false;
     outState.downPressed = false;
+    outState.leftPressed = false;
+    outState.rightPressed = false;
     outState.jumpPressed = false;
     outState.attackPressed = false;
     outState.wrathPressed = false;
     outState.startPressed = false;
+    outState.cancelPressed = false;
     outState.toggleFullscreen = false;
     outState.restartPressed = false;
+    outState.secretSelectPressed = false;
 
     // 1. Keyboard Inputs
     bool kbLeft  = IsKeyDown(KEY_LEFT)  || IsKeyDown(KEY_A);
     bool kbRight = IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D);
     bool kbUp    = IsKeyDown(KEY_UP)    || IsKeyDown(KEY_W);
     bool kbDown  = IsKeyDown(KEY_DOWN)  || IsKeyDown(KEY_S);
-    bool kbUpPressed   = IsKeyPressed(KEY_UP)   || IsKeyPressed(KEY_W);
-    bool kbDownPressed = IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S);
+    bool kbUpPressed    = IsKeyPressed(KEY_UP)    || IsKeyPressed(KEY_W);
+    bool kbDownPressed  = IsKeyPressed(KEY_DOWN)  || IsKeyPressed(KEY_S);
+    bool kbLeftPressed  = IsKeyPressed(KEY_LEFT)  || IsKeyPressed(KEY_A);
+    bool kbRightPressed = IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D);
 
     bool kbJumpPressed = IsKeyPressed(KEY_SPACE);
     bool kbJumpDown    = IsKeyDown(KEY_SPACE);
@@ -29,9 +35,14 @@ void InputHandler::Update(InputState& outState) {
     bool kbWrathPressed = IsKeyPressed(KEY_K) || IsKeyPressed(KEY_X);
 
     bool kbCoinPressed      = IsKeyPressed(KEY_C) || IsKeyPressed(KEY_FIVE) || IsKeyPressed(KEY_LEFT_SHIFT) || IsKeyPressed(KEY_RIGHT_SHIFT);
-    bool kbStartPressed     = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_ESCAPE);
+    bool kbStartPressed     = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_ONE);
+    bool kbCancelPressed    = IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE);
     bool kbToggleFullscreen = IsKeyPressed(KEY_F11)   || ((IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) && IsKeyPressed(KEY_ENTER));
     bool kbRestart          = IsKeyPressed(KEY_R);
+    bool kbBothTriggers     = (IsKeyDown(KEY_Q) && IsKeyDown(KEY_E)) ||
+                              (IsKeyDown(KEY_LEFT_BRACKET) && IsKeyDown(KEY_RIGHT_BRACKET)) ||
+                              (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_M)) ||
+                              IsKeyPressed(KEY_F1);
 
     // 2. Universal Gamepad Inputs (Scan all 4 slots: 0 to 3)
     bool gpLeft = false;
@@ -40,6 +51,8 @@ void InputHandler::Update(InputState& outState) {
     bool gpDown = false;
     bool gpUpPressed = false;
     bool gpDownPressed = false;
+    bool gpLeftPressed = false;
+    bool gpRightPressed = false;
     bool gpJumpPressed = false;
     bool gpJumpDown = false;
     bool gpAttackPressed = false;
@@ -47,6 +60,8 @@ void InputHandler::Update(InputState& outState) {
     bool gpWrathPressed = false;
     bool gpCoinPressed = false;
     bool gpStartPressed = false;
+    bool gpCancelPressed = false;
+    bool gpBothTriggers = false;
 
     constexpr float DEADZONE = 0.28f; // Budget stick tolerance
 
@@ -106,6 +121,14 @@ void InputHandler::Update(InputState& outState) {
             gpWrathPressed = true;
         }
 
+        if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_LEFT))  gpLeftPressed = true;
+        if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) gpRightPressed = true;
+
+        // Cancel / Back: Button B (Right Face Right)
+        if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
+            gpCancelPressed = true;
+        }
+
         // Add Coin: SELECT button on controller (Button 9 / Back / Share / Middle Left)
         if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_MIDDLE_LEFT) ||
             IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_MIDDLE)) {
@@ -116,6 +139,19 @@ void InputHandler::Update(InputState& outState) {
         if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_MIDDLE_RIGHT)) {
             gpStartPressed = true;
         }
+
+        // Both Triggers on controller (LT + RT or L1/L2 + R1/R2)
+        bool padLeftTrigger = IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_TRIGGER_1) ||
+                              IsGamepadButtonDown(pad, GAMEPAD_BUTTON_LEFT_TRIGGER_2) ||
+                              (GetGamepadAxisMovement(pad, GAMEPAD_AXIS_LEFT_TRIGGER) > 0.35f);
+
+        bool padRightTrigger = IsGamepadButtonDown(pad, GAMEPAD_BUTTON_RIGHT_TRIGGER_1) ||
+                               IsGamepadButtonDown(pad, GAMEPAD_BUTTON_RIGHT_TRIGGER_2) ||
+                               (GetGamepadAxisMovement(pad, GAMEPAD_AXIS_RIGHT_TRIGGER) > 0.35f);
+
+        if (padLeftTrigger && padRightTrigger) {
+            gpBothTriggers = true;
+        }
     }
 
     // 3. Combine Inputs
@@ -123,8 +159,10 @@ void InputHandler::Update(InputState& outState) {
     outState.right = kbRight || gpRight;
     outState.up    = kbUp    || gpUp;
     outState.down  = kbDown  || gpDown;
-    outState.upPressed   = kbUpPressed   || gpUpPressed;
-    outState.downPressed = kbDownPressed || gpDownPressed;
+    outState.upPressed    = kbUpPressed    || gpUpPressed;
+    outState.downPressed  = kbDownPressed  || gpDownPressed;
+    outState.leftPressed  = kbLeftPressed  || gpLeftPressed;
+    outState.rightPressed = kbRightPressed || gpRightPressed;
 
     outState.jumpPressed = kbJumpPressed || gpJumpPressed;
     outState.jumpDown    = kbJumpDown    || gpJumpDown;
@@ -135,8 +173,15 @@ void InputHandler::Update(InputState& outState) {
     outState.wrathPressed   = kbWrathPressed || gpWrathPressed;
     outState.coinPressed    = kbCoinPressed  || gpCoinPressed;
     outState.startPressed   = kbStartPressed || gpStartPressed;
+    outState.cancelPressed  = kbCancelPressed || gpCancelPressed;
     outState.toggleFullscreen = kbToggleFullscreen;
     outState.restartPressed = kbRestart;
+
+    // Secret Mission Select Trigger Edge Detection
+    bool bothTriggersDown = gpBothTriggers || kbBothTriggers;
+    static bool s_prevBothTriggers = false;
+    outState.secretSelectPressed = bothTriggersDown && !s_prevBothTriggers;
+    s_prevBothTriggers = bothTriggersDown;
 }
 
 bool InputHandler::IsGamepadActive() {

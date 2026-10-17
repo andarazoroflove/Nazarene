@@ -9,6 +9,8 @@ struct InputState {
     bool down = false;
     bool upPressed = false;
     bool downPressed = false;
+    bool leftPressed = false;
+    bool rightPressed = false;
     
     bool jumpPressed = false;
     bool jumpDown = false;
@@ -18,8 +20,10 @@ struct InputState {
     
     bool coinPressed = false;
     bool startPressed = false;
+    bool cancelPressed = false;
     bool toggleFullscreen = false;
     bool restartPressed = false;
+    bool secretSelectPressed = false;
 };
 
 class InputHandler {

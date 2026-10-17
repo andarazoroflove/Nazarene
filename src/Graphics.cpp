@@ -2211,23 +2211,26 @@ void GraphicsManager::GenerateAllProceduralTiles() {
 
     std::vector<Color> p(TW * TH);
 
-    // 1. TILE_GROUND_SURFACE (Roman Paved Limestone Street)
-    // Multi-shade polygonal limestone flags with mortar and worn texture
-    Color stoneHi   = Color{ 225, 212, 188, 255 };
-    Color stoneMid  = Color{ 195, 182, 158, 255 };
-    Color stoneLow  = Color{ 165, 150, 128, 255 };
-    Color mortar    = Color{  78,  68,  58, 255 };
+    // 1. TILE_GROUND_SURFACE (Ancient Ashlar Flagstones & Cedar Floor Planks)
+    Color floorHi   = Color{ 235, 215, 185, 255 };
+    Color floorMid  = Color{ 190, 168, 138, 255 };
+    Color floorShade= Color{ 150, 128, 100, 255 };
+    Color floorSeam = Color{  85,  70,  55, 255 };
 
     for (int y = 0; y < TH; ++y) {
         for (int x = 0; x < TW; ++x) {
-            Color c = stoneMid;
-            // Stone flag block boundaries
-            if (y == 0 || y == 8 || y == 15 || (y < 8 && x == 8) || (y >= 8 && x == 12) || (y >= 8 && x == 0)) {
-                c = mortar;
+            Color c = floorMid;
+            // Horizontal wood plank / stone course seams
+            if (y == 0 || y == 8 || y == 15) {
+                c = floorSeam;
             } else if (y == 1 || y == 9) {
-                c = stoneHi; // Specular top edge of flagstones
-            } else if ((x ^ (y * 3)) % 7 == 0) {
-                c = stoneLow; // Weathered pitting
+                c = floorHi; // Specular light on plank edges
+            } else if ((y < 8 && x == 8) || (y >= 8 && (x == 4 || x == 12))) {
+                c = floorSeam; // Vertical board joints
+            } else if (y == 7 || y == 14) {
+                c = floorShade; // Under-edge shadow
+            } else if ((x ^ (y * 2)) % 5 == 0) {
+                c = floorHi; // Subtle wood grain / stone crystalline fleck
             }
             p[y * TW + x] = c;
         }
@@ -2249,23 +2252,44 @@ void GraphicsManager::GenerateAllProceduralTiles() {
     }
     s_tiles[TILE_GROUND_SUBSURFACE] = CreateTextureFromPixels(TW, TH, p.data());
 
-    // 3. TILE_BALCONY_PLATFORM (Roman Marble Balustrade with Dentil Molding)
+    // 3. TILE_BALCONY_PLATFORM (Ornate Carved Mezzanine Beam with Classical Relief Scrollwork & Cedar Floor)
     for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
-    HLine(p.data(), TW, TH, 0, 15, 0, Color{ 255, 255, 250, 255 }); // Polished marble coping
-    HLine(p.data(), TW, TH, 0, 15, 1, Color{ 235, 230, 218, 255 });
-    HLine(p.data(), TW, TH, 0, 15, 2, Color{ 200, 195, 185, 255 });
-    HLine(p.data(), TW, TH, 0, 15, 3, Color{ 140, 135, 125, 255 }); // Architrave shadow
-    // Dentil molding blocks
+    // Top Walkway Coping (y = 0..2)
+    HLine(p.data(), TW, TH, 0, 15, 0, Color{ 255, 245, 220, 255 }); // Polished wood/marble top edge highlight
+    HLine(p.data(), TW, TH, 0, 15, 1, Color{ 225, 175, 110, 255 }); // Warm cedar plank surface
+    HLine(p.data(), TW, TH, 0, 15, 2, Color{ 160, 105,  55, 255 }); // Architrave shadow groove
+    // Carved Relief Beam Face (y = 3..11) - Intricate acanthus / swirl frieze (Matches Shinobi carved beam!)
+    FillRect(p.data(), TW, TH, 0, 3, TW, 9, Color{ 145, 80, 42, 255 });
+    for (int x = 0; x < TW; ++x) {
+        // Relief scroll wave / rosette carving
+        bool isRidge = ((x % 8 == 2) || (x % 8 == 5) || ((x + 2) % 4 == 0));
+        bool isShadow = ((x % 8 == 3) || (x % 8 == 6));
+        if (isRidge) {
+            Set(p.data(), TW, TH, x, 4, Color{ 235, 185, 120, 255 });
+            Set(p.data(), TW, TH, x, 5, Color{ 215, 155,  95, 255 });
+            Set(p.data(), TW, TH, x, 7, Color{ 235, 185, 120, 255 });
+            Set(p.data(), TW, TH, x, 8, Color{ 215, 155,  95, 255 });
+        } else if (isShadow) {
+            Set(p.data(), TW, TH, x, 4, Color{ 85, 45, 22, 255 });
+            Set(p.data(), TW, TH, x, 6, Color{ 85, 45, 22, 255 });
+            Set(p.data(), TW, TH, x, 8, Color{ 85, 45, 22, 255 });
+        }
+        // Gilded / Brass Rosette Boss at center of each 8-pixel module
+        if (x % 8 == 4) {
+            Set(p.data(), TW, TH, x, 6, COLOR_GOLD_BRIGHT);
+            Set(p.data(), TW, TH, x - 1, 6, COLOR_ROMAN_GOLD);
+            Set(p.data(), TW, TH, x + 1, 6, COLOR_ROMAN_GOLD);
+            Set(p.data(), TW, TH, x, 5, COLOR_GOLD_BRIGHT);
+            Set(p.data(), TW, TH, x, 7, Color{ 130, 80, 15, 255 });
+        }
+    }
+    // Classical Dentil Molding along Bottom (y = 12..15)
+    HLine(p.data(), TW, TH, 0, 15, 12, Color{ 110, 60, 30, 255 });
     for (int x = 0; x < TW; x += 4) {
-        FillRect(p.data(), TW, TH, x, 4, 2, 2, Color{ 225, 220, 210, 255 });
-        FillRect(p.data(), TW, TH, x + 2, 4, 2, 2, Color{ 90, 85, 80, 255 });
+        FillRect(p.data(), TW, TH, x, 13, 2, 2, Color{ 210, 160, 100, 255 });
+        FillRect(p.data(), TW, TH, x + 2, 13, 2, 2, Color{ 65, 32, 16, 255 });
     }
-    // Baluster pillars
-    for (int x = 1; x < TW; x += 4) {
-        VLine(p.data(), TW, TH, x, 6, 12, Color{ 240, 235, 225, 255 });
-        VLine(p.data(), TW, TH, x + 1, 6, 12, Color{ 175, 170, 160, 255 });
-    }
-    HLine(p.data(), TW, TH, 0, 15, 13, Color{ 210, 205, 195, 255 }); // Plinth
+    HLine(p.data(), TW, TH, 0, 15, 15, Color{ 60, 30, 15, 255 }); // Lower soffit shadow
     s_tiles[TILE_BALCONY_PLATFORM] = CreateTextureFromPixels(TW, TH, p.data());
 
     // 4. TILE_AQUEDUCT_TOP (Water Channel Cornice)
@@ -2429,46 +2453,48 @@ void GraphicsManager::GenerateAllProceduralTiles() {
     }
     s_tiles[TILE_SPQR_BANNER] = CreateTextureFromPixels(TW, TH, p.data());
 
-    // 15. TILE_STONE_WINDOW (Ancient Jerusalem Arched Limestone Window with Warm Lantern Glow)
-    Color winStoneHi  = Color{ 220, 208, 185, 255 };
-    Color winStoneMid = Color{ 185, 172, 148, 255 };
-    Color winStoneDark= Color{ 120, 105,  85, 255 };
-    Color lanternGlow = Color{ 255, 210, 110, 255 };
-    Color lanternCore = Color{ 255, 245, 200, 255 };
-    Color ironGrille  = Color{  50,  45,  40, 255 };
+    // 15. TILE_STONE_WINDOW (Diamond Criss-Cross Woodwork Lattice Screen / Kumiko Screen)
+    for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
+    Color latticeHi   = Color{ 225, 175, 110, 255 };
+    Color latticeMid  = Color{ 170, 110,  60, 255 };
+    Color latticeDark = Color{ 105,  58,  28, 255 };
+    Color latticeDeep = Color{  55,  28,  14, 255 };
+    Color backPaper   = Color{ 240, 235, 218, 240 }; // Shoji parchment background
+    Color paperShadow = Color{ 205, 195, 175, 240 };
 
+    // Shoji screen background with subtle paper grain
     for (int y = 0; y < TH; ++y) {
         for (int x = 0; x < TW; ++x) {
-            // Stone wall background
-            p[y * TW + x] = (x == 0 || y == 0 || x == 15 || y == 15) ? winStoneDark : winStoneMid;
+            p[y * TW + x] = ((x + y) % 6 == 0) ? paperShadow : backPaper;
         }
     }
-    // Arched window cutout
-    for (int y = 3; y <= 13; ++y) {
-        for (int x = 4; x <= 11; ++x) {
-            if (y == 3 && (x == 4 || x == 11)) continue; // Rounded arch corners
-            float distToGlow = sqrtf((x - 7.5f) * (x - 7.5f) + (y - 8.5f) * (y - 8.5f));
-            if (distToGlow <= 2.2f) p[y * TW + x] = lanternCore;
-            else if (distToGlow <= 4.0f) p[y * TW + x] = lanternGlow;
-            else p[y * TW + x] = Color{ 140, 75, 25, 255 }; // Ambient interior shadow
+    // Diamond criss-cross diagonal lattice slats (45-degree angled woodwork)
+    for (int y = 0; y < TH; ++y) {
+        for (int x = 0; x < TW; ++x) {
+            bool diag1 = ((x + y) % 8 == 0 || (x + y) % 8 == 1);
+            bool diag2 = ((x - y + 16) % 8 == 0 || (x - y + 16) % 8 == 1);
+            if (diag1 || diag2) {
+                // Slat wood highlight / shadow
+                bool isTopEdge = ((x + y) % 8 == 0 || (x - y + 16) % 8 == 0);
+                p[y * TW + x] = isTopEdge ? latticeHi : latticeMid;
+            } else if (((x + y) % 8 == 2) || ((x - y + 16) % 8 == 2)) {
+                // Drop shadow behind slats on paper
+                p[y * TW + x] = Color{ 150, 140, 125, 255 };
+            }
         }
     }
-    // Limestone Arched Lintel & Sill
-    HLine(p.data(), TW, TH, 3, 12, 2, winStoneHi);
-    HLine(p.data(), TW, TH, 3, 12, 14, winStoneHi);
-    Set(p.data(), TW, TH, 7, 1, winStoneHi); // Keystone
-    Set(p.data(), TW, TH, 8, 1, winStoneHi);
-    // Decorative Iron Grille
-    VLine(p.data(), TW, TH, 7, 4, 13, ironGrille);
-    HLine(p.data(), TW, TH, 4, 11, 7, ironGrille);
-    HLine(p.data(), TW, TH, 4, 11, 10, ironGrille);
+    // Outer wooden frame border
+    HLine(p.data(), TW, TH, 0, 15, 0, latticeHi);
+    HLine(p.data(), TW, TH, 0, 15, 15, latticeDeep);
+    VLine(p.data(), TW, TH, 0, 0, 15, latticeMid);
+    VLine(p.data(), TW, TH, 15, 0, 15, latticeDark);
     s_tiles[TILE_STONE_WINDOW] = CreateTextureFromPixels(TW, TH, p.data());
 
     // 16. TILE_OIL_LAMP (Ancient Terracotta Oil Lamp / Lucerna on Stone Corbel)
     for (int i = 0; i < TW * TH; ++i) p[i] = BLANK;
     // Stone Corbel bracket
-    FillRect(p.data(), TW, TH, 4, 11, 8, 4, winStoneMid);
-    HLine(p.data(), TW, TH, 5, 10, 11, winStoneHi);
+    FillRect(p.data(), TW, TH, 4, 11, 8, 4, Color{ 185, 172, 148, 255 });
+    HLine(p.data(), TW, TH, 5, 10, 11, Color{ 220, 208, 185, 255 });
     // Terracotta Lamp Dish
     FillRect(p.data(), TW, TH, 5, 8, 7, 3, Color{ 195, 95, 45, 255 });
     Set(p.data(), TW, TH, 4, 7, Color{ 135, 55, 25, 255 }); // Handle loop
@@ -3863,6 +3889,373 @@ void GraphicsManager::DrawSecretSelectScreen(int step, int missionIndex, int sta
         snprintf(credStr, sizeof(credStr), "CREDIT %02d", credits);
         DrawText(credStr, VIRTUAL_WIDTH - MeasureText(credStr, 10) - 14, 204, 10, COLOR_ROMAN_GOLD);
     }
+}
+
+void GraphicsManager::DrawArcadeCabinetBezel(int screenW, int screenH, int offsetX, int offsetY, int scaledW, int scaledH, int crtMode, int credits, float time) {
+    if (offsetX <= 0 && screenW <= scaledW) return;
+
+    int rightX = offsetX + scaledW;
+    int rightW = screenW - rightX;
+
+    // 1. Dark Textured Cabinet Base
+    Color cabinetBase = Color{ 14, 12, 18, 255 };
+    Color bezelGold   = Color{ 220, 180, 55, 255 };
+    Color bezelGlow   = Color{ 255, 215, 80, 255 };
+
+    DrawRectangle(0, 0, offsetX, screenH, cabinetBase);
+    DrawRectangle(rightX, 0, rightW, screenH, cabinetBase);
+
+    // Vertical Cabinet T-Molding extrusions along outer monitor seams
+    DrawRectangle(offsetX - 6, 0, 6, screenH, Color{ 36, 28, 44, 255 });
+    DrawLine(offsetX - 6, 0, offsetX - 6, screenH, Color{ 70, 58, 85, 255 });
+    DrawLine(offsetX - 1, 0, offsetX - 1, screenH, Color{ 10, 8, 14, 255 });
+
+    DrawRectangle(rightX, 0, 6, screenH, Color{ 36, 28, 44, 255 });
+    DrawLine(rightX, 0, rightX, screenH, Color{ 70, 58, 85, 255 });
+    DrawLine(rightX + 5, 0, rightX + 5, screenH, Color{ 10, 8, 14, 255 });
+
+    // =========================================================================
+    // LEFT BEZEL: THE NAZARENE ILLUSTRATED ARCADE MARQUEE & CHARACTER ART
+    // =========================================================================
+    if (offsetX >= 60) {
+        int lw = offsetX - 12;
+        int lx = 6;
+        int cardY = 16;
+        int cardH = screenH - 32;
+
+        // Golden Outer Marquee Frame with Corner Rivets
+        DrawRectangle(lx, cardY, lw, cardH, Color{ 20, 15, 28, 245 });
+        DrawRectangleLines(lx, cardY, lw, cardH, bezelGold);
+        DrawRectangleLines(lx + 2, cardY + 2, lw - 4, cardH - 4, Color{ 90, 65, 25, 255 });
+
+        // Corner Gold Studs
+        DrawRectangle(lx + 3, cardY + 3, 4, 4, bezelGlow);
+        DrawRectangle(lx + lw - 7, cardY + 3, 4, 4, bezelGlow);
+        DrawRectangle(lx + 3, cardY + cardH - 7, 4, 4, bezelGlow);
+        DrawRectangle(lx + lw - 7, cardY + cardH - 7, 4, 4, bezelGlow);
+
+        // Header: Arcade Title Banner
+        DrawRectangle(lx + 4, cardY + 6, lw - 8, 44, Color{ 140, 18, 28, 255 });
+        DrawRectangleLines(lx + 4, cardY + 6, lw - 8, 44, bezelGold);
+        DrawLine(lx + 4, cardY + 50, lx + lw - 4, cardY + 50, bezelGlow);
+
+        const char* title1 = "THE NAZARENE";
+        const char* title2 = "WAY OF THE CROSS";
+        int t1w = MeasureText(title1, 10);
+        int t2w = MeasureText(title2, 10);
+        if (lw > t1w + 10) {
+            DrawText(title1, lx + (lw - t1w) / 2 + 1, cardY + 12, 10, Color{ 40, 5, 10, 255 });
+            DrawText(title1, lx + (lw - t1w) / 2, cardY + 11, 10, COLOR_GOLD_BRIGHT);
+            DrawText(title2, lx + (lw - t2w) / 2, cardY + 26, 10, Color{ 255, 245, 220, 255 });
+        } else {
+            DrawText("NAZARENE", lx + 6, cardY + 14, 10, COLOR_GOLD_BRIGHT);
+        }
+
+        // Illustrated Character Artwork Panel (Christ with Golden Radiant Halo)
+        int artY = cardY + 56;
+        int artH = std::min(cardH - 130, 160);
+        if (artH > 60) {
+            DrawRectangle(lx + 6, artY, lw - 12, artH, Color{ 12, 10, 20, 255 });
+            DrawRectangleLines(lx + 6, artY, lw - 12, artH, Color{ 60, 48, 75, 255 });
+
+            // Radiant Holy Sunburst Halo behind Christ
+            int haloCx = lx + lw / 2;
+            int haloCy = artY + 36;
+            DrawCircleGradient(haloCx, haloCy, 32.0f, Color{ 255, 235, 120, 180 }, Color{ 255, 180, 40, 0 });
+            for (int r = 0; r < 8; ++r) {
+                float ang = r * (3.14159f / 4.0f) + time * 0.4f;
+                DrawLine(haloCx, haloCy, static_cast<int>(haloCx + cosf(ang) * 34.0f), static_cast<int>(haloCy + sinf(ang) * 34.0f), Color{ 255, 245, 160, 120 });
+            }
+
+            // Hero Jesus Character Sprite scaled & centered
+            int sprScale = (lw >= 120) ? 2 : 1;
+            Texture2D jesusTex = s_sprites[SPR_PLAYER_IDLE];
+            if (jesusTex.id > 0) {
+                Rectangle src = { 0, 0, (float)jesusTex.width, (float)jesusTex.height };
+                Rectangle dst = { (float)(haloCx - (jesusTex.width * sprScale) / 2), (float)(haloCy - 12), (float)(jesusTex.width * sprScale), (float)(jesusTex.height * sprScale) };
+                DrawTexturePro(jesusTex, src, dst, { 0, 0 }, 0.0f, WHITE);
+            }
+
+            // Divine Motto Scroll
+            DrawRectangle(lx + 8, artY + artH - 22, lw - 16, 16, Color{ 24, 18, 32, 230 });
+            DrawRectangleLines(lx + 8, artY + artH - 22, lw - 16, 16, bezelGold);
+            const char* motto = "DIVINE JUSTICE";
+            int mw = MeasureText(motto, 10);
+            if (lw > mw + 16) {
+                DrawText(motto, lx + (lw - mw) / 2, artY + artH - 18, 10, COLOR_GOLD_BRIGHT);
+            }
+        }
+
+        // Hardware Specification Plate
+        int specY = cardY + cardH - 64;
+        if (specY > artY + artH) {
+            DrawRectangle(lx + 6, specY, lw - 12, 26, Color{ 16, 14, 22, 255 });
+            DrawRectangleLines(lx + 6, specY, lw - 12, 26, Color{ 70, 60, 80, 255 });
+            DrawText("SEGA SYSTEM 16", lx + 10, specY + 4, 10, bezelGold);
+            DrawText("68000 CPU @ 10MHz", lx + 10, specY + 15, 10, Color{ 160, 165, 185, 255 });
+        }
+
+        // Diagonal Yellow/Black Warning Hazard Stripes along Bottom (Iconic Arcade Bezel Detail!)
+        int hazY = cardY + cardH - 24;
+        DrawRectangle(lx + 4, hazY, lw - 8, 18, Color{ 15, 12, 10, 255 });
+        for (int hx = lx + 4; hx < lx + lw - 8; hx += 12) {
+            DrawTriangle(
+                Vector2{ (float)hx, (float)(hazY + 18) },
+                Vector2{ (float)(hx + 8), (float)hazY },
+                Vector2{ (float)(hx + 14), (float)hazY },
+                Color{ 240, 195, 30, 230 }
+            );
+            DrawTriangle(
+                Vector2{ (float)hx, (float)(hazY + 18) },
+                Vector2{ (float)(hx + 14), (float)hazY },
+                Vector2{ (float)(hx + 6), (float)(hazY + 18) },
+                Color{ 240, 195, 30, 230 }
+            );
+        }
+        DrawRectangleLines(lx + 4, hazY, lw - 8, 18, bezelGold);
+    }
+
+    // =========================================================================
+    // RIGHT BEZEL: AUTHENTIC ARCADE INSTRUCTIONS, CONTROLS & COIN DOOR
+    // =========================================================================
+    if (rightW >= 60) {
+        int rw = rightW - 12;
+        int rx = rightX + 6;
+        int cardY = 16;
+        int cardH = screenH - 32;
+
+        // Golden Outer Marquee Frame with Corner Rivets
+        DrawRectangle(rx, cardY, rw, cardH, Color{ 20, 15, 28, 245 });
+        DrawRectangleLines(rx, cardY, rw, cardH, bezelGold);
+        DrawRectangleLines(rx + 2, cardY + 2, rw - 4, cardH - 4, Color{ 90, 65, 25, 255 });
+
+        // Corner Gold Studs
+        DrawRectangle(rx + 3, cardY + 3, 4, 4, bezelGlow);
+        DrawRectangle(rx + rw - 7, cardY + 3, 4, 4, bezelGlow);
+        DrawRectangle(rx + 3, cardY + cardH - 7, 4, 4, bezelGlow);
+        DrawRectangle(rx + rw - 7, cardY + cardH - 7, 4, 4, bezelGlow);
+
+        // Header: "HOW TO PLAY"
+        DrawRectangle(rx + 4, cardY + 6, rw - 8, 22, Color{ 140, 18, 28, 255 });
+        DrawRectangleLines(rx + 4, cardY + 6, rw - 8, 22, bezelGold);
+        const char* htp = "HOW TO PLAY";
+        int htpW = MeasureText(htp, 10);
+        DrawText(htp, rx + (rw - htpW) / 2, cardY + 12, 10, COLOR_GOLD_BRIGHT);
+
+        // Control Panel Instructions
+        int instY = cardY + 34;
+        DrawRectangle(rx + 6, instY, rw - 12, 110, Color{ 14, 12, 20, 255 });
+        DrawRectangleLines(rx + 6, instY, rw - 12, 110, Color{ 60, 50, 75, 255 });
+
+        // 8-Way Joystick
+        DrawCircle(rx + 20, instY + 20, 7.0f, Color{ 230, 35, 45, 255 });
+        DrawCircleLines(rx + 20, instY + 20, 7.0f, WHITE);
+        DrawRectangle(rx + 18, instY + 25, 4, 9, Color{ 180, 185, 195, 255 });
+        DrawText("8-WAY STICK", rx + 34, instY + 12, 10, COLOR_GOLD_BRIGHT);
+        DrawText("UP: HIGH JUMP", rx + 34, instY + 23, 10, Color{ 180, 180, 195, 255 });
+
+        // Push Buttons A, B, C
+        // Button A (Red)
+        DrawCircle(rx + 20, instY + 48, 6.0f, Color{ 220, 30, 40, 255 });
+        DrawCircleLines(rx + 20, instY + 48, 6.0f, WHITE);
+        DrawText("A", rx + 18, instY + 43, 10, WHITE);
+        DrawText("WHIP / MELEE", rx + 34, instY + 44, 10, Color{ 255, 220, 140, 255 });
+
+        // Button B (Blue)
+        DrawCircle(rx + 20, instY + 70, 6.0f, Color{ 35, 115, 235, 255 });
+        DrawCircleLines(rx + 20, instY + 70, 6.0f, WHITE);
+        DrawText("B", rx + 18, instY + 65, 10, WHITE);
+        DrawText("JUMP / SOMERSAULT", rx + 34, instY + 66, 10, Color{ 160, 210, 255, 255 });
+
+        // Button C (Gold)
+        DrawCircle(rx + 20, instY + 92, 6.0f, Color{ 245, 180, 30, 255 });
+        DrawCircleLines(rx + 20, instY + 92, 6.0f, WHITE);
+        DrawText("C", rx + 18, instY + 87, 10, WHITE);
+        DrawText("DIVINE WRATH", rx + 34, instY + 88, 10, COLOR_GOLD_BRIGHT);
+
+        // Mission Rule Briefing
+        int ruleY = instY + 116;
+        int ruleH = std::min(cardH - 240, 60);
+        if (ruleH > 30) {
+            DrawRectangle(rx + 6, ruleY, rw - 12, ruleH, Color{ 16, 14, 22, 255 });
+            DrawRectangleLines(rx + 6, ruleY, rw - 12, ruleH, Color{ 60, 50, 70, 255 });
+            DrawText("COLLECT 4 RELICS", rx + 10, ruleY + 6, 10, Color{ 80, 255, 120, 255 });
+            DrawText("TO BREACH GATES", rx + 10, ruleY + 18, 10, Color{ 210, 210, 225, 255 });
+        }
+
+        // Realistic Illuminated Arcade Coin Door
+        int coinY = cardY + cardH - 85;
+        if (coinY > ruleY + ruleH) {
+            DrawRectangle(rx + 6, coinY, rw - 12, 75, Color{ 10, 8, 14, 255 });
+            DrawRectangleLines(rx + 6, coinY, rw - 12, 75, Color{ 75, 60, 45, 255 });
+            DrawRectangleLines(rx + 8, coinY + 2, rw - 16, 71, Color{ 35, 28, 40, 255 });
+
+            // Glowing Orange 25¢ Insert Button with Soft Ambient Glow
+            int btnX = rx + rw / 2 - 18;
+            int btnY = coinY + 12;
+            DrawRectangleGradientV(btnX, btnY, 36, 26, Color{ 255, 150, 40, 255 }, Color{ 200, 65, 10, 255 });
+            DrawRectangleLines(btnX, btnY, 36, 26, Color{ 255, 225, 130, 255 });
+            DrawText("25c", btnX + 9, btnY + 7, 10, WHITE);
+
+            // Pulsing "INSERT COIN"
+            bool coinBlink = (static_cast<int>(time * 3.0f) % 2 == 0);
+            Color coinPromptCol = coinBlink ? COLOR_GOLD_BRIGHT : Color{ 180, 140, 40, 255 };
+            const char* ins = "INSERT COIN";
+            DrawText(ins, rx + (rw - MeasureText(ins, 10)) / 2, coinY + 44, 10, coinPromptCol);
+
+            // Credit Counter
+            char cbuf[24];
+            snprintf(cbuf, sizeof(cbuf), "CREDIT %02d", credits);
+            DrawText(cbuf, rx + (rw - MeasureText(cbuf, 10)) / 2, coinY + 58, 10, COLOR_ROMAN_GOLD);
+        }
+    }
+
+    // =========================================================================
+    // CURVED CRT BEZEL MASK & SCREEN GLASS REFLECTIONS
+    // =========================================================================
+    // 3D Chamfered CRT Frame
+    DrawRectangleLinesEx({ (float)offsetX - 4, (float)offsetY - 4, (float)scaledW + 8, (float)scaledH + 8 }, 4.0f, Color{ 28, 22, 36, 255 });
+    DrawRectangleLinesEx({ (float)offsetX - 2, (float)offsetY - 2, (float)scaledW + 4, (float)scaledH + 4 }, 2.0f, Color{ 68, 55, 85, 255 });
+    DrawRectangleLinesEx({ (float)offsetX - 1, (float)offsetY - 1, (float)scaledW + 2, (float)scaledH + 2 }, 1.0f, Color{ 10, 8, 14, 255 });
+
+    // CRT Curved Corner Shadows (simulating authentic curved cathode tube glass)
+    int crtRadius = 14;
+    Color cornerShadow = Color{ 8, 6, 12, 230 };
+    DrawTriangle(Vector2{ (float)offsetX, (float)offsetY }, Vector2{ (float)(offsetX + crtRadius), (float)offsetY }, Vector2{ (float)offsetX, (float)(offsetY + crtRadius) }, cornerShadow);
+    DrawTriangle(Vector2{ (float)(offsetX + scaledW), (float)offsetY }, Vector2{ (float)(offsetX + scaledW - crtRadius), (float)offsetY }, Vector2{ (float)(offsetX + scaledW), (float)(offsetY + crtRadius) }, cornerShadow);
+    DrawTriangle(Vector2{ (float)offsetX, (float)(offsetY + scaledH) }, Vector2{ (float)(offsetX + crtRadius), (float)(offsetY + scaledH) }, Vector2{ (float)offsetX, (float)(offsetY + scaledH - crtRadius) }, cornerShadow);
+    DrawTriangle(Vector2{ (float)(offsetX + scaledW), (float)(offsetY + scaledH) }, Vector2{ (float)(offsetX + scaledW - crtRadius), (float)(offsetY + scaledH) }, Vector2{ (float)(offsetX + scaledW), (float)(offsetY + scaledH - crtRadius) }, cornerShadow);
+
+    // Subtle Glass Glare Sheen across top-left corner
+    DrawLineEx(Vector2{ (float)(offsetX + 8), (float)(offsetY + 4) }, Vector2{ (float)(offsetX + scaledW * 0.35f), (float)(offsetY + 4) }, 2.0f, Color{ 255, 255, 255, 35 });
+    DrawLineEx(Vector2{ (float)(offsetX + 4), (float)(offsetY + 8) }, Vector2{ (float)(offsetX + 4), (float)(offsetY + scaledH * 0.35f) }, 2.0f, Color{ 255, 255, 255, 28 });
+}
+
+void GraphicsManager::DrawArcadeHud(int score, int lives, int hp, int maxHp, int shatteredHearts, bool wrathReady, int collectedBaskets, int totalBaskets, int stageId, float stageTimeRemaining, float time) {
+    // 1. TOP-LEFT: 1P & SCORE (Floating with Arcade Drop Shadow)
+    DrawText("1P", 9, 5, 10, Color{ 0, 0, 0, 220 });
+    DrawText("1P", 8, 4, 10, WHITE);
+
+    char scoreBuf[16];
+    snprintf(scoreBuf, sizeof(scoreBuf), "%06d", score);
+    DrawText(scoreBuf, 27, 5, 10, Color{ 0, 0, 0, 220 });
+    DrawText(scoreBuf, 26, 4, 10, COLOR_GOLD_BRIGHT);
+
+    // Remaining Lives Icons directly beneath 1P / score (Exact Shinobi style!)
+    for (int l = 0; l < std::min(lives, 5); ++l) {
+        int lx = 26 + l * 8;
+        int ly = 15;
+        // Little golden cross / head icon
+        DrawRectangle(lx + 2, ly, 2, 6, Color{ 0, 0, 0, 200 });
+        DrawRectangle(lx, ly + 2, 6, 2, Color{ 0, 0, 0, 200 });
+        DrawRectangle(lx + 2, ly, 2, 6, COLOR_GOLD_BRIGHT);
+        DrawRectangle(lx, ly + 2, 6, 2, COLOR_GOLD_BRIGHT);
+    }
+    if (lives > 5) {
+        char lb[8];
+        snprintf(lb, sizeof(lb), "+%d", lives - 5);
+        DrawText(lb, 68, 14, 10, COLOR_GOLD_BRIGHT);
+    }
+
+    // 2. ROMAN JEWELED VITALITY METER (Floating beside Score)
+    int meterX = 86;
+    int meterY = 4;
+    DrawText("LIFE", meterX + 1, meterY + 1, 10, Color{ 0, 0, 0, 200 });
+    DrawText("LIFE", meterX, meterY, 10, Color{ 220, 215, 230, 255 });
+
+    int barX = meterX + 26;
+    DrawRectangle(barX - 2, meterY - 1, 36, 12, Color{ 14, 10, 18, 200 });
+    DrawRectangleLines(barX - 2, meterY - 1, 36, 12, COLOR_ROMAN_GOLD);
+
+    bool lowHpFlash = (hp == 1 && (static_cast<int>(time * 8.0f) % 2 == 0));
+    for (int i = 0; i < PLAYER_MAX_HP; ++i) {
+        int px = barX + i * 11;
+        int py = meterY + 1;
+        if (i < hp) {
+            Color gemCol = lowHpFlash ? WHITE : COLOR_CRIMSON_BRIGHT;
+            DrawRectangle(px, py, 9, 8, gemCol);
+            DrawRectangle(px, py, 9, 2, Color{ 255, 220, 220, 255 }); // Facet gleam
+            DrawRectangleLines(px, py, 9, 8, Color{ 90, 10, 18, 255 });
+        } else if (i < (PLAYER_MAX_HP - shatteredHearts)) {
+            DrawRectangle(px, py, 9, 8, Color{ 35, 28, 40, 255 });
+            DrawRectangleLines(px, py, 9, 8, Color{ 75, 65, 80, 255 });
+        } else {
+            // Shattered socket
+            DrawRectangle(px, py, 9, 8, Color{ 25, 8, 12, 255 });
+            DrawLine(px, py, px + 8, py + 7, Color{ 160, 20, 30, 255 });
+            DrawLine(px + 8, py, px, py + 7, Color{ 160, 20, 30, 255 });
+        }
+    }
+
+    // 3. TOP-RIGHT: HI SCORE (Slanted Arcade Crimson Typography)
+    const char* hiLabel = "HI";
+    const char* hiScore = "350140";
+    DrawText(hiLabel, 240, 5, 10, Color{ 0, 0, 0, 220 });
+    DrawText(hiLabel, 239, 4, 10, COLOR_CRIMSON_BRIGHT);
+
+    DrawText(hiScore, 260, 5, 10, Color{ 0, 0, 0, 220 });
+    DrawText(hiScore, 259, 4, 10, Color{ 255, 245, 180, 255 });
+
+    // 4. BOTTOM-RIGHT: SHINOBI-STYLE MAGIC MEDALLION + BIG YELLOW ARCADE TIMER
+    int botY = VIRTUAL_HEIGHT - 22;
+
+    // Divine Wrath Super Medallion
+    int medX = VIRTUAL_WIDTH - 68;
+    DrawRectangle(medX - 1, botY - 1, 16, 16, Color{ 12, 10, 18, 220 });
+    DrawRectangleLines(medX - 1, botY - 1, 16, 16, wrathReady ? COLOR_GOLD_BRIGHT : Color{ 70, 60, 80, 255 });
+
+    if (wrathReady) {
+        float pulse = 0.5f + 0.5f * sinf(time * 8.0f);
+        DrawRectangle(medX, botY, 14, 14, Color{ 20, 50, 120, 255 });
+        // Blazing Lion / Flame Super Icon
+        DrawCircle(medX + 7, botY + 7, 5.0f, ColorAlpha(COLOR_GOLD_BRIGHT, 0.7f + 0.3f * pulse));
+        DrawCircle(medX + 7, botY + 7, 2.5f, WHITE);
+        // Spinning holy spark
+        float spAng = time * 4.0f;
+        DrawCircle(static_cast<int>(medX + 7 + cosf(spAng) * 5.0f), static_cast<int>(botY + 7 + sinf(spAng) * 5.0f), 1.5f, WHITE);
+    } else {
+        DrawRectangle(medX, botY, 14, 14, Color{ 24, 20, 30, 200 });
+        DrawRectangleLines(medX + 3, botY + 3, 8, 8, Color{ 55, 48, 65, 255 });
+    }
+
+    // Big Arcade Timer (Minutes:Seconds in iconic large yellow font with black outline!)
+    int tSeconds = static_cast<int>(std::max(0.0f, stageTimeRemaining));
+    int tMin = tSeconds / 60;
+    int tSec = tSeconds % 60;
+    char timerBuf[16];
+    snprintf(timerBuf, sizeof(timerBuf), "%d:%02d", tMin, tSec);
+
+    Color timerColor = (tSeconds <= 30 && (static_cast<int>(time * 4.0f) % 2 == 0)) ? Color{ 255, 60, 60, 255 } : Color{ 255, 235, 40, 255 };
+    int timerX = VIRTUAL_WIDTH - 48;
+    int timerY = botY - 1;
+
+    // Drop Shadow & 1px dark perimeter
+    DrawText(timerBuf, timerX + 1, timerY + 1, 14, Color{ 0, 0, 0, 240 });
+    DrawText(timerBuf, timerX - 1, timerY, 14, Color{ 0, 0, 0, 240 });
+    DrawText(timerBuf, timerX, timerY + 1, 14, Color{ 0, 0, 0, 240 });
+    DrawText(timerBuf, timerX, timerY, 14, timerColor);
+
+    // 5. BOTTOM-LEFT: FLOATING RELIC REPAIR PROGRESS
+    SpriteId relicSpr = SPR_ICON_BASKET;
+    if (stageId == 2 || stageId == 3) relicSpr = SPR_CENSER_GOLD;
+    else if (stageId == 4) relicSpr = SPR_SILVER_PITCHER;
+    else if (stageId == 5) relicSpr = SPR_OLIVE_WREATH;
+    else if (stageId == 6) relicSpr = SPR_SACRED_CHALICE;
+    else if (stageId == 7) relicSpr = SPR_BITTER_HERBS;
+    else if (stageId == 8) relicSpr = SPR_PASSOVER_MATZOT;
+    else if (stageId == 9) relicSpr = SPR_HOLY_GRAIL;
+    else if (stageId == 10) relicSpr = SPR_ROMAN_SCROLL;
+    else if (stageId == 11) relicSpr = SPR_CAESAR_SEAL;
+    else if (stageId == 12) relicSpr = SPR_PILATE_EWER;
+
+    DrawDropShadow(14.0f, VIRTUAL_HEIGHT - 6.0f, 16.0f, 4.0f);
+    DrawSprite(relicSpr, 6.0f, VIRTUAL_HEIGHT - 20.0f);
+
+    char relBuf[16];
+    snprintf(relBuf, sizeof(relBuf), "%d/%d", collectedBaskets, totalBaskets);
+    Color relCol = (collectedBaskets >= totalBaskets) ? Color{ 80, 255, 130, 255 } : COLOR_ROMAN_GOLD;
+    DrawText(relBuf, 26, VIRTUAL_HEIGHT - 17, 10, Color{ 0, 0, 0, 220 });
+    DrawText(relBuf, 25, VIRTUAL_HEIGHT - 18, 10, relCol);
 }
 
 void GraphicsManager::DrawSprite(SpriteId id, float x, float y, bool flipH, Color tint) {

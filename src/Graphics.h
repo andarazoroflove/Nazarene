@@ -399,10 +399,14 @@ public:
     static void DrawBonusStageBackground(float time);
     static void DrawDropShadow(float x, float y, float width = 20.0f, float height = 5.0f);
 
-    // Title & Mission Map screen drawing
+    // Title, Mission Map & Secret Selection screen drawing
     static void DrawTitleSplash(int destWidth, int destHeight);
     static void DrawMissionMap(int missionNumber, int currentArea, bool a1Cleared, bool a2Cleared, bool a3Cleared, float time);
     static void DrawSecretSelectScreen(int step, int missionIndex, int stageIndex, int credits, float time);
+
+    // Authentic Sega System 16 / MAME Arcade Cabinet Bezel & In-Game HUD
+    static void DrawArcadeCabinetBezel(int screenW, int screenH, int offsetX, int offsetY, int scaledW, int scaledH, int crtMode, int credits, float time);
+    static void DrawArcadeHud(int score, int lives, int hp, int maxHp, int shatteredHearts, bool wrathReady, int collectedBaskets, int totalBaskets, int stageId, float stageTimeRemaining, float time);
 
     // Particle / Effect drawing helpers
     static void DrawDivineBeam(float targetX, float alpha);

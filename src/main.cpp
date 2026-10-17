@@ -76,7 +76,7 @@ int main() {
     float rainbowAlpha = 0.0f;
 
     auto GetCurrentStageId = [&]() {
-        return (missionNumber == 1) ? currentArea : (3 + currentArea);
+        return (missionNumber == 1) ? currentArea : ((missionNumber == 2) ? (3 + currentArea) : (6 + currentArea));
     };
 
     auto StartMission = [&](int mNum, int aNum) {
@@ -217,8 +217,8 @@ int main() {
                     level.UnlockArena();
                 }
 
-                // Stage 3 & Stage 6: As soon as player finds the boss / approaches gate, clouds of heaven roll in!
-                if (currentStage == 3 || currentStage == 6) {
+                // Stage 3, Stage 6, & Stage 9: As soon as player finds the boss / approaches gate, clouds of heaven roll in!
+                if (currentStage == 3 || currentStage == 6 || currentStage == 9) {
                     if (player.GetPosition().x >= (level.GetArenaGateX() - 100.0f) || level.IsArenaLockedDown()) {
                         cloudCoverage = std::min(1.0f, cloudCoverage + 0.65f * dt);
                     }
@@ -249,7 +249,7 @@ int main() {
                 }
 
                 // Update storm clouds and lightning
-                if (finishHimTriggered || ((currentStage == 3 || currentStage == 6) && cloudCoverage > 0.0f)) {
+                if (finishHimTriggered || ((currentStage == 3 || currentStage == 6 || currentStage == 9) && cloudCoverage > 0.0f)) {
                     if (finishHimTriggered) {
                         cloudCoverage = std::min(1.0f, cloudCoverage + 0.85f * dt);
                     }
@@ -279,7 +279,7 @@ int main() {
                         cloudsPartAmount = std::min(1.0f, cloudsPartAmount + 0.75f * dt);
                         divineBeamIntensity = std::min(1.0f, divineBeamIntensity + 0.85f * dt);
 
-                        if (currentStage == 3 || currentStage == 6) {
+                        if (currentStage == 3 || currentStage == 6 || currentStage == 9) {
                             rainbowAlpha = std::min(1.0f, rainbowAlpha + 0.80f * dt);
                         }
 
@@ -287,8 +287,8 @@ int main() {
                             ascensionStarted = true;
                             AudioManager::PlaySfx(SFX_HOLY_BEAM);
                             AudioManager::PlaySfx(SFX_ANGEL_CHOIR);
-                            // In Stage 3 & Stage 6, Jesus ascends diagonally towards opposite side of screen!
-                            bool diagonal = (currentStage == 3 || currentStage == 6);
+                            // In Stage 3, Stage 6, & Stage 9, Jesus ascends diagonally towards opposite side of screen!
+                            bool diagonal = (currentStage == 3 || currentStage == 6 || currentStage == 9);
                             bool toRight = (player.GetPosition().x < level.GetArenaMinX() + (level.GetArenaMaxX() - level.GetArenaMinX()) * 0.5f);
                             player.StartAscension(diagonal, toRight);
                         }
@@ -319,8 +319,8 @@ int main() {
                                     gameState = GameState::BONUS_STAGE;
                                     bonusStage.Reset();
                                 }
-                            } else {
-                                // Mission 2
+                            } else if (missionNumber == 2) {
+                                // Mission 2: Progression to Gethsemane
                                 if (currentArea == 1) {
                                     area1Cleared = true;
                                     currentArea = 2;
@@ -332,7 +332,29 @@ int main() {
                                     gameState = GameState::MISSION_MAP;
                                     missionMapTimer = 0.0f;
                                 } else {
-                                    // Stage 6 cleared! Evil Clone defeated and redeemed!
+                                    // Stage 6 cleared! Advance to Mission 3: The Last Supper!
+                                    missionNumber = 3;
+                                    currentArea = 1;
+                                    area1Cleared = false;
+                                    area2Cleared = false;
+                                    area3Cleared = false;
+                                    gameState = GameState::MISSION_MAP;
+                                    missionMapTimer = 0.0f;
+                                }
+                            } else {
+                                // Mission 3: Journey to the Upper Room & The Last Supper
+                                if (currentArea == 1) {
+                                    area1Cleared = true;
+                                    currentArea = 2;
+                                    gameState = GameState::MISSION_MAP;
+                                    missionMapTimer = 0.0f;
+                                } else if (currentArea == 2) {
+                                    area2Cleared = true;
+                                    currentArea = 3;
+                                    gameState = GameState::MISSION_MAP;
+                                    missionMapTimer = 0.0f;
+                                } else {
+                                    // Stage 9 cleared! Judas Iscariot defeated and redeemed at the Last Supper!
                                     area3Cleared = true;
                                     gameState = GameState::VICTORY;
                                     victoryTimer = 0.0f;
@@ -622,12 +644,15 @@ int main() {
                 DrawRectangleLines(206, 4, 14, 12, Color{ 75, 70, 80, 255 });
             }
 
-            // Stage Pickups: Baskets (1), Censers (2, 3), Pitchers (4), Wreaths (5), Chalices (6)
+            // Stage Pickups: Baskets (1), Censers (2, 3), Pitchers (4), Wreaths (5), Chalices (6), Bitter Herbs (7), Matzot (8), Holy Grail (9)
             SpriteId hudPickupSpr = SPR_ICON_BASKET;
             if (curStage == 2 || curStage == 3) hudPickupSpr = SPR_CENSER_GOLD;
             else if (curStage == 4) hudPickupSpr = SPR_SILVER_PITCHER;
             else if (curStage == 5) hudPickupSpr = SPR_OLIVE_WREATH;
             else if (curStage == 6) hudPickupSpr = SPR_SACRED_CHALICE;
+            else if (curStage == 7) hudPickupSpr = SPR_BITTER_HERBS;
+            else if (curStage == 8) hudPickupSpr = SPR_PASSOVER_MATZOT;
+            else if (curStage == 9) hudPickupSpr = SPR_HOLY_GRAIL;
             GraphicsManager::DrawSprite(hudPickupSpr, 230.0f, 2.0f);
 
             char basketText[16];
@@ -659,6 +684,9 @@ int main() {
                     else if (curStage == 4) bossName = "TORMENTOR DECURION";
                     else if (curStage == 5) bossName = "SHADOW INQUISITOR";
                     else if (curStage == 6) bossName = "CHRISTUS TENEBRIS";
+                    else if (curStage == 7) bossName = "BARABBAS THE ZEALOT";
+                    else if (curStage == 8) bossName = "HIGH PRIEST CAIAPHAS";
+                    else if (curStage == 9) bossName = "JUDAS ISCARIOT";
 
                     DrawText(bossName, bx + 6, by + 3, 10, COLOR_GOLD_BRIGHT);
 
@@ -695,6 +723,9 @@ int main() {
                 else if (curStage == 4) msg = "COLLECT ALL 4 SILVER PITCHERS TO UNLOCK RAVINE BRIDGE!";
                 else if (curStage == 5) msg = "COLLECT ALL 4 OLIVE WREATHS TO UNLOCK MAZE GATE!";
                 else if (curStage == 6) msg = "COLLECT ALL 4 SACRED CHALICES TO UNLOCK GETHSEMANE GROVE!";
+                else if (curStage == 7) msg = "COLLECT ALL 4 BITTER HERBS TO UNLOCK HIDEOUT GATE!";
+                else if (curStage == 8) msg = "COLLECT ALL 4 PASSOVER MATZOT TO UNLOCK AUDIENCE GATE!";
+                else if (curStage == 9) msg = "COLLECT ALL 4 HOLY GRAILS TO UNLOCK CENACLE SANCTUARY!";
 
                 int mw = MeasureText(msg, 10);
                 DrawRectangle((VIRTUAL_WIDTH - mw) / 2 - 6, 40, mw + 12, 16, Color{ 20, 15, 25, 230 });
@@ -798,22 +829,32 @@ int main() {
             // 8. Victory Screen
             if (gameState == GameState::VICTORY) {
                 DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 12, 22, 16, 230 });
-                const char* vicTitle = "CAMPAIGN VICTORY!";
-                int vw = MeasureText(vicTitle, 20);
-                DrawText(vicTitle, (VIRTUAL_WIDTH - vw) / 2, 45, 20, COLOR_ROMAN_GOLD);
+                const char* vicTitle = (missionNumber == 3) ? "THE LAST SUPPER RESTORED!" : "CAMPAIGN VICTORY!";
+                int vw = MeasureText(vicTitle, 18);
+                DrawText(vicTitle, (VIRTUAL_WIDTH - vw) / 2, 40, 18, COLOR_ROMAN_GOLD);
 
-                const char* vicSub1 = "GETHSEMANE CONQUERED - THE EVIL CLONE OVERCOME!";
-                DrawText(vicSub1, (VIRTUAL_WIDTH - MeasureText(vicSub1, 10)) / 2, 75, 10, COLOR_ROBE_WHITE);
+                const char* vicSub1 = (missionNumber == 3) ?
+                    "JUDAS REPENTS - THE 30 PIECES OF SILVER SCATTERED" :
+                    "GETHSEMANE CONQUERED - THE EVIL CLONE OVERCOME!";
+                DrawText(vicSub1, (VIRTUAL_WIDTH - MeasureText(vicSub1, 10)) / 2, 68, 10, COLOR_ROBE_WHITE);
 
-                const char* vicSub2 = "THE NAZARENE'S DIVINE MISSION IS FULFILLED";
-                DrawText(vicSub2, (VIRTUAL_WIDTH - MeasureText(vicSub2, 10)) / 2, 95, 10, COLOR_GOLD_BRIGHT);
+                const char* vicSub2 = (missionNumber == 3) ?
+                    "THIS IS MY BODY, GIVEN FOR YOU - DO THIS IN REMEMBRANCE" :
+                    "THE NAZARENE'S DIVINE MISSION IS FULFILLED";
+                DrawText(vicSub2, (VIRTUAL_WIDTH - MeasureText(vicSub2, 10)) / 2, 88, 10, COLOR_GOLD_BRIGHT);
+
+                if (missionNumber == 3) {
+                    const char* vicSub3 = "PEACE UNTO ALL NATIONS - LOVE CONQUERS ALL";
+                    DrawText(vicSub3, (VIRTUAL_WIDTH - MeasureText(vicSub3, 10)) / 2, 106, 10, COLOR_ROMAN_STONE);
+                }
 
                 char vicScore[48];
-                snprintf(vicScore, sizeof(vicScore), "FINAL SCORE: %06d", player.GetScore() + 50000);
-                DrawText(vicScore, (VIRTUAL_WIDTH - MeasureText(vicScore, 10)) / 2, 125, 10, COLOR_ROMAN_GOLD);
+                int bonusPts = (missionNumber == 3) ? 100000 : 50000;
+                snprintf(vicScore, sizeof(vicScore), "FINAL SCORE: %06d", player.GetScore() + bonusPts);
+                DrawText(vicScore, (VIRTUAL_WIDTH - MeasureText(vicScore, 10)) / 2, 130, 10, COLOR_ROMAN_GOLD);
 
                 const char* contPrompt = "RETURNING TO MAIN SCREEN...";
-                DrawText(contPrompt, (VIRTUAL_WIDTH - MeasureText(contPrompt, 10)) / 2, 160, 10, Color{ 200, 200, 215, 255 });
+                DrawText(contPrompt, (VIRTUAL_WIDTH - MeasureText(contPrompt, 10)) / 2, 162, 10, Color{ 200, 200, 215, 255 });
             }
         }
 

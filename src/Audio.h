@@ -30,6 +30,9 @@ enum SoundEffect {
     SFX_DARK_WRATH,
     SFX_CLONE_TELEPORT,
     SFX_TORCH_SWING,
+    SFX_SILVER_SCATTER,
+    SFX_COIN_RICOCHET,
+    SFX_TRAITOR_DASH,
     SFX_COUNT
 };
 
@@ -47,9 +50,11 @@ private:
     static Sound s_sounds[SFX_COUNT];
     static Sound s_stageMusicM1;
     static Sound s_stageMusicM2;
+    static Sound s_stageMusicM3;
     static Sound s_bonusMusic;
     static Sound s_bossMusic;
     static Sound s_evilCloneMusic;
+    static Sound s_judasBossMusic;
     static Sound s_continueMusic;
     static bool s_musicEnabled;
     static bool s_initialized;
@@ -58,9 +63,11 @@ private:
     static Wave GenerateSfxWave(SoundEffect sfx);
     static Wave GenerateStageMusicWave();
     static Wave GenerateStage2MusicWave();
+    static Wave GenerateStage3MusicWave();
     static Wave GenerateBonusMusicWave();
     static Wave GenerateBossMusicWave();
     static Wave GenerateEvilCloneMusicWave();
+    static Wave GenerateJudasBossMusicWave();
     static Wave GenerateContinueMusicWave();
 };
 

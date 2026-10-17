@@ -19,7 +19,26 @@ enum class EnemyType {
     TORMENTOR_GUARD,
     GARDEN_THORN_SICARII,
     CORRUPTED_PRIEST,
-    BOSS_EVIL_CLONE
+    BOSS_EVIL_CLONE,
+    // Mission 3:
+    MONEY_CHANGER,
+    LEVITE_ENFORCER,
+    BOSS_BARABBAS,
+    BOSS_CAIAPHAS,
+    BOSS_JUDAS
+};
+
+enum class JudasState {
+    IDLE,
+    APPROACH,
+    TOSS_SILVER,
+    SHADOW_DASH,
+    DAGGER_STAB,
+    MONEY_SLAM,
+    RECOVERY,
+    KNEEL,
+    WITHERING,
+    DEAD_WITHERED
 };
 
 enum class ThornSicariiState {
@@ -111,6 +130,27 @@ struct DarkProjectile {
     float timer;
 };
 
+struct SilverProjectile {
+    Vector2 position;
+    Vector2 velocity;
+    bool active;
+    float timer;
+    int bouncesLeft;
+};
+
+struct BloodShockwave {
+    Vector2 position;
+    float velocityX;
+    bool active;
+    float timer;
+};
+
+struct CaiaphasLightning {
+    Vector2 position;
+    float timer;
+    bool active;
+};
+
 class Enemy {
 public:
     Enemy(EnemyType type, Vector2 pos, float patrolMinX, float patrolMaxX);
@@ -129,12 +169,18 @@ public:
         return m_type == EnemyType::BOSS_GLADIATOR ||
                m_type == EnemyType::BOSS_TEMPLE_COMMANDER ||
                m_type == EnemyType::BOSS_TRIBUNAL_PRAETOR ||
-               m_type == EnemyType::BOSS_EVIL_CLONE;
+               m_type == EnemyType::BOSS_EVIL_CLONE ||
+               m_type == EnemyType::BOSS_BARABBAS ||
+               m_type == EnemyType::BOSS_CAIAPHAS ||
+               m_type == EnemyType::BOSS_JUDAS;
     }
     bool IsDefeated() const {
         if (IsBoss()) {
             if (m_type == EnemyType::BOSS_EVIL_CLONE) {
                 return m_hp <= 0 && (m_cloneState == CloneState::DEAD_WITHERED || m_cloneState == CloneState::KNEEL);
+            }
+            if (m_type == EnemyType::BOSS_JUDAS) {
+                return m_hp <= 0 && (m_judasState == JudasState::DEAD_WITHERED || m_judasState == JudasState::KNEEL);
             }
             return m_hp <= 0 && (m_whipState == BossWhipState::DEAD_WITHERED || m_whipState == BossWhipState::KNEEL || m_whipState == BossWhipState::WALK_OFF || m_whipState == BossWhipState::EXITED);
         }
@@ -145,6 +191,9 @@ public:
         if (m_type == EnemyType::BOSS_EVIL_CLONE) {
             return m_hp <= 0 || m_cloneState == CloneState::KNEEL || m_cloneState == CloneState::WITHERING || m_cloneState == CloneState::DEAD_WITHERED;
         }
+        if (m_type == EnemyType::BOSS_JUDAS) {
+            return m_hp <= 0 || m_judasState == JudasState::KNEEL || m_judasState == JudasState::WITHERING || m_judasState == JudasState::DEAD_WITHERED;
+        }
         return m_hp <= 0 || m_whipState == BossWhipState::KNEEL || m_whipState == BossWhipState::WITHERING || m_whipState == BossWhipState::DEAD_WITHERED;
     }
     bool IsWithering() const {
@@ -152,12 +201,18 @@ public:
         if (m_type == EnemyType::BOSS_EVIL_CLONE) {
             return m_cloneState == CloneState::KNEEL || m_cloneState == CloneState::WITHERING || m_cloneState == CloneState::DEAD_WITHERED;
         }
+        if (m_type == EnemyType::BOSS_JUDAS) {
+            return m_judasState == JudasState::KNEEL || m_judasState == JudasState::WITHERING || m_judasState == JudasState::DEAD_WITHERED;
+        }
         return m_whipState == BossWhipState::KNEEL || m_whipState == BossWhipState::WITHERING || m_whipState == BossWhipState::DEAD_WITHERED;
     }
     bool IsWitheredDead() const {
         if (!IsBoss()) return false;
         if (m_type == EnemyType::BOSS_EVIL_CLONE) {
             return m_cloneState == CloneState::DEAD_WITHERED;
+        }
+        if (m_type == EnemyType::BOSS_JUDAS) {
+            return m_judasState == JudasState::DEAD_WITHERED;
         }
         return m_whipState == BossWhipState::DEAD_WITHERED;
     }
@@ -180,10 +235,12 @@ public:
     void SetBossPhase(BossPhase phase) { m_bossPhase = phase; }
     BossWhipState GetBossWhipState() const { return m_whipState; }
     CloneState GetCloneState() const { return m_cloneState; }
+    JudasState GetJudasState() const { return m_judasState; }
     void StartArenaCombat() {
         m_bossPhase = BossPhase::PHASE_2_ARENA;
         m_whipState = BossWhipState::IDLE;
         m_cloneState = CloneState::IDLE;
+        m_judasState = JudasState::IDLE;
         m_whipTimer = 0.0f;
         m_stateTimer = 0.0f;
         m_attackHitboxActive = false;
@@ -216,6 +273,35 @@ public:
             outVelX = m_darkProjVelX;
             outVelY = m_darkProjVelY;
             outIsSpike = m_darkProjIsSpike;
+            return true;
+        }
+        return false;
+    }
+
+    bool CheckAndClearJustThrewSilver(Vector2& outPos, float& outDir) {
+        if (m_justThrewSilver) {
+            m_justThrewSilver = false;
+            outPos = m_silverTossPos;
+            outDir = m_silverTossDir;
+            return true;
+        }
+        return false;
+    }
+
+    bool CheckAndClearJustSpawnedShockwave(Vector2& outPos, float& outDir) {
+        if (m_justSpawnedShockwave) {
+            m_justSpawnedShockwave = false;
+            outPos = m_shockwavePos;
+            outDir = m_shockwaveDir;
+            return true;
+        }
+        return false;
+    }
+
+    bool CheckAndClearJustCastLightning(Vector2& outPos) {
+        if (m_justCastLightning) {
+            m_justCastLightning = false;
+            outPos = m_lightningPos;
             return true;
         }
         return false;
@@ -285,6 +371,30 @@ protected:
     // Heavy specific
     bool m_isShieldUp;
 
+    // Mission 3: Money Changer specific
+    float m_moneyChangerTimer = 0.0f;
+    bool m_moneyChangerAttacking = false;
+
+    // Mission 3: Levite Enforcer specific
+    float m_enforcerTimer = 0.0f;
+    bool m_enforcerAttacking = false;
+
+    // Mission 3: Judas Iscariot specific
+    JudasState m_judasState = JudasState::IDLE;
+    float m_judasTimer = 0.0f;
+    int m_judasAttackPattern = 0;
+    bool m_justThrewSilver = false;
+    Vector2 m_silverTossPos = { 0, 0 };
+    float m_silverTossDir = 0.0f;
+    bool m_justSpawnedShockwave = false;
+    Vector2 m_shockwavePos = { 0, 0 };
+    float m_shockwaveDir = 0.0f;
+
+    // Mission 3: Caiaphas specific
+    bool m_justCastLightning = false;
+    Vector2 m_lightningPos = { 0, 0 };
+    float m_caiaphasCastTimer = 0.0f;
+
     // Boss specific
     BossPhase m_bossPhase;
     BossWhipState m_whipState;
@@ -315,12 +425,18 @@ public:
     const std::vector<EnemyArrow>& GetArrows() const { return m_arrows; }
     const std::vector<EnemyDagger>& GetDaggers() const { return m_daggers; }
     const std::vector<DarkProjectile>& GetDarkProjectiles() const { return m_darkProjectiles; }
+    const std::vector<SilverProjectile>& GetSilverCoins() const { return m_silverCoins; }
+    const std::vector<BloodShockwave>& GetBloodShockwaves() const { return m_bloodShockwaves; }
+    const std::vector<CaiaphasLightning>& GetLightningStrikes() const { return m_lightningStrikes; }
 
 private:
     std::vector<Enemy> m_enemies;
     std::vector<EnemyArrow> m_arrows;
     std::vector<EnemyDagger> m_daggers;
     std::vector<DarkProjectile> m_darkProjectiles;
+    std::vector<SilverProjectile> m_silverCoins;
+    std::vector<BloodShockwave> m_bloodShockwaves;
+    std::vector<CaiaphasLightning> m_lightningStrikes;
     std::vector<DeathParticle> m_particles;
 
     void SpawnExplosion(Vector2 pos, Color mainColor);

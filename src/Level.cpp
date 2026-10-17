@@ -48,6 +48,24 @@ void Level::Reset(int stageId) {
         m_arenaMinX = 1620.0f;
         m_arenaMaxX = 2020.0f;
         BuildGardenOfGethsemane();
+    } else if (m_stageId == 7) {
+        // Stage 7: Siloam Bazaar & Aqueducts
+        m_arenaGateX = ARENA_GATE_X; // 2120.0f
+        m_arenaMinX = ARENA_MIN_X;   // 2140.0f
+        m_arenaMaxX = ARENA_MAX_X;   // 2540.0f
+        BuildSiloamBazaar();
+    } else if (m_stageId == 8) {
+        // Stage 8: Mount Zion & Palace of Caiaphas
+        m_arenaGateX = ARENA_GATE_X; // 2120.0f
+        m_arenaMinX = ARENA_MIN_X;   // 2140.0f
+        m_arenaMaxX = ARENA_MAX_X;   // 2540.0f
+        BuildMountZionPalace();
+    } else if (m_stageId == 9) {
+        // Stage 9: The Upper Room / Cenacle (The Last Supper)
+        m_arenaGateX = 1440.0f;
+        m_arenaMinX = 1460.0f;
+        m_arenaMaxX = 1860.0f;
+        BuildUpperRoomCenacle();
     } else {
         m_arenaGateX = ARENA_GATE_X;
         m_arenaMinX = ARENA_MIN_X;
@@ -586,6 +604,12 @@ void Level::Draw(float cameraX) {
                 pickupSpr = SPR_OLIVE_WREATH;
             } else if (m_stageId == 6) {
                 pickupSpr = SPR_SACRED_CHALICE;
+            } else if (m_stageId == 7) {
+                pickupSpr = SPR_BITTER_HERBS;
+            } else if (m_stageId == 8) {
+                pickupSpr = SPR_PASSOVER_MATZOT;
+            } else if (m_stageId == 9) {
+                pickupSpr = SPR_HOLY_GRAIL;
             }
             GraphicsManager::DrawSprite(pickupSpr, b.position.x, b.position.y + floatY);
 
@@ -1075,5 +1099,315 @@ void Level::BuildGardenOfGethsemane() {
         }
     }
 }
+
+void Level::BuildSiloamBazaar() {
+    // 1. Initialize tilemap with air
+    for (int y = 0; y < LEVEL_TILES_Y; ++y) {
+        for (int x = 0; x < LEVEL_TILES_X; ++x) {
+            m_tilemap[y][x] = TILE_AIR;
+        }
+    }
+
+    // 2. Lay solid sandstone ground tier
+    for (int x = 0; x < LEVEL_TILES_X; ++x) {
+        m_tilemap[12][x] = TILE_BAZAAR_STONE_SURFACE;
+        m_tilemap[13][x] = TILE_BAZAAR_STONE_SUB;
+    }
+
+    auto AddStallLedge = [this](int startTileX, int endTileX, int tileY, bool isGold) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_BAZAAR_LEDGE;
+            if (tileY > 0) {
+                m_tilemap[tileY - 1][tx] = isGold ? TILE_BAZAAR_AWNING_GOLD : TILE_BAZAAR_AWNING_RED;
+            }
+        }
+    };
+
+    auto AddCrate = [this](int tileX, int tileY, TileId type) {
+        m_tilemap[tileY][tileX] = type;
+        m_crates.push_back({ (float)tileX * TILE_SIZE, (float)tileY * TILE_SIZE, (float)TILE_SIZE, (float)TILE_SIZE });
+    };
+
+    // === SECTION 1: Silk & Spice Merchants (Tiles 0 - 38) ===
+    AddStallLedge(8, 16, 9, false);
+    m_tilemap[8][10] = TILE_BAZAAR_LANTERN;
+    m_tilemap[8][15] = TILE_BAZAAR_LANTERN;
+    AddCrate(7, 11, TILE_BAZAAR_SPICE_SACK);
+    AddCrate(17, 11, TILE_BAZAAR_POTTERY);
+
+    // Bitter Herbs 1
+    m_baskets.push_back({ { 12.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    AddStallLedge(24, 34, 7, true);
+    m_tilemap[6][26] = TILE_BAZAAR_LANTERN;
+    m_tilemap[6][32] = TILE_BAZAAR_LANTERN;
+    AddCrate(23, 11, TILE_BAZAAR_POTTERY);
+    AddCrate(29, 11, TILE_BAZAAR_SPICE_SACK);
+
+    // === SECTION 2: Upper Aqueduct & Pottery Bazaar (Tiles 39 - 80) ===
+    AddStallLedge(42, 54, 8, false);
+    AddStallLedge(58, 70, 6, true);
+    m_tilemap[5][60] = TILE_BAZAAR_LANTERN;
+    m_tilemap[5][68] = TILE_BAZAAR_LANTERN;
+    AddCrate(46, 11, TILE_BAZAAR_SPICE_SACK);
+    AddCrate(64, 11, TILE_BAZAAR_POTTERY);
+
+    // Bitter Herbs 2: High awning platform
+    m_baskets.push_back({ { 64.0f * TILE_SIZE, 4.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // === SECTION 3: Siloam Stone Terraces (Tiles 81 - 128) ===
+    AddStallLedge(84, 96, 8, false);
+    AddStallLedge(102, 114, 7, true);
+    m_tilemap[7][88] = TILE_BAZAAR_LANTERN;
+    m_tilemap[6][106] = TILE_BAZAAR_LANTERN;
+    AddCrate(83, 11, TILE_BAZAAR_POTTERY);
+    AddCrate(108, 11, TILE_BAZAAR_SPICE_SACK);
+
+    // Bitter Herbs 3: High terrace
+    m_baskets.push_back({ { 90.0f * TILE_SIZE, 6.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // Bitter Herbs 4: Merchant alcove before gate
+    m_baskets.push_back({ { 122.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    // === SECTION 4: Gate to Bandit Hideout (Tile 132, X = 2120) ===
+    int gateTileX = static_cast<int>(m_arenaGateX / TILE_SIZE);
+    for (int ty = 2; ty <= 11; ++ty) {
+        m_tilemap[ty][gateTileX] = TILE_GATE_FRAME;
+        m_tilemap[ty][gateTileX + 1] = TILE_GATE_BARS;
+        m_tilemap[ty][gateTileX + 2] = TILE_GATE_FRAME;
+    }
+    m_tilemap[11][gateTileX - 1] = TILE_BAZAAR_LANTERN;
+
+    // === SECTION 5: Barabbas's Bandit Redoubt Arena (Tiles 135 - 158) ===
+    AddStallLedge(140, 150, 7, false);
+    m_tilemap[6][142] = TILE_BAZAAR_LANTERN;
+    m_tilemap[6][148] = TILE_BAZAAR_LANTERN;
+    AddCrate(138, 11, TILE_BAZAAR_SPICE_SACK);
+    AddCrate(152, 11, TILE_BAZAAR_POTTERY);
+
+    int backWallX = static_cast<int>(m_arenaMaxX / TILE_SIZE);
+    if (backWallX < LEVEL_TILES_X) {
+        for (int ty = 0; ty <= 11; ++ty) {
+            m_tilemap[ty][backWallX] = TILE_GATE_FRAME;
+        }
+    }
+}
+
+void Level::BuildMountZionPalace() {
+    // 1. Initialize tilemap with air
+    for (int y = 0; y < LEVEL_TILES_Y; ++y) {
+        for (int x = 0; x < LEVEL_TILES_X; ++x) {
+            m_tilemap[y][x] = TILE_AIR;
+        }
+    }
+
+    // 2. Lay solid marble ground tier
+    for (int x = 0; x < LEVEL_TILES_X; ++x) {
+        m_tilemap[12][x] = TILE_CAIAPHAS_MARBLE_SURFACE;
+        m_tilemap[13][x] = TILE_CAIAPHAS_MARBLE_SUB;
+    }
+
+    auto AddBalustrade = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_CAIAPHAS_BALUSTRADE;
+        }
+    };
+
+    auto AddColumn = [this](int tileX, int topY, int bottomY) {
+        m_tilemap[topY][tileX] = TILE_CAIAPHAS_COLUMN_HEAD;
+        for (int ty = topY + 1; ty < bottomY; ++ty) {
+            m_tilemap[ty][tileX] = TILE_CAIAPHAS_COLUMN_MID;
+        }
+        m_tilemap[bottomY][tileX] = TILE_CAIAPHAS_COLUMN_BASE;
+    };
+
+    auto AddBrazierBlock = [this](int tileX, int tileY) {
+        m_tilemap[tileY][tileX] = TILE_CAIAPHAS_BRAZIER;
+        m_crates.push_back({ (float)tileX * TILE_SIZE, (float)tileY * TILE_SIZE, (float)TILE_SIZE, (float)TILE_SIZE });
+    };
+
+    // === SECTION 1: Outer Colonnaded Courtyard (Tiles 0 - 38) ===
+    AddColumn(6, 6, 11);
+    AddColumn(18, 6, 11);
+    AddBalustrade(8, 16, 8);
+    AddBrazierBlock(5, 11);
+    AddBrazierBlock(19, 11);
+
+    // Passover Matzot 1
+    m_baskets.push_back({ { 12.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    // === SECTION 2: Royal Mezzanine & Grand Portico (Tiles 39 - 80) ===
+    AddColumn(36, 4, 11);
+    AddColumn(48, 4, 11);
+    AddColumn(60, 4, 11);
+    AddBalustrade(38, 58, 6);
+    AddBrazierBlock(35, 11);
+    AddBrazierBlock(61, 11);
+
+    // Passover Matzot 2: High balcony
+    m_baskets.push_back({ { 48.0f * TILE_SIZE, 4.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // === SECTION 3: High Council Terrace (Tiles 81 - 128) ===
+    AddBalustrade(78, 92, 8);
+    AddBalustrade(98, 112, 7);
+    AddColumn(94, 5, 11);
+    AddColumn(114, 5, 11);
+    AddBrazierBlock(84, 11);
+    AddBrazierBlock(106, 11);
+
+    // Passover Matzot 3: Council terrace
+    m_baskets.push_back({ { 86.0f * TILE_SIZE, 6.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // Passover Matzot 4: Guard plinth before council hall
+    m_baskets.push_back({ { 124.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    // === SECTION 4: High Priest Audience Gate (Tile 132, X = 2120) ===
+    int gateTileX = static_cast<int>(m_arenaGateX / TILE_SIZE);
+    for (int ty = 2; ty <= 11; ++ty) {
+        m_tilemap[ty][gateTileX] = TILE_GATE_FRAME;
+        m_tilemap[ty][gateTileX + 1] = TILE_CAIAPHAS_GATE;
+        m_tilemap[ty][gateTileX + 2] = TILE_GATE_FRAME;
+    }
+    m_tilemap[11][gateTileX - 1] = TILE_CAIAPHAS_BRAZIER;
+
+    // === SECTION 5: High Priest Judgment Hall Arena (Tiles 135 - 158) ===
+    AddColumn(138, 3, 11);
+    AddColumn(152, 3, 11);
+    AddBalustrade(140, 150, 7);
+    AddBrazierBlock(136, 11);
+    AddBrazierBlock(154, 11);
+
+    int backWallX = static_cast<int>(m_arenaMaxX / TILE_SIZE);
+    if (backWallX < LEVEL_TILES_X) {
+        for (int ty = 0; ty <= 11; ++ty) {
+            m_tilemap[ty][backWallX] = TILE_GATE_FRAME;
+        }
+    }
+}
+
+void Level::BuildUpperRoomCenacle() {
+    // 1. Initialize tilemap with air
+    for (int y = 0; y < LEVEL_TILES_Y; ++y) {
+        for (int x = 0; x < LEVEL_TILES_X; ++x) {
+            m_tilemap[y][x] = TILE_AIR;
+        }
+    }
+
+    // 2. Lay solid cedar wood plank floor
+    for (int x = 0; x < LEVEL_TILES_X; ++x) {
+        m_tilemap[12][x] = TILE_CENACLE_WOOD_FLOOR;
+        m_tilemap[13][x] = TILE_CENACLE_WOOD_SUB;
+    }
+
+    auto AddBeamPlatform = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_CENACLE_BEAM_ARCH;
+        }
+    };
+
+    auto AddCommunionTable = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_CENACLE_TABLE_CLOTH;
+            if (tileY > 0 && (tx % 2 == 0)) {
+                m_tilemap[tileY - 1][tx] = TILE_CENACLE_CHALICE_ROW;
+            }
+        }
+    };
+
+    auto AddChamberBlock = [this](int tileX, int tileY) {
+        m_tilemap[tileY][tileX] = TILE_CENACLE_CANDELABRA;
+        m_crates.push_back({ (float)tileX * TILE_SIZE, (float)tileY * TILE_SIZE, (float)TILE_SIZE, (float)TILE_SIZE });
+    };
+
+    // Arched windows showing Passover moon in background
+    for (int wx = 10; wx < 85; wx += 18) {
+        m_tilemap[3][wx] = TILE_CENACLE_WINDOW_MOON;
+        m_tilemap[3][wx + 1] = TILE_CENACLE_WINDOW_MOON;
+    }
+
+    // === SECTION 1: Outer Vestibule & Timber Mezzanine (Tiles 0 - 30) ===
+    AddBeamPlatform(8, 20, 8);
+    m_tilemap[7][10] = TILE_CENACLE_CANDELABRA;
+    m_tilemap[7][18] = TILE_CENACLE_CANDELABRA;
+    AddChamberBlock(6, 11);
+    AddChamberBlock(22, 11);
+
+    // Holy Grail 1: Communion chalice on entrance table
+    m_baskets.push_back({ { 14.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    // === SECTION 2: Central Vaulted Chamber (Tiles 31 - 60) ===
+    AddBeamPlatform(34, 48, 7);
+    AddCommunionTable(38, 46, 9);
+    m_tilemap[6][36] = TILE_CENACLE_CANDELABRA;
+    m_tilemap[6][46] = TILE_CENACLE_CANDELABRA;
+    AddChamberBlock(32, 11);
+    AddChamberBlock(50, 11);
+
+    // Holy Grail 2: High timber beam platform
+    m_baskets.push_back({ { 41.0f * TILE_SIZE, 5.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // === SECTION 3: Upper Room Passage (Tiles 61 - 88) ===
+    AddBeamPlatform(64, 76, 8);
+    m_tilemap[7][66] = TILE_CENACLE_CANDELABRA;
+    m_tilemap[7][74] = TILE_CENACLE_CANDELABRA;
+    AddChamberBlock(62, 11);
+
+    // Holy Grail 3: Upper gallery
+    m_baskets.push_back({ { 70.0f * TILE_SIZE, 6.8f * TILE_SIZE }, false, 0.0f, 1 });
+
+    // Holy Grail 4: Table before the Cenacle sanctuary gate
+    m_baskets.push_back({ { 84.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+
+    // === SECTION 4: Cenacle Sanctuary Gate (Tile 90, X = 1440) ===
+    int gateTileX = static_cast<int>(m_arenaGateX / TILE_SIZE);
+    for (int ty = 2; ty <= 11; ++ty) {
+        m_tilemap[ty][gateTileX] = TILE_CENACLE_STONE_WALL;
+        m_tilemap[ty][gateTileX + 1] = TILE_GATE_BARS;
+        m_tilemap[ty][gateTileX + 2] = TILE_CENACLE_STONE_WALL;
+    }
+    m_tilemap[11][gateTileX - 1] = TILE_CENACLE_CANDELABRA;
+
+    // === SECTION 5: The Last Supper Communion Table Arena (Tiles 93 - 116, X = 1460 to 1860) ===
+    // Sacred Communion Table spanning the center of the Upper Room
+    AddCommunionTable(98, 110, 9);
+    AddBeamPlatform(96, 112, 6); // High vaulted beams overhead
+
+    // Menorahs illuminating the Last Supper Table
+    m_tilemap[8][99] = TILE_CENACLE_CANDELABRA;
+    m_tilemap[8][104] = TILE_CENACLE_CANDELABRA;
+    m_tilemap[8][109] = TILE_CENACLE_CANDELABRA;
+
+    // Arched Passover window over the arena
+    m_tilemap[3][103] = TILE_CENACLE_WINDOW_MOON;
+    m_tilemap[3][104] = TILE_CENACLE_WINDOW_MOON;
+
+    int backWallX = static_cast<int>(m_arenaMaxX / TILE_SIZE);
+    if (backWallX < LEVEL_TILES_X) {
+        for (int ty = 0; ty <= 11; ++ty) {
+            m_tilemap[ty][backWallX] = TILE_CENACLE_STONE_WALL;
+        }
+    }
+}
+
 
 

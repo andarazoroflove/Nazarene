@@ -73,5 +73,8 @@ private:
     void BuildValleyOfKidron();
     void BuildCypressHedgeMaze();
     void BuildGardenOfGethsemane();
+    void BuildSiloamBazaar();
+    void BuildMountZionPalace();
+    void BuildUpperRoomCenacle();
 };
 

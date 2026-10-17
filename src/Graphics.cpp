@@ -1,5 +1,6 @@
 #include "Graphics.h"
 #include "Mission2Graphics.h"
+#include "Mission3Graphics.h"
 #include "TitleImageBytes.h"
 #include <cmath>
 #include <cstdlib>
@@ -24,6 +25,12 @@ Texture2D GraphicsManager::s_bgGethsemaneSky = {};
 Texture2D GraphicsManager::s_bgGethsemaneGrove = {};
 Texture2D GraphicsManager::s_bgBonusSunset = {};
 Texture2D GraphicsManager::s_bgBonusTerraces = {};
+Texture2D GraphicsManager::s_bgBazaarSky = {};
+Texture2D GraphicsManager::s_bgBazaarRoofs = {};
+Texture2D GraphicsManager::s_bgCaiaphasSky = {};
+Texture2D GraphicsManager::s_bgCaiaphasPalace = {};
+Texture2D GraphicsManager::s_bgCenacleSky = {};
+Texture2D GraphicsManager::s_bgCenacleChamber = {};
 Texture2D GraphicsManager::s_texMissionMap = {};
 Texture2D GraphicsManager::s_texTitleSplash = {};
 bool GraphicsManager::s_initialized = false;
@@ -3372,6 +3379,15 @@ void GraphicsManager::Init() {
         s_bgBonusTerraces
     );
 
+    Mission3Graphics::GenerateAll(
+        s_bgBazaarSky,
+        s_bgBazaarRoofs,
+        s_bgCaiaphasSky,
+        s_bgCaiaphasPalace,
+        s_bgCenacleSky,
+        s_bgCenacleChamber
+    );
+
     // Load Title Splash Screen (from file or embedded bytes)
     Image splashImg{};
     if (FileExists("assets/title.jpg")) {
@@ -3417,6 +3433,12 @@ void GraphicsManager::Close() {
     if (s_bgGethsemaneGrove.id > 0) UnloadTexture(s_bgGethsemaneGrove);
     if (s_bgBonusSunset.id > 0) UnloadTexture(s_bgBonusSunset);
     if (s_bgBonusTerraces.id > 0) UnloadTexture(s_bgBonusTerraces);
+    if (s_bgBazaarSky.id > 0) UnloadTexture(s_bgBazaarSky);
+    if (s_bgBazaarRoofs.id > 0) UnloadTexture(s_bgBazaarRoofs);
+    if (s_bgCaiaphasSky.id > 0) UnloadTexture(s_bgCaiaphasSky);
+    if (s_bgCaiaphasPalace.id > 0) UnloadTexture(s_bgCaiaphasPalace);
+    if (s_bgCenacleSky.id > 0) UnloadTexture(s_bgCenacleSky);
+    if (s_bgCenacleChamber.id > 0) UnloadTexture(s_bgCenacleChamber);
     if (s_texMissionMap.id > 0) UnloadTexture(s_texMissionMap);
     if (s_texTitleSplash.id > 0) UnloadTexture(s_texTitleSplash);
 
@@ -3444,7 +3466,11 @@ void GraphicsManager::DrawMissionMap(int missionNumber, int currentArea, bool a1
     };
 
     AreaNode areas[3];
-    if (missionNumber == 2) {
+    if (missionNumber == 3) {
+        areas[0] = {  42,  64, 46, 44, "AREA 1: SILOAM BAZAAR", "THE OLD CITY & AQUEDUCTS", "BARABBAS THE ZEALOT", a1Cleared };
+        areas[1] = { 138,  48, 52, 48, "AREA 2: PALACE OF CAIAPHAS", "MOUNT ZION AUDIENCE HALL", "HIGH PRIEST CAIAPHAS", a2Cleared };
+        areas[2] = { 236,  72, 48, 44, "AREA 3: THE UPPER ROOM", "THE CENACLE & LAST SUPPER", "JUDAS ISCARIOT", a3Cleared };
+    } else if (missionNumber == 2) {
         areas[0] = {  42,  64, 46, 44, "AREA 1: VALLEY OF KIDRON", "THE CHASM & MOONLIT BRIDGES", "TORMENTOR DECURION", a1Cleared };
         areas[1] = { 138,  48, 52, 48, "AREA 2: CYPRESS HEDGE MAZE", "ROYAL PALACE LABYRINTH", "SHADOW INQUISITOR", a2Cleared };
         areas[2] = { 236,  72, 48, 44, "AREA 3: GETHSEMANE GROVE", "THE ANCIENT OLIVE TREE", "CHRISTUS TENEBRIS", a3Cleared };
@@ -3502,7 +3528,8 @@ void GraphicsManager::DrawMissionMap(int missionNumber, int currentArea, bool a1
         }
     }
 
-    const char* topTitle = (missionNumber == 2) ? "MISSION 2: GETHSEMANE OUTSKIRTS" : "MISSION 1: JERUSALEM CAMPAIGN";
+    const char* topTitle = (missionNumber == 3) ? "MISSION 3: THE PASSION & CENACLE" :
+                          ((missionNumber == 2) ? "MISSION 2: GETHSEMANE OUTSKIRTS" : "MISSION 1: JERUSALEM CAMPAIGN");
     int ttw = MeasureText(topTitle, 10);
     DrawRectangle((VIRTUAL_WIDTH - ttw) / 2 - 10, 12, ttw + 20, 15, Color{ 24, 18, 22, 230 });
     DrawRectangleLines((VIRTUAL_WIDTH - ttw) / 2 - 10, 12, ttw + 20, 15, COLOR_GOLD_BRIGHT);
@@ -3617,6 +3644,42 @@ void GraphicsManager::DrawParallaxBackground(float cameraX, float time, int stag
         DrawTexture(s_bgGethsemaneGrove, static_cast<int>(gGroveX), 8, WHITE);
         DrawTexture(s_bgGethsemaneGrove, static_cast<int>(gGroveX + s_bgGethsemaneGrove.width), 8, WHITE);
         if (gGroveX > 0) DrawTexture(s_bgGethsemaneGrove, static_cast<int>(gGroveX - s_bgGethsemaneGrove.width), 8, WHITE);
+        return;
+    } else if (stageId == 7) {
+        // --- STAGE 7: SILOAM BAZAAR & AQUEDUCTS ---
+        float bzSkyX = -fmodf(cameraX * 0.08f, (float)s_bgBazaarSky.width);
+        DrawTexture(s_bgBazaarSky, static_cast<int>(bzSkyX), 0, WHITE);
+        DrawTexture(s_bgBazaarSky, static_cast<int>(bzSkyX + s_bgBazaarSky.width), 0, WHITE);
+        if (bzSkyX > 0) DrawTexture(s_bgBazaarSky, static_cast<int>(bzSkyX - s_bgBazaarSky.width), 0, WHITE);
+
+        float bzRoofsX = -fmodf(cameraX * 0.45f, (float)s_bgBazaarRoofs.width);
+        DrawTexture(s_bgBazaarRoofs, static_cast<int>(bzRoofsX), 12, WHITE);
+        DrawTexture(s_bgBazaarRoofs, static_cast<int>(bzRoofsX + s_bgBazaarRoofs.width), 12, WHITE);
+        if (bzRoofsX > 0) DrawTexture(s_bgBazaarRoofs, static_cast<int>(bzRoofsX - s_bgBazaarRoofs.width), 12, WHITE);
+        return;
+    } else if (stageId == 8) {
+        // --- STAGE 8: MOUNT ZION & PALACE OF CAIAPHAS ---
+        float caSkyX = -fmodf(cameraX * 0.08f, (float)s_bgCaiaphasSky.width);
+        DrawTexture(s_bgCaiaphasSky, static_cast<int>(caSkyX), 0, WHITE);
+        DrawTexture(s_bgCaiaphasSky, static_cast<int>(caSkyX + s_bgCaiaphasSky.width), 0, WHITE);
+        if (caSkyX > 0) DrawTexture(s_bgCaiaphasSky, static_cast<int>(caSkyX - s_bgCaiaphasSky.width), 0, WHITE);
+
+        float caPalaceX = -fmodf(cameraX * 0.42f, (float)s_bgCaiaphasPalace.width);
+        DrawTexture(s_bgCaiaphasPalace, static_cast<int>(caPalaceX), 10, WHITE);
+        DrawTexture(s_bgCaiaphasPalace, static_cast<int>(caPalaceX + s_bgCaiaphasPalace.width), 10, WHITE);
+        if (caPalaceX > 0) DrawTexture(s_bgCaiaphasPalace, static_cast<int>(caPalaceX - s_bgCaiaphasPalace.width), 10, WHITE);
+        return;
+    } else if (stageId == 9) {
+        // --- STAGE 9: THE CENACLE & UPPER ROOM (THE LAST SUPPER) ---
+        float ceSkyX = -fmodf(cameraX * 0.05f, (float)s_bgCenacleSky.width);
+        DrawTexture(s_bgCenacleSky, static_cast<int>(ceSkyX), 0, WHITE);
+        DrawTexture(s_bgCenacleSky, static_cast<int>(ceSkyX + s_bgCenacleSky.width), 0, WHITE);
+        if (ceSkyX > 0) DrawTexture(s_bgCenacleSky, static_cast<int>(ceSkyX - s_bgCenacleSky.width), 0, WHITE);
+
+        float ceChambX = -fmodf(cameraX * 0.38f, (float)s_bgCenacleChamber.width);
+        DrawTexture(s_bgCenacleChamber, static_cast<int>(ceChambX), 8, WHITE);
+        DrawTexture(s_bgCenacleChamber, static_cast<int>(ceChambX + s_bgCenacleChamber.width), 8, WHITE);
+        if (ceChambX > 0) DrawTexture(s_bgCenacleChamber, static_cast<int>(ceChambX - s_bgCenacleChamber.width), 8, WHITE);
         return;
     }
 

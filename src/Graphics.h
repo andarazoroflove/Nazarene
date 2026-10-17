@@ -135,6 +135,51 @@ enum SpriteId {
     SPR_OLIVE_WREATH,
     SPR_SACRED_CHALICE,
 
+    // Mission 3: The Old City Bazaar Enemies
+    SPR_MONEY_CHANGER_WALK_0,
+    SPR_MONEY_CHANGER_WALK_1,
+    SPR_MONEY_CHANGER_ATTACK,
+    SPR_MONEY_CHANGER_HURT,
+
+    // Mission 3: Mount Zion / Palace of Caiaphas Enemies
+    SPR_LEVITE_ENFORCER_WALK_0,
+    SPR_LEVITE_ENFORCER_WALK_1,
+    SPR_LEVITE_ENFORCER_ATTACK,
+    SPR_LEVITE_ENFORCER_HURT,
+
+    // Stage 7 Boss: Barabbas the Zealot
+    SPR_BARABBAS_IDLE,
+    SPR_BARABBAS_WALK_0,
+    SPR_BARABBAS_WALK_1,
+    SPR_BARABBAS_SLASH,
+    SPR_BARABBAS_SLAM,
+    SPR_BARABBAS_HURT,
+    SPR_BARABBAS_KNEEL,
+
+    // Stage 8 Boss: Caiaphas the High Priest
+    SPR_CAIAPHAS_STAND,
+    SPR_CAIAPHAS_CAST,
+    SPR_CAIAPHAS_HURT,
+    SPR_CAIAPHAS_KNEEL,
+    SPR_CAIAPHAS_LIGHTNING,
+
+    // Stage 9 Final Boss: Judas Iscariot (The Traitor)
+    SPR_JUDAS_IDLE,
+    SPR_JUDAS_WALK_0,
+    SPR_JUDAS_WALK_1,
+    SPR_JUDAS_TOSS_SILVER,
+    SPR_JUDAS_DASH,
+    SPR_JUDAS_STAB,
+    SPR_JUDAS_HURT,
+    SPR_JUDAS_KNEEL,
+
+    // Mission 3 Projectiles & Pickups
+    SPR_SILVER_COIN_PROJECTILE,
+    SPR_BLOOD_SHOCKWAVE,
+    SPR_BITTER_HERBS,
+    SPR_PASSOVER_MATZOT,
+    SPR_HOLY_GRAIL,
+
     // Projectiles & Items
     SPR_NAIL,
     SPR_ARROW,
@@ -223,6 +268,36 @@ enum TileId {
     TILE_GETHSEMANE_ALTAR_STONE,
     TILE_GETHSEMANE_LANTERN,
 
+    // Stage 7: Siloam Bazaar Tiles
+    TILE_BAZAAR_STONE_SURFACE,
+    TILE_BAZAAR_STONE_SUB,
+    TILE_BAZAAR_AWNING_RED,
+    TILE_BAZAAR_AWNING_GOLD,
+    TILE_BAZAAR_SPICE_SACK,
+    TILE_BAZAAR_POTTERY,
+    TILE_BAZAAR_LEDGE,
+    TILE_BAZAAR_LANTERN,
+
+    // Stage 8: Mount Zion & Palace of Caiaphas Tiles
+    TILE_CAIAPHAS_MARBLE_SURFACE,
+    TILE_CAIAPHAS_MARBLE_SUB,
+    TILE_CAIAPHAS_BRAZIER,
+    TILE_CAIAPHAS_BALUSTRADE,
+    TILE_CAIAPHAS_COLUMN_HEAD,
+    TILE_CAIAPHAS_COLUMN_MID,
+    TILE_CAIAPHAS_COLUMN_BASE,
+    TILE_CAIAPHAS_GATE,
+
+    // Stage 9: The Upper Room (Cenacle / Last Supper) Tiles
+    TILE_CENACLE_WOOD_FLOOR,
+    TILE_CENACLE_WOOD_SUB,
+    TILE_CENACLE_TABLE_CLOTH,
+    TILE_CENACLE_CHALICE_ROW,
+    TILE_CENACLE_BEAM_ARCH,
+    TILE_CENACLE_CANDELABRA,
+    TILE_CENACLE_WINDOW_MOON,
+    TILE_CENACLE_STONE_WALL,
+
     TILE_TOTAL_COUNT
 };
 
@@ -291,6 +366,14 @@ private:
     // Bonus Stage Background Layers
     static Texture2D s_bgBonusSunset;
     static Texture2D s_bgBonusTerraces;
+
+    // Mission 3 Parallax Layers
+    static Texture2D s_bgBazaarSky;
+    static Texture2D s_bgBazaarRoofs;
+    static Texture2D s_bgCaiaphasSky;
+    static Texture2D s_bgCaiaphasPalace;
+    static Texture2D s_bgCenacleSky;
+    static Texture2D s_bgCenacleChamber;
 
     // Map screen texture
     static Texture2D s_texMissionMap;

@@ -100,4 +100,17 @@ inline const Color COLOR_CLONE_CRIMSON    = Color{ 175,  18,  32, 255 };
 inline const Color COLOR_CLONE_EYE_RED    = Color{ 255,  30,  45, 255 };
 inline const Color COLOR_CLONE_AURA       = Color{ 120,  20, 160, 200 };
 
+// Mission 3: The Bazaar, Palace of Caiaphas, and Upper Room (The Last Supper)
+inline const Color COLOR_SILVER_SHEEN     = Color{ 235, 242, 255, 255 };
+inline const Color COLOR_SILVER_MID       = Color{ 170, 185, 205, 255 };
+inline const Color COLOR_SILVER_DARK      = Color{  95, 105, 125, 255 };
+inline const Color COLOR_JUDAS_TUNIC      = Color{  38,  44,  32, 255 };
+inline const Color COLOR_JUDAS_OCHRE      = Color{ 185, 140,  40, 255 };
+inline const Color COLOR_BAZAAR_CANOPY    = Color{ 195,  75,  40, 255 };
+inline const Color COLOR_BAZAAR_SPICE     = Color{ 215, 120,  30, 255 };
+inline const Color COLOR_CENACLE_BEAM     = Color{  95,  60,  35, 255 };
+inline const Color COLOR_CENACLE_CANDLE   = Color{ 255, 220, 110, 255 };
+inline const Color COLOR_CAIAPHAS_PURPLE  = Color{ 110,  20,  95, 255 };
+
+
 

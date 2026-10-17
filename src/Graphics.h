@@ -479,6 +479,11 @@ private:
     static bool s_initialized;
     static bool s_hasExternalTextures;
 
+    static int s_baseWidth[SPRITE_TOTAL_COUNT];
+    static int s_baseHeight[SPRITE_TOTAL_COUNT];
+
+    static void InitSpriteBaseSizes();
+    static void LoadExternal16BitSprites();
     static void GenerateAllProceduralSprites();
     static void GenerateAllProceduralTiles();
     static void GenerateParallaxBackgrounds();

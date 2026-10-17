@@ -42,6 +42,8 @@ Texture2D GraphicsManager::s_texMissionMap = {};
 Texture2D GraphicsManager::s_texTitleSplash = {};
 bool GraphicsManager::s_initialized = false;
 bool GraphicsManager::s_hasExternalTextures = false;
+int GraphicsManager::s_baseWidth[SPRITE_TOTAL_COUNT] = { 0 };
+int GraphicsManager::s_baseHeight[SPRITE_TOTAL_COUNT] = { 0 };
 
 // Helper to create texture from raw pixel array
 Texture2D GraphicsManager::CreateTextureFromPixels(int width, int height, const Color* pixels) {
@@ -3393,10 +3395,213 @@ void GraphicsManager::GenerateMissionMap() {
     s_texMissionMap = CreateTextureFromPixels(MW, MH, mapPix.data());
 }
 
+void GraphicsManager::InitSpriteBaseSizes() {
+    // Player
+    for (int i = SPR_PLAYER_IDLE; i <= SPR_PLAYER_HURT; ++i) {
+        s_baseWidth[i] = 28; s_baseHeight[i] = 36;
+    }
+    s_baseWidth[SPR_PLAYER_ASCEND] = 28; s_baseHeight[SPR_PLAYER_ASCEND] = 36;
+    for (int i = SPR_PLAYER_SOMERSAULT_0; i <= SPR_PLAYER_SOMERSAULT_3; ++i) {
+        s_baseWidth[i] = 28; s_baseHeight[i] = 28;
+    }
+    s_baseWidth[SPR_LION_OF_JUDAH] = 48; s_baseHeight[SPR_LION_OF_JUDAH] = 32;
+
+    // Enemies
+    for (int i = SPR_GUARD_WALK_0; i <= SPR_GUARD_HURT; ++i) {
+        s_baseWidth[i] = 28; s_baseHeight[i] = 36;
+    }
+    for (int i = SPR_ARCHER_DUCK; i <= SPR_ARCHER_HURT; ++i) {
+        s_baseWidth[i] = 28; s_baseHeight[i] = 36;
+    }
+    for (int i = SPR_HEAVY_WALK_0; i <= SPR_HEAVY_HURT; ++i) {
+        s_baseWidth[i] = 32; s_baseHeight[i] = 38;
+    }
+    for (int i = SPR_BOSS_IDLE; i <= SPR_BOSS_WITHER_1; ++i) {
+        s_baseWidth[i] = 36; s_baseHeight[i] = 44;
+    }
+    for (int i = SPR_SICARII_WALL_CLING; i <= SPR_SICARII_HURT; ++i) {
+        s_baseWidth[i] = 28; s_baseHeight[i] = 32;
+    }
+    s_baseWidth[SPR_SICARII_DAGGER] = 8; s_baseHeight[SPR_SICARII_DAGGER] = 8;
+    for (int i = SPR_TEMPLE_BOSS_IDLE; i <= SPR_TEMPLE_BOSS_KNEEL; ++i) {
+        s_baseWidth[i] = 40; s_baseHeight[i] = 48;
+    }
+    for (int i = SPR_TRIBUNAL_IDLE; i <= SPR_TRIBUNAL_KNEEL; ++i) {
+        s_baseWidth[i] = 40; s_baseHeight[i] = 48;
+    }
+    for (int i = SPR_VILLAGER_ELDER_RUN_0; i <= SPR_VILLAGER_SATISFIED; ++i) {
+        s_baseWidth[i] = 24; s_baseHeight[i] = 32;
+    }
+    s_baseWidth[SPR_BREAD_LOAF] = 10; s_baseHeight[SPR_BREAD_LOAF] = 8;
+    s_baseWidth[SPR_FISH_PROJECTILE] = 12; s_baseHeight[SPR_FISH_PROJECTILE] = 8;
+    s_baseWidth[SPR_JESUS_BASKET_AIM] = 30; s_baseHeight[SPR_JESUS_BASKET_AIM] = 36;
+    s_baseWidth[SPR_JESUS_BASKET_THROW] = 30; s_baseHeight[SPR_JESUS_BASKET_THROW] = 36;
+    for (int i = SPR_TORMENTOR_WALK_0; i <= SPR_TORMENTOR_HURT; ++i) {
+        s_baseWidth[i] = 28; s_baseHeight[i] = 36;
+    }
+    for (int i = SPR_THORN_SICARII_CROUCH; i <= SPR_THORN_SICARII_HURT; ++i) {
+        s_baseWidth[i] = 28; s_baseHeight[i] = 32;
+    }
+    for (int i = SPR_CORRUPTED_PRIEST_STAND; i <= SPR_CORRUPTED_PRIEST_HURT; ++i) {
+        s_baseWidth[i] = 28; s_baseHeight[i] = 36;
+    }
+    s_baseWidth[SPR_DARK_ORB] = 12; s_baseHeight[SPR_DARK_ORB] = 12;
+    s_baseWidth[SPR_DARK_SPIKE] = 16; s_baseHeight[SPR_DARK_SPIKE] = 24;
+    for (int i = SPR_CLONE_IDLE; i <= SPR_CLONE_KNEEL; ++i) {
+        s_baseWidth[i] = 28; s_baseHeight[i] = 36;
+    }
+    s_baseWidth[SPR_SILVER_PITCHER] = 16; s_baseHeight[SPR_SILVER_PITCHER] = 16;
+    s_baseWidth[SPR_OLIVE_WREATH] = 16; s_baseHeight[SPR_OLIVE_WREATH] = 16;
+    s_baseWidth[SPR_SACRED_CHALICE] = 16; s_baseHeight[SPR_SACRED_CHALICE] = 16;
+    for (int i = SPR_MONEY_CHANGER_WALK_0; i <= SPR_MONEY_CHANGER_HURT; ++i) {
+        s_baseWidth[i] = 28; s_baseHeight[i] = 36;
+    }
+    for (int i = SPR_LEVITE_ENFORCER_WALK_0; i <= SPR_LEVITE_ENFORCER_HURT; ++i) {
+        s_baseWidth[i] = 32; s_baseHeight[i] = 38;
+    }
+    for (int i = SPR_BARABBAS_IDLE; i <= SPR_BARABBAS_KNEEL; ++i) {
+        s_baseWidth[i] = 38; s_baseHeight[i] = 44;
+    }
+    for (int i = SPR_CAIAPHAS_STAND; i <= SPR_CAIAPHAS_KNEEL; ++i) {
+        s_baseWidth[i] = 32; s_baseHeight[i] = 40;
+    }
+    s_baseWidth[SPR_CAIAPHAS_LIGHTNING] = 16; s_baseHeight[SPR_CAIAPHAS_LIGHTNING] = 96;
+    for (int i = SPR_JUDAS_IDLE; i <= SPR_JUDAS_KNEEL; ++i) {
+        s_baseWidth[i] = 28; s_baseHeight[i] = 36;
+    }
+    s_baseWidth[SPR_SILVER_COIN_PROJECTILE] = 8; s_baseHeight[SPR_SILVER_COIN_PROJECTILE] = 8;
+    s_baseWidth[SPR_BLOOD_SHOCKWAVE] = 16; s_baseHeight[SPR_BLOOD_SHOCKWAVE] = 16;
+    s_baseWidth[SPR_BITTER_HERBS] = 16; s_baseHeight[SPR_BITTER_HERBS] = 16;
+    s_baseWidth[SPR_PASSOVER_MATZOT] = 16; s_baseHeight[SPR_PASSOVER_MATZOT] = 16;
+    s_baseWidth[SPR_HOLY_GRAIL] = 16; s_baseHeight[SPR_HOLY_GRAIL] = 16;
+    for (int i = SPR_SIGNIFER_WALK_0; i <= SPR_SIGNIFER_HURT; ++i) {
+        s_baseWidth[i] = 30; s_baseHeight[i] = 38;
+    }
+    for (int i = SPR_PRAETORIAN_WALK_0; i <= SPR_PRAETORIAN_HURT; ++i) {
+        s_baseWidth[i] = 32; s_baseHeight[i] = 40;
+    }
+    for (int i = SPR_LICTOR_WALK_0; i <= SPR_LICTOR_HURT; ++i) {
+        s_baseWidth[i] = 28; s_baseHeight[i] = 36;
+    }
+    for (int i = SPR_PILATE_IDLE; i <= SPR_PILATE_KNEEL_WASH; ++i) {
+        s_baseWidth[i] = 36; s_baseHeight[i] = 44;
+    }
+    s_baseWidth[SPR_WATER_DROPLET] = 8; s_baseHeight[SPR_WATER_DROPLET] = 8;
+    s_baseWidth[SPR_GOLDEN_STYLUS_BLADE] = 14; s_baseHeight[SPR_GOLDEN_STYLUS_BLADE] = 8;
+    s_baseWidth[SPR_SHOUT_WAVE] = 16; s_baseHeight[SPR_SHOUT_WAVE] = 16;
+    s_baseWidth[SPR_ROMAN_SCROLL] = 16; s_baseHeight[SPR_ROMAN_SCROLL] = 16;
+    s_baseWidth[SPR_CAESAR_SEAL] = 16; s_baseHeight[SPR_CAESAR_SEAL] = 16;
+    s_baseWidth[SPR_PILATE_EWER] = 16; s_baseHeight[SPR_PILATE_EWER] = 16;
+    s_baseWidth[SPR_NAIL] = 8; s_baseHeight[SPR_NAIL] = 8;
+    s_baseWidth[SPR_ARROW] = 16; s_baseHeight[SPR_ARROW] = 8;
+    s_baseWidth[SPR_WHIP_HEAD] = 14; s_baseHeight[SPR_WHIP_HEAD] = 14;
+    s_baseWidth[SPR_BASKET_LOAVES_FISHES] = 22; s_baseHeight[SPR_BASKET_LOAVES_FISHES] = 18;
+    s_baseWidth[SPR_ICON_HEART] = 10; s_baseHeight[SPR_ICON_HEART] = 10;
+    s_baseWidth[SPR_ICON_WRATH] = 12; s_baseHeight[SPR_ICON_WRATH] = 12;
+    s_baseWidth[SPR_ICON_BASKET] = 22; s_baseHeight[SPR_ICON_BASKET] = 18;
+    s_baseWidth[SPR_CENSER_GOLD] = 18; s_baseHeight[SPR_CENSER_GOLD] = 18;
+}
+
+void GraphicsManager::LoadExternal16BitSprites() {
+    struct MapEntry {
+        SpriteId id;
+        const char* filename;
+    };
+
+    static const MapEntry entries[] = {
+        { SPR_PLAYER_IDLE, "spr_player_idle.png" },
+        { SPR_PLAYER_WALK_0, "spr_player_walk_0.png" },
+        { SPR_PLAYER_WALK_1, "spr_player_walk_1.png" },
+        { SPR_PLAYER_WALK_2, "spr_player_walk_2.png" },
+        { SPR_PLAYER_WALK_3, "spr_player_walk_3.png" },
+        { SPR_PLAYER_CROUCH, "spr_player_crouch.png" },
+        { SPR_PLAYER_JUMP, "spr_player_jump.png" },
+        { SPR_PLAYER_ATTACK_STAND, "spr_player_attack_stand.png" },
+        { SPR_PLAYER_ATTACK_CROUCH, "spr_player_attack_crouch.png" },
+        { SPR_PLAYER_MELEE_STRIKE, "spr_player_melee_strike.png" },
+        { SPR_PLAYER_HURT, "spr_player_hurt.png" },
+
+        { SPR_GUARD_WALK_0, "spr_guard_walk_0.png" },
+        { SPR_GUARD_WALK_1, "spr_guard_walk_1.png" },
+        { SPR_GUARD_ATTACK, "spr_guard_attack.png" },
+        { SPR_GUARD_HURT, "spr_guard_hurt.png" },
+
+        { SPR_ARCHER_DUCK, "spr_archer_duck.png" },
+        { SPR_ARCHER_STAND, "spr_archer_stand.png" },
+        { SPR_ARCHER_FIRE, "spr_archer_fire.png" },
+        { SPR_ARCHER_HURT, "spr_archer_hurt.png" },
+
+        { SPR_HEAVY_WALK_0, "spr_heavy_walk_0.png" },
+        { SPR_HEAVY_WALK_1, "spr_heavy_walk_1.png" },
+        { SPR_HEAVY_ATTACK, "spr_heavy_attack.png" },
+        { SPR_HEAVY_HURT, "spr_heavy_hurt.png" },
+
+        { SPR_BOSS_IDLE, "spr_boss_idle.png" },
+        { SPR_BOSS_WALK_0, "spr_boss_idle.png" },
+        { SPR_BOSS_WALK_1, "spr_boss_idle.png" },
+        { SPR_BOSS_WHIP_PREPARE, "spr_boss_whip_prepare.png" },
+        { SPR_BOSS_WHIP_CRACK, "spr_boss_whip_crack.png" },
+        { SPR_BOSS_WHIP_SLAM, "spr_boss_whip_slam.png" },
+        { SPR_BOSS_HURT, "spr_boss_hurt.png" },
+
+        { SPR_SICARII_WALL_CLING, "spr_sicarii_wall_cling.png" },
+        { SPR_SICARII_WALL_CRAWL_0, "spr_sicarii_wall_cling.png" },
+        { SPR_SICARII_WALL_CRAWL_1, "spr_sicarii_wall_cling.png" },
+        { SPR_SICARII_HOP, "spr_sicarii_wall_cling.png" },
+        { SPR_SICARII_STAND, "spr_sicarii_stand.png" },
+        { SPR_SICARII_SLASH, "spr_sicarii_slash.png" },
+        { SPR_SICARII_THROW, "spr_sicarii_throw.png" },
+        { SPR_SICARII_HURT, "spr_sicarii_stand.png" },
+
+        { SPR_JUDAS_IDLE, "spr_judas_idle.png" },
+        { SPR_JUDAS_WALK_0, "spr_judas_idle.png" },
+        { SPR_JUDAS_WALK_1, "spr_judas_idle.png" },
+        { SPR_JUDAS_TOSS_SILVER, "spr_judas_toss_silver.png" },
+        { SPR_JUDAS_DASH, "spr_judas_dash.png" },
+        { SPR_JUDAS_STAB, "spr_judas_stab.png" },
+        { SPR_JUDAS_HURT, "spr_judas_idle.png" },
+
+        { SPR_PILATE_IDLE, "spr_pilate_idle.png" },
+        { SPR_PILATE_WALK_0, "spr_pilate_idle.png" },
+        { SPR_PILATE_WALK_1, "spr_pilate_idle.png" },
+        { SPR_PILATE_BASIN_SPLASH, "spr_pilate_basin.png" },
+        { SPR_PILATE_SLASH, "spr_pilate_gavel_strike.png" },
+
+        { SPR_ARROW, "spr_arrow.png" },
+        { SPR_BREAD_LOAF, "spr_bread_loaf.png" },
+        { SPR_FISH_PROJECTILE, "spr_fish_projectile.png" },
+        { SPR_SILVER_COIN_PROJECTILE, "spr_silver_coin_projectile.png" },
+        { SPR_ICON_HEART, "spr_icon_heart.png" },
+        { SPR_ICON_WRATH, "spr_icon_wrath.png" },
+        { SPR_BASKET_LOAVES_FISHES, "spr_basket_loaves_fishes.png" },
+    };
+
+    for (const auto& e : entries) {
+        char path[128];
+        snprintf(path, sizeof(path), "assets/sprites/%s", e.filename);
+        if (!FileExists(path)) {
+            snprintf(path, sizeof(path), "assets/%s", e.filename);
+        }
+        if (FileExists(path)) {
+            Texture2D tex = LoadTexture(path);
+            if (tex.id > 0) {
+                if (s_sprites[e.id].id > 0) {
+                    UnloadTexture(s_sprites[e.id]);
+                }
+                SetTextureFilter(tex, TEXTURE_FILTER_BILINEAR);
+                s_sprites[e.id] = tex;
+                s_hasExternalTextures = true;
+            }
+        }
+    }
+}
+
 void GraphicsManager::Init() {
     if (s_initialized) return;
 
+    InitSpriteBaseSizes();
     GenerateAllProceduralSprites();
+    LoadExternal16BitSprites();
     GenerateAllProceduralTiles();
     GenerateParallaxBackgrounds();
     GenerateMissionMap();
@@ -4263,9 +4468,12 @@ void GraphicsManager::DrawSprite(SpriteId id, float x, float y, bool flipH, Colo
     Texture2D tex = s_sprites[id];
     if (tex.id == 0) return;
 
-    Rectangle src = { 0, 0, (float)tex.width * (flipH ? -1.0f : 1.0f), (float)tex.height };
-    Rectangle dst = { x, y, (float)tex.width, (float)tex.height };
-    DrawTexturePro(tex, src, dst, { 0, 0 }, 0.0f, tint);
+    float baseW = (s_baseWidth[id] > 0) ? (float)s_baseWidth[id] : (float)tex.width;
+    float baseH = (s_baseHeight[id] > 0) ? (float)s_baseHeight[id] : (float)tex.height;
+
+    Rectangle src = { 0.0f, 0.0f, (float)tex.width * (flipH ? -1.0f : 1.0f), (float)tex.height };
+    Rectangle dst = { x, y, baseW, baseH };
+    DrawTexturePro(tex, src, dst, { 0.0f, 0.0f }, 0.0f, tint);
 }
 
 void GraphicsManager::DrawTile(TileId id, float x, float y, Color tint) {

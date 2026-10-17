@@ -29,6 +29,7 @@ FetchContent_MakeAvailable(raylib)
 set(SOURCE_FILES
     src/main.cpp
     src/Constants.h
+    src/Shaders.h
     src/Input.h
     src/Input.cpp
     src/Audio.h

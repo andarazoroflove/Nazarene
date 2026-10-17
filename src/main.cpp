@@ -7,6 +7,7 @@
 #include "Player.h"
 #include "Enemies.h"
 #include "BonusStage.h"
+#include "Shaders.h"
 #include <cmath>
 #include <cstdio>
 #include <algorithm>
@@ -41,6 +42,23 @@ int main() {
     // 3. Create Off-screen 320x224 Render Texture (Integer / Aspect Ratio Scaling)
     RenderTexture2D targetBuffer = LoadRenderTexture(VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
     SetTextureFilter(targetBuffer.texture, TEXTURE_FILTER_POINT);
+
+    // 3b. Load Hardware Arcade CRT Shader (Executive Order 16-bit arcade standard)
+    Shader crtShader = LoadShaderFromMemory(nullptr, CRT_FRAGMENT_SHADER);
+    int scanlineLoc = (crtShader.id > 0) ? GetShaderLocation(crtShader, "scanlineIntensity") : -1;
+    int curvatureLoc = (crtShader.id > 0) ? GetShaderLocation(crtShader, "curvature") : -1;
+    int bloomLoc = (crtShader.id > 0) ? GetShaderLocation(crtShader, "bloom") : -1;
+    int timeLoc = (crtShader.id > 0) ? GetShaderLocation(crtShader, "time") : -1;
+    int resLoc = (crtShader.id > 0) ? GetShaderLocation(crtShader, "resolution") : -1;
+
+    float scanlineVal = 0.32f;
+    float curvatureVal = 0.012f;
+    float bloomVal = 0.16f;
+    if (crtShader.id > 0) {
+        if (scanlineLoc >= 0) SetShaderValue(crtShader, scanlineLoc, &scanlineVal, SHADER_UNIFORM_FLOAT);
+        if (curvatureLoc >= 0) SetShaderValue(crtShader, curvatureLoc, &curvatureVal, SHADER_UNIFORM_FLOAT);
+        if (bloomLoc >= 0) SetShaderValue(crtShader, bloomLoc, &bloomVal, SHADER_UNIFORM_FLOAT);
+    }
 
     // 4. Game Systems
     Level level;
@@ -273,6 +291,15 @@ int main() {
             }
 
             case GameState::MISSION_MAP: {
+                // Select button on controller instantly ends mission and returns to main screen
+                if (input.coinPressed) {
+                    AudioManager::StopAllMusic();
+                    AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
+                    ResetGame(true);
+                    gameState = GameState::TITLE;
+                    break;
+                }
+
                 missionMapTimer += dt;
                 // Allow pressing Start, Jump, Attack to immediately embark, or auto-start after 4.2 seconds
                 if (missionMapTimer >= 0.5f && (input.startPressed || input.jumpPressed || input.attackPressed || missionMapTimer >= 4.2f)) {
@@ -284,6 +311,15 @@ int main() {
             }
 
             case GameState::GAMEPLAY: {
+                // Select button on controller instantly ends level and returns to main screen
+                if (input.coinPressed) {
+                    AudioManager::StopAllMusic();
+                    AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
+                    ResetGame(true);
+                    gameState = GameState::TITLE;
+                    break;
+                }
+
                 bool screenFrozen = player.IsWrathScreenFrozen();
                 int currentStage = GetCurrentStageId();
 
@@ -526,6 +562,15 @@ int main() {
             }
 
             case GameState::BONUS_STAGE: {
+                // Select button on controller instantly ends bonus level and returns to main screen
+                if (input.coinPressed) {
+                    AudioManager::StopAllMusic();
+                    AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
+                    ResetGame(true);
+                    gameState = GameState::TITLE;
+                    break;
+                }
+
                 int pLives = player.GetLives();
                 int pScore = player.GetScore();
                 bonusStage.Update(dt, input, pLives, pScore);
@@ -975,33 +1020,43 @@ int main() {
             static_cast<float>(GetTime())
         );
 
-        // 2. Draw Game Texture
+        // 2. Draw Game Texture with hardware CRT Shader (Executive Order standard)
         Rectangle sourceRec = { 0.0f, 0.0f, (float)targetBuffer.texture.width, -(float)targetBuffer.texture.height };
         Rectangle destRec = { (float)offsetX, (float)offsetY, (float)scaledW, (float)scaledH };
-        DrawTexturePro(targetBuffer.texture, sourceRec, destRec, { 0.0f, 0.0f }, 0.0f, WHITE);
 
-        // 3. Authentic Arcade CRT Raster Scanlines & Aperture Grille Mask
-        if (crtMode == 0) { // Arcade CRT
-            float lineStep = (float)scaledH / (float)VIRTUAL_HEIGHT;
-            for (int y = 0; y < VIRTUAL_HEIGHT; ++y) {
-                int sy = static_cast<int>(offsetY + y * lineStep + lineStep * 0.45f);
-                DrawRectangle(offsetX, sy, scaledW, 1, Color{ 0, 0, 0, 85 });
-            }
-            // Vertical phosphor lines
-            for (int x = 0; x < scaledW; x += 3) {
-                DrawRectangle(offsetX + x, offsetY, 1, scaledH, Color{ 0, 0, 0, 26 });
-            }
-            // Cathode Vignette Shadow on borders
-            DrawRectangleGradientV(offsetX, offsetY, scaledW, 12, Color{ 0, 0, 0, 110 }, BLANK);
-            DrawRectangleGradientV(offsetX, offsetY + scaledH - 12, scaledW, 12, BLANK, Color{ 0, 0, 0, 110 });
-            DrawRectangleGradientH(offsetX, offsetY, 12, scaledH, Color{ 0, 0, 0, 110 }, BLANK);
-            DrawRectangleGradientH(offsetX + scaledW - 12, offsetY, 12, scaledH, BLANK, Color{ 0, 0, 0, 110 });
-        } else if (crtMode == 1) { // Soft Scanlines
-            float lineStep = (float)scaledH / (float)VIRTUAL_HEIGHT;
-            for (int y = 0; y < VIRTUAL_HEIGHT; ++y) {
-                int sy = static_cast<int>(offsetY + y * lineStep + lineStep * 0.45f);
-                DrawRectangle(offsetX, sy, scaledW, 1, Color{ 0, 0, 0, 48 });
-            }
+        if (crtMode == 0 && crtShader.id > 0) {
+            float curTime = static_cast<float>(GetTime());
+            Vector2 resVec = { (float)scaledW, (float)scaledH };
+            float sIntensity = 0.32f;
+            float cCurv = 0.012f;
+            float bBloom = 0.16f;
+            if (scanlineLoc >= 0) SetShaderValue(crtShader, scanlineLoc, &sIntensity, SHADER_UNIFORM_FLOAT);
+            if (curvatureLoc >= 0) SetShaderValue(crtShader, curvatureLoc, &cCurv, SHADER_UNIFORM_FLOAT);
+            if (bloomLoc >= 0) SetShaderValue(crtShader, bloomLoc, &bBloom, SHADER_UNIFORM_FLOAT);
+            if (timeLoc >= 0) SetShaderValue(crtShader, timeLoc, &curTime, SHADER_UNIFORM_FLOAT);
+            if (resLoc >= 0) SetShaderValue(crtShader, resLoc, &resVec, SHADER_UNIFORM_VEC2);
+
+            BeginShaderMode(crtShader);
+            DrawTexturePro(targetBuffer.texture, sourceRec, destRec, { 0.0f, 0.0f }, 0.0f, WHITE);
+            EndShaderMode();
+        } else if (crtMode == 1 && crtShader.id > 0) {
+            float curTime = static_cast<float>(GetTime());
+            Vector2 resVec = { (float)scaledW, (float)scaledH };
+            float sIntensity = 0.18f;
+            float cCurv = 0.0f; // flat screen
+            float bBloom = 0.08f;
+            if (scanlineLoc >= 0) SetShaderValue(crtShader, scanlineLoc, &sIntensity, SHADER_UNIFORM_FLOAT);
+            if (curvatureLoc >= 0) SetShaderValue(crtShader, curvatureLoc, &cCurv, SHADER_UNIFORM_FLOAT);
+            if (bloomLoc >= 0) SetShaderValue(crtShader, bloomLoc, &bBloom, SHADER_UNIFORM_FLOAT);
+            if (timeLoc >= 0) SetShaderValue(crtShader, timeLoc, &curTime, SHADER_UNIFORM_FLOAT);
+            if (resLoc >= 0) SetShaderValue(crtShader, resLoc, &resVec, SHADER_UNIFORM_VEC2);
+
+            BeginShaderMode(crtShader);
+            DrawTexturePro(targetBuffer.texture, sourceRec, destRec, { 0.0f, 0.0f }, 0.0f, WHITE);
+            EndShaderMode();
+        } else {
+            // Raw sharp pixels
+            DrawTexturePro(targetBuffer.texture, sourceRec, destRec, { 0.0f, 0.0f }, 0.0f, WHITE);
         }
 
         // Inner 3D CRT Glass Frame Border
@@ -1025,6 +1080,7 @@ int main() {
     }
 
     // Subsystem Shutdown
+    if (crtShader.id > 0) UnloadShader(crtShader);
     UnloadRenderTexture(targetBuffer);
     GraphicsManager::Close();
     AudioManager::Close();

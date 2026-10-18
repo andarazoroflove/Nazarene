@@ -2,6 +2,7 @@
 #include "Mission2Graphics.h"
 #include "Mission3Graphics.h"
 #include "Mission4Graphics.h"
+#include "Mission5Graphics.h"
 #include "TitleImageBytes.h"
 #include <cmath>
 #include <cstdlib>
@@ -38,6 +39,8 @@ Texture2D GraphicsManager::s_bgCourtSky = {};
 Texture2D GraphicsManager::s_bgCourtBasilica = {};
 Texture2D GraphicsManager::s_bgThroneSky = {};
 Texture2D GraphicsManager::s_bgThronePalace = {};
+Texture2D GraphicsManager::s_bgSummitSky = {};
+Texture2D GraphicsManager::s_bgSummitMount = {};
 Texture2D GraphicsManager::s_texMissionMap = {};
 Texture2D GraphicsManager::s_texTitleSplash = {};
 bool GraphicsManager::s_initialized = false;
@@ -3505,6 +3508,20 @@ void GraphicsManager::InitSpriteBaseSizes() {
     s_baseWidth[SPR_ICON_WRATH] = 12; s_baseHeight[SPR_ICON_WRATH] = 12;
     s_baseWidth[SPR_ICON_BASKET] = 22; s_baseHeight[SPR_ICON_BASKET] = 18;
     s_baseWidth[SPR_CENSER_GOLD] = 18; s_baseHeight[SPR_CENSER_GOLD] = 18;
+
+    // Mission 5: Golgotha Summit & The Final Climax
+    for (int i = SPR_CLONE_GREEN_IDLE; i <= SPR_CLONE_GREEN_KNEEL; ++i) {
+        s_baseWidth[i] = 32; s_baseHeight[i] = 44;
+    }
+    for (int i = SPR_DEVIL_IDLE; i <= SPR_DEVIL_DIE; ++i) {
+        s_baseWidth[i] = 44; s_baseHeight[i] = 48;
+    }
+    s_baseWidth[SPR_GOD_DESCEND] = 36; s_baseHeight[SPR_GOD_DESCEND] = 52;
+    s_baseWidth[SPR_ANGEL_SING_0] = 32; s_baseHeight[SPR_ANGEL_SING_0] = 38;
+    s_baseWidth[SPR_ANGEL_SING_1] = 32; s_baseHeight[SPR_ANGEL_SING_1] = 38;
+    s_baseWidth[SPR_SKEEBALL_JESUS] = 32; s_baseHeight[SPR_SKEEBALL_JESUS] = 44;
+    s_baseWidth[SPR_ANGEL_CHEER_0] = 32; s_baseHeight[SPR_ANGEL_CHEER_0] = 40;
+    s_baseWidth[SPR_ANGEL_CHEER_1] = 32; s_baseHeight[SPR_ANGEL_CHEER_1] = 40;
 }
 
 void GraphicsManager::LoadExternal16BitSprites() {
@@ -3706,6 +3723,28 @@ void GraphicsManager::LoadExternal16BitSprites() {
         { SPR_CAESAR_SEAL, "spr_caesar_seal.png" },
         { SPR_PILATE_EWER, "spr_pilate_ewer.png" },
 
+        // Mission 5: Golgotha Summit & The Final Climax
+        { SPR_CLONE_GREEN_IDLE, "spr_clone_green_idle.png" },
+        { SPR_CLONE_GREEN_WALK_0, "spr_clone_green_walk_0.png" },
+        { SPR_CLONE_GREEN_ATTACK, "spr_clone_green_attack.png" },
+        { SPR_CLONE_GREEN_HURT, "spr_clone_green_hurt.png" },
+        { SPR_CLONE_GREEN_KNEEL, "spr_clone_green_kneel.png" },
+
+        { SPR_DEVIL_IDLE, "spr_devil_idle.png" },
+        { SPR_DEVIL_WALK_0, "spr_devil_walk_0.png" },
+        { SPR_DEVIL_ATTACK, "spr_devil_attack.png" },
+        { SPR_DEVIL_TAIL_WHIP, "spr_devil_tail_whip.png" },
+        { SPR_DEVIL_HURT, "spr_devil_hurt.png" },
+        { SPR_DEVIL_DIE, "spr_devil_die.png" },
+
+        { SPR_GOD_DESCEND, "spr_god_descend.png" },
+        { SPR_ANGEL_SING_0, "spr_angel_sing_0.png" },
+        { SPR_ANGEL_SING_1, "spr_angel_sing_1.png" },
+
+        { SPR_SKEEBALL_JESUS, "spr_skeeball_jesus.png" },
+        { SPR_ANGEL_CHEER_0, "spr_angel_cheer_0.png" },
+        { SPR_ANGEL_CHEER_1, "spr_angel_cheer_1.png" },
+
         { SPR_ARROW, "spr_arrow.png" },
         { SPR_WHIP_HEAD, "spr_whip_head.png" },
         { SPR_BREAD_LOAF, "spr_bread_loaf.png" },
@@ -3776,6 +3815,11 @@ void GraphicsManager::Init() {
         s_bgThronePalace
     );
 
+    Mission5Graphics::GenerateAll(
+        s_bgSummitSky,
+        s_bgSummitMount
+    );
+
     // Load Title Splash Screen (from file or embedded bytes)
     Image splashImg{};
     if (FileExists("assets/title.jpg")) {
@@ -3833,6 +3877,8 @@ void GraphicsManager::Close() {
     if (s_bgCourtBasilica.id > 0) UnloadTexture(s_bgCourtBasilica);
     if (s_bgThroneSky.id > 0) UnloadTexture(s_bgThroneSky);
     if (s_bgThronePalace.id > 0) UnloadTexture(s_bgThronePalace);
+    if (s_bgSummitSky.id > 0) UnloadTexture(s_bgSummitSky);
+    if (s_bgSummitMount.id > 0) UnloadTexture(s_bgSummitMount);
     if (s_texMissionMap.id > 0) UnloadTexture(s_texMissionMap);
     if (s_texTitleSplash.id > 0) UnloadTexture(s_texTitleSplash);
 
@@ -3860,7 +3906,11 @@ void GraphicsManager::DrawMissionMap(int missionNumber, int currentArea, bool a1
     };
 
     AreaNode areas[3];
-    if (missionNumber == 4) {
+    if (missionNumber == 5) {
+        areas[0] = { 138,  54, 52, 48, "FINAL MISSION: GOLGOTHA SUMMIT", "MOUNT OF THE THREE CROSSES", "EVIL CLONE / DEVIL / PILATE", a1Cleared };
+        areas[1] = { -100, -100, 0, 0, "", "", "", true };
+        areas[2] = { -100, -100, 0, 0, "", "", "", true };
+    } else if (missionNumber == 4) {
         areas[0] = {  42,  64, 46, 44, "AREA 1: VIA DOLOROSA", "THE STREETS OF JUDGMENT", "PREFECT QUINTUS", a1Cleared };
         areas[1] = { 138,  48, 52, 48, "AREA 2: THE GABBATHA", "LITHOSTROTOS TRIBUNAL", "ADVOCATE TERTULLUS", a2Cleared };
         areas[2] = { 236,  72, 48, 44, "AREA 3: THE PRAETORIUM", "THE THRONE ROOM & BEMA", "PONTIUS PILATE", a3Cleared };
@@ -3878,7 +3928,8 @@ void GraphicsManager::DrawMissionMap(int missionNumber, int currentArea, bool a1
         areas[2] = { 236,  72, 48, 44, "AREA 3: GOLGOTHA CITADEL", "THE CRAGS & UPPER CITADEL", "TRIBUNAL PRAETOR", a3Cleared };
     }
 
-    for (int i = 0; i < 3; ++i) {
+    int activeNodes = (missionNumber == 5) ? 1 : 3;
+    for (int i = 0; i < activeNodes; ++i) {
         const auto& a = areas[i];
         bool isCurrent = (currentArea == (i + 1));
 
@@ -3926,9 +3977,10 @@ void GraphicsManager::DrawMissionMap(int missionNumber, int currentArea, bool a1
         }
     }
 
-    const char* topTitle = (missionNumber == 4) ? "MISSION 4: THE TRIAL BEFORE PILATE" :
+    const char* topTitle = (missionNumber == 5) ? "MISSION 5: THE FINAL CONFLICT - GOLGOTHA" :
+                          ((missionNumber == 4) ? "MISSION 4: THE TRIAL BEFORE PILATE" :
                           ((missionNumber == 3) ? "MISSION 3: THE PASSION & CENACLE" :
-                          ((missionNumber == 2) ? "MISSION 2: GETHSEMANE OUTSKIRTS" : "MISSION 1: JERUSALEM CAMPAIGN"));
+                          ((missionNumber == 2) ? "MISSION 2: GETHSEMANE OUTSKIRTS" : "MISSION 1: JERUSALEM CAMPAIGN")));
     int ttw = MeasureText(topTitle, 10);
     DrawRectangle((VIRTUAL_WIDTH - ttw) / 2 - 10, 12, ttw + 20, 15, Color{ 24, 18, 22, 230 });
     DrawRectangleLines((VIRTUAL_WIDTH - ttw) / 2 - 10, 12, ttw + 20, 15, COLOR_GOLD_BRIGHT);
@@ -3975,7 +4027,7 @@ void GraphicsManager::DrawSecretSelectScreen(int step, int missionIndex, int sta
         int tw = MeasureText(secTitle, 10);
         DrawText(secTitle, (VIRTUAL_WIDTH - tw) / 2, 8, 10, COLOR_GOLD_BRIGHT);
 
-        const char* secSub = "- SELECT MISSION (I - IV) -";
+        const char* secSub = "- SELECT MISSION (I - V) -";
         int sw = MeasureText(secSub, 10);
         DrawText(secSub, (VIRTUAL_WIDTH - sw) / 2, 17, 10, COLOR_ROMAN_STONE);
 
@@ -3987,21 +4039,22 @@ void GraphicsManager::DrawSecretSelectScreen(int step, int missionIndex, int sta
             Texture2D bgTex;
             SpriteId bossSpr;
             int x, y;
+            int w, h;
         };
 
-        MissionCardData mCards[4] = {
-            { "MISSION I",   COLOR_ROMAN_CRIMSON,     "JERUSALEM",    "Temple & Citadel",     s_bgTempleOfDavid,   SPR_BOSS_IDLE,       12,  31 },
-            { "MISSION II",  Color{ 35, 125, 50, 255 }, "GETHSEMANE",   "The Olive Garden",     s_bgGethsemaneGrove, SPR_CLONE_IDLE,     164,  31 },
-            { "MISSION III", Color{ 120, 40, 150, 255 }, "LAST SUPPER", "The Upper Room",      s_bgCenacleChamber,  SPR_JUDAS_IDLE,      12, 107 },
-            { "MISSION IV",  COLOR_PRAETORIUM_PURPLE, "PILATE TRIAL", "The Praetorium",       s_bgThronePalace,    SPR_PILATE_IDLE,    164, 107 }
+        MissionCardData mCards[5] = {
+            { "MISSION I",   COLOR_ROMAN_CRIMSON,     "JERUSALEM",       "Temple & Citadel",     s_bgTempleOfDavid,   SPR_BOSS_IDLE,        12,  29, 144, 62 },
+            { "MISSION II",  Color{ 35, 125, 50, 255 }, "GETHSEMANE",    "The Olive Garden",     s_bgGethsemaneGrove, SPR_CLONE_IDLE,      164,  29, 144, 62 },
+            { "MISSION III", Color{ 120, 40, 150, 255 }, "LAST SUPPER",  "The Upper Room",      s_bgCenacleChamber,  SPR_JUDAS_IDLE,       12,  94, 144, 62 },
+            { "MISSION IV",  COLOR_PRAETORIUM_PURPLE, "PILATE TRIAL",    "The Praetorium",       s_bgThronePalace,    SPR_PILATE_IDLE,     164,  94, 144, 62 },
+            { "FINAL MISSION", Color{ 220, 35, 45, 255 }, "GOLGOTHA SUMMIT", "Single Board Climax", s_bgSummitMount, SPR_DEVIL_IDLE,     12, 159, 296, 28 }
         };
 
-        int cardW = 144;
-        int cardH = 72;
-
-        for (int m = 0; m < 4; ++m) {
+        for (int m = 0; m < 5; ++m) {
             const auto& mc = mCards[m];
             bool isSel = (m == missionIndex);
+            int cardW = mc.w;
+            int cardH = mc.h;
 
             // Card background artwork from parallax texture
             if (mc.bgTex.id > 0) {
@@ -4013,25 +4066,46 @@ void GraphicsManager::DrawSecretSelectScreen(int step, int missionIndex, int sta
                 DrawRectangle(mc.x, mc.y, cardW, cardH, Color{ 30, 24, 38, 255 });
             }
 
-            // Dark gradient overlay on bottom half so text is crisp
-            DrawRectangleGradientV(mc.x, mc.y + 24, cardW, cardH - 24, Color{ 0, 0, 0, 25 }, Color{ 10, 8, 14, 235 });
+            if (m < 4) {
+                // Dark gradient overlay on bottom half so text is crisp
+                DrawRectangleGradientV(mc.x, mc.y + 20, cardW, cardH - 20, Color{ 0, 0, 0, 25 }, Color{ 10, 8, 14, 235 });
 
-            // Character Sprites in Card: Hero Jesus on left, Boss on right
-            DrawDropShadow(mc.x + 18.0f, mc.y + 54.0f, 18.0f, 5.0f);
-            DrawSprite(SPR_PLAYER_IDLE, mc.x + 6, mc.y + 24, false, isSel ? WHITE : Color{ 180, 180, 190, 220 });
+                // Character Sprites in Card: Hero Jesus on left, Boss on right
+                DrawDropShadow(mc.x + 18.0f, mc.y + 48.0f, 18.0f, 5.0f);
+                DrawSprite(SPR_PLAYER_IDLE, mc.x + 6, mc.y + 20, false, isSel ? WHITE : Color{ 180, 180, 190, 220 });
 
-            DrawDropShadow(mc.x + cardW - 20.0f, mc.y + 54.0f, 22.0f, 5.0f);
-            DrawSprite(mc.bossSpr, mc.x + cardW - 36, mc.y + 16, true, isSel ? WHITE : Color{ 180, 180, 190, 220 });
+                DrawDropShadow(mc.x + cardW - 20.0f, mc.y + 48.0f, 22.0f, 5.0f);
+                DrawSprite(mc.bossSpr, mc.x + cardW - 36, mc.y + 12, true, isSel ? WHITE : Color{ 180, 180, 190, 220 });
 
-            // Roman badge at top-left
-            DrawRectangle(mc.x + 4, mc.y + 4, 62, 11, mc.badgeCol);
-            DrawRectangleLines(mc.x + 4, mc.y + 4, 62, 11, COLOR_ROMAN_GOLD);
-            DrawText(mc.badge, mc.x + 7, mc.y + 5, 10, COLOR_GOLD_BRIGHT);
+                // Roman badge at top-left
+                DrawRectangle(mc.x + 4, mc.y + 4, 62, 11, mc.badgeCol);
+                DrawRectangleLines(mc.x + 4, mc.y + 4, 62, 11, COLOR_ROMAN_GOLD);
+                DrawText(mc.badge, mc.x + 7, mc.y + 5, 10, COLOR_GOLD_BRIGHT);
 
-            // Title & Subtitle
-            Color titleCol = isSel ? COLOR_GOLD_BRIGHT : Color{ 220, 215, 230, 255 };
-            DrawText(mc.title, mc.x + 8, mc.y + 43, 10, titleCol);
-            DrawText(mc.sub, mc.x + 8, mc.y + 55, 10, isSel ? COLOR_ROBE_WHITE : Color{ 160, 155, 170, 255 });
+                // Title & Subtitle
+                Color titleCol = isSel ? COLOR_GOLD_BRIGHT : Color{ 220, 215, 230, 255 };
+                DrawText(mc.title, mc.x + 8, mc.y + 36, 10, titleCol);
+                DrawText(mc.sub, mc.x + 8, mc.y + 48, 10, isSel ? COLOR_ROBE_WHITE : Color{ 160, 155, 170, 255 });
+            } else {
+                // Wide Mission 5 Card
+                DrawRectangleGradientH(mc.x, mc.y, cardW, cardH, Color{ 12, 8, 16, 240 }, Color{ 24, 12, 18, 240 });
+
+                // Roman badge at left
+                DrawRectangle(mc.x + 4, mc.y + 4, 76, 11, mc.badgeCol);
+                DrawRectangleLines(mc.x + 4, mc.y + 4, 76, 11, COLOR_ROMAN_GOLD);
+                DrawText("FINAL MISSION", mc.x + 6, mc.y + 5, 10, COLOR_GOLD_BRIGHT);
+
+                // Green Clone on left side
+                DrawSprite(SPR_CLONE_GREEN_IDLE, mc.x + 82, mc.y - 8, false, isSel ? WHITE : Color{ 180, 180, 190, 220 });
+
+                // Title & Subtitle in center
+                Color titleCol = isSel ? COLOR_GOLD_BRIGHT : Color{ 220, 215, 230, 255 };
+                DrawText("GOLGOTHA SUMMIT (MOUNT CALVARY)", mc.x + 116, mc.y + 5, 10, titleCol);
+                DrawText("CLONE • DEVIL (TAIL WHIP) • PILATE", mc.x + 116, mc.y + 16, 10, isSel ? COLOR_ROBE_WHITE : Color{ 160, 155, 170, 255 });
+
+                // Devil on right side
+                DrawSprite(SPR_DEVIL_IDLE, mc.x + cardW - 32, mc.y - 10, true, isSel ? WHITE : Color{ 180, 180, 190, 220 });
+            }
 
             // Selection Highlight
             if (isSel) {
@@ -4050,27 +4124,22 @@ void GraphicsManager::DrawSecretSelectScreen(int step, int missionIndex, int sta
                 DrawLine(mc.x - 4, mc.y + cardH + 3, mc.x - 4, mc.y + cardH + 3 - tab, COLOR_GOLD_BRIGHT);
                 DrawLine(mc.x + cardW + 3, mc.y + cardH + 3, mc.x + cardW + 3 - tab, mc.y + cardH + 3, COLOR_GOLD_BRIGHT);
                 DrawLine(mc.x + cardW + 3, mc.y + cardH + 3, mc.x + cardW + 3, mc.y + cardH + 3 - tab, COLOR_GOLD_BRIGHT);
-
-                // Prompt tag
-                DrawRectangle(mc.x + 28, mc.y + cardH - 12, cardW - 56, 11, Color{ 15, 10, 20, 235 });
-                DrawRectangleLines(mc.x + 28, mc.y + cardH - 12, cardW - 56, 11, COLOR_GOLD_BRIGHT);
-                DrawText(">> SELECT <<", mc.x + 36, mc.y + cardH - 11, 10, COLOR_GOLD_BRIGHT);
             } else {
                 DrawRectangleLines(mc.x, mc.y, cardW, cardH, Color{ 60, 45, 25, 180 });
             }
         }
 
         // Bottom Navigation Footer
-        DrawLine(7, 182, VIRTUAL_WIDTH - 7, 182, COLOR_ROMAN_GOLD);
-        DrawRectangle(7, 183, VIRTUAL_WIDTH - 14, 36, Color{ 14, 10, 20, 240 });
+        DrawLine(7, 191, VIRTUAL_WIDTH - 7, 191, COLOR_ROMAN_GOLD);
+        DrawRectangle(7, 192, VIRTUAL_WIDTH - 14, 27, Color{ 14, 10, 20, 240 });
 
-        const char* hintNav = "[ARROWS / D-PAD] SELECT MISSION    [START / JUMP] CHOOSE STAGES";
+        const char* hintNav = "[D-PAD] SELECT MISSION (I - V)    [START / JUMP] CHOOSE";
         int nhw = MeasureText(hintNav, 10);
-        DrawText(hintNav, (VIRTUAL_WIDTH - nhw) / 2, 187, 10, COLOR_ROMAN_GOLD);
+        DrawText(hintNav, (VIRTUAL_WIDTH - nhw) / 2, 195, 10, COLOR_ROMAN_GOLD);
 
         const char* hintBack = "[B / ESC] RETURN TO TITLE";
         int bhw = MeasureText(hintBack, 10);
-        DrawText(hintBack, (VIRTUAL_WIDTH - bhw) / 2, 200, 10, COLOR_ROMAN_STONE);
+        DrawText(hintBack, (VIRTUAL_WIDTH - bhw) / 2, 206, 10, COLOR_ROMAN_STONE);
 
         char credStr[32];
         snprintf(credStr, sizeof(credStr), "CREDIT %02d", credits);
@@ -4082,17 +4151,19 @@ void GraphicsManager::DrawSecretSelectScreen(int step, int missionIndex, int sta
         DrawRectangle(7, 6, VIRTUAL_WIDTH - 14, 23, Color{ 28, 18, 38, 240 });
         DrawLine(7, 29, VIRTUAL_WIDTH - 7, 29, COLOR_ROMAN_GOLD);
 
-        const char* mNames[4] = {
+        const char* mNames[5] = {
             "MISSION I: JERUSALEM OUTSKIRTS & CITADEL",
             "MISSION II: THE ROAD TO GETHSEMANE",
             "MISSION III: THE CENACLE & LAST SUPPER",
-            "MISSION IV: THE TRIAL OF PONTIUS PILATE"
+            "MISSION IV: THE TRIAL OF PONTIUS PILATE",
+            "MISSION V: THE FINAL CONFLICT - GOLGOTHA"
         };
-        const char* chosenMName = (missionIndex >= 0 && missionIndex < 4) ? mNames[missionIndex] : mNames[0];
+        const char* chosenMName = (missionIndex >= 0 && missionIndex < 5) ? mNames[missionIndex] : mNames[0];
         int mtw = MeasureText(chosenMName, 10);
         DrawText(chosenMName, (VIRTUAL_WIDTH - mtw) / 2, 8, 10, COLOR_GOLD_BRIGHT);
 
-        const char* subPrompt = (missionIndex == 0) ? "- CHOOSE SUB-BOARD (1, 2, 3, OR BONUS) -" : "- CHOOSE SUB-BOARD (1, 2, OR 3) -";
+        const char* subPrompt = (missionIndex == 4) ? "- FINAL STAGE (SINGLE BOARD CLIMAX) -" :
+                               ((missionIndex == 0) ? "- CHOOSE SUB-BOARD (1, 2, 3, OR BONUS) -" : "- CHOOSE SUB-BOARD (1, 2, OR 3) -");
         int stw = MeasureText(subPrompt, 10);
         DrawText(subPrompt, (VIRTUAL_WIDTH - stw) / 2, 18, 10, COLOR_ROMAN_STONE);
 
@@ -4108,7 +4179,12 @@ void GraphicsManager::DrawSecretSelectScreen(int step, int missionIndex, int sta
         };
 
         std::vector<StageCardData> stages;
-        if (missionIndex == 3) {
+        if (missionIndex == 4) {
+            // Mission 5: Golgotha Summit
+            stages = {
+                { "★", "GOLGOTHA SUMMIT", "Mount of the Crosses", "CLONE • DEVIL • PILATE", s_bgSummitMount, SPR_DEVIL_IDLE, SPR_CENSER_GOLD, "Final Battle" }
+            };
+        } else if (missionIndex == 3) {
             // Mission 4: The Trial of Pilate
             stages = {
                 { "1", "VIA DOLOROSA",   "Streets of Judgment",  "PREFECT QUINTUS",    s_bgDolorosaStreet,  SPR_PREFECT_IDLE,  SPR_ROMAN_SCROLL, "4 Scrolls" },
@@ -4140,9 +4216,9 @@ void GraphicsManager::DrawSecretSelectScreen(int step, int missionIndex, int sta
         }
 
         int count = static_cast<int>(stages.size());
-        int cardW = (count == 4) ? 68 : 92;
+        int cardW = (count == 4) ? 68 : ((count == 1) ? 170 : 92);
         int cardH = 138;
-        int spacing = (count == 4) ? 6 : 8;
+        int spacing = (count == 4) ? 6 : ((count == 1) ? 0 : 8);
         int totalW = count * cardW + (count - 1) * spacing;
         int startX = (VIRTUAL_WIDTH - totalW) / 2;
         int cardY = 34;
@@ -4198,8 +4274,15 @@ void GraphicsManager::DrawSecretSelectScreen(int step, int missionIndex, int sta
             }
 
             // Relic pickup icon and text
-            DrawSprite(sc.pickupSpr, cx + 6, cardY + 98);
-            DrawText(sc.pickupText, cx + 22, cardY + 102, 10, isSel ? COLOR_ROBE_WHITE : Color{ 170, 165, 180, 255 });
+            if (count == 1) {
+                int pw = MeasureText(sc.pickupText, 10);
+                int pStartX = cx + (cardW - (pw + 22)) / 2;
+                DrawSprite(sc.pickupSpr, pStartX, cardY + 98);
+                DrawText(sc.pickupText, pStartX + 22, cardY + 102, 10, isSel ? COLOR_ROBE_WHITE : Color{ 170, 165, 180, 255 });
+            } else {
+                DrawSprite(sc.pickupSpr, cx + 6, cardY + 98);
+                DrawText(sc.pickupText, cx + 22, cardY + 102, 10, isSel ? COLOR_ROBE_WHITE : Color{ 170, 165, 180, 255 });
+            }
 
             // Selection frame
             if (isSel) {
@@ -4766,6 +4849,21 @@ void GraphicsManager::DrawParallaxBackground(float cameraX, float time, int stag
         DrawTexture(s_bgThronePalace, static_cast<int>(thPalX), 8, WHITE);
         DrawTexture(s_bgThronePalace, static_cast<int>(thPalX + s_bgThronePalace.width), 8, WHITE);
         if (thPalX > 0) DrawTexture(s_bgThronePalace, static_cast<int>(thPalX - s_bgThronePalace.width), 8, WHITE);
+        return;
+    } else if (stageId == 13) {
+        // --- STAGE 13: GOLGOTHA SUMMIT & MOUNT OF THE THREE CROSSES ---
+        float suSkyX = -fmodf(cameraX * 0.05f, (float)s_bgSummitSky.width);
+        DrawTexture(s_bgSummitSky, static_cast<int>(suSkyX), 0, WHITE);
+        DrawTexture(s_bgSummitSky, static_cast<int>(suSkyX + s_bgSummitSky.width), 0, WHITE);
+        if (suSkyX > 0) DrawTexture(s_bgSummitSky, static_cast<int>(suSkyX - s_bgSummitSky.width), 0, WHITE);
+
+        float suMntX = -fmodf(cameraX * 0.35f, (float)s_bgSummitMount.width);
+        DrawTexture(s_bgSummitMount, static_cast<int>(suMntX), 0, WHITE);
+        DrawTexture(s_bgSummitMount, static_cast<int>(suMntX + s_bgSummitMount.width), 0, WHITE);
+        if (suMntX > 0) DrawTexture(s_bgSummitMount, static_cast<int>(suMntX - s_bgSummitMount.width), 0, WHITE);
+
+        // Animated Rain during storm phase
+        Mission5Graphics::DrawRain(time, 1.0f);
         return;
     }
 

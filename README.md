@@ -20,7 +20,7 @@
   - **`Nazarene.exe`**: The flagship 16-Bit Capcom Arcade Edition with active CRT shaders and high-resolution sprites.
   - **`NazareneClassic.exe`**: The preserved original 8-bit retro arcade edition.
 
-- **Four Epic Missions (12 Stages + Bonus Stage):**
+- **Five Epic Missions (13 Stages + Bonus Stage):**
   - **Mission 1: Jerusalem Campaign & Antonia Fortress**
     - **Stage 1 (Via Dolorosa):** Roman streets and aqueducts &bull; Boss: **Centurion Brutus** with barbed multi-tailed flagrum whip.
     - **Stage 2 (The Inner Temple):** Vaulted sanctuary and multi-tier mezzanines &bull; Wall-crawling **Sicarii Shadow Assassins** &bull; Boss: **Temple Commander Malchus** with morningstar golden mace.
@@ -39,10 +39,22 @@
     - **Stage 10 (Streets of Judgment):** Roman imperial military procession through Via Dolorosa &bull; **Standard Bearers (Signifers)** wearing wolf-pelt cowls and towering Signum poles &bull; Formidable **Praetorian Guards** with scorpion shields &bull; Boss: **Praetor Prefect Quintus** (equestrian crested galea, gilded musculata with silver Gorgon head, and spatha sword rushes).
     - **Stage 11 (The Gabbatha Court & Lithostrotos Tribunal):** Imperial Roman judicial basilica &bull; **Imperial Lictors** wielding Roman Fasces bundles with executioner axe blades &bull; Boss: **Imperial Advocate Tertullus** brandishing indictment papyrus scrolls and unleashing acoustic golden decree shockwaves.
     - **Stage 12 (The Praetorium Throne Room & Imperial Dais):** Gilded Roman throne chamber with marble colonnades and imperial eagles &bull; Final Boss: **Pontius Pilate (Prefect of Judaea)** clad in Toga Praetexta with Tyrian purple border and golden laurel wreath, wielding ceremonial bronze water basin splashes and golden stylus blade energy beams.
+  - **Mission 5: Golgotha Summit / Mount Calvary (The Final Climax - Single Board Arena)**
+    - **Stage 13 (The Place of the Skull):** Dark apocalyptic storm, driving rain, lightning strikes, and skull crags beneath the Three Crosses (large central INRI crucifix flanked by two medium crosses).
+    - **Boss 1: Christus Tenebris (Emerald Fire Clone):** The demonic replica resurrected, enveloped in radiant green hellfire, casting dark homing spikes and warp dashes.
+    - **Boss 2: The Devil (Lord of Darkness):** Winged fiend brandishing a blazing iron pitchfork, unleashing hellfire bursts and his deadly secret attack: a vicious whip strike from his demon tail!
+    - **Encounter 3: The False Mercy of God & The Hallucination:**
+      - Upon the Devil's demise, the clouds part, golden sunshine breaks through, and God descends upon a glowing Rainbow Bridge offering sweet mercy and rest.
+      - *Accept Mercy (Surrender):* God morphs into Pilate and crucifies Jesus on Mount Calvary (Tragic Game Over).
+      - *Refuse Mercy (Fight On):* Jesus breaks through the deception! Spinning stars orbit Jesus's head and suddenly clear as God's avatar dissolves into Pontius Pilate for the true final showdown!
+    - **Ascension & Heavenly Epilogue:**
+      - When Pilate is defeated, a celestial choir of singing angels descends from the sky with floating musical notes as Jesus ascends into the heavens.
+      - The screen fades to black... and fades into **Heavenly Skee-Ball**!
+      - Jesus bowls wooden balls up the polished maple ramp into the 100 ring, ringing up tickets that spew across the clouds while angels wave pom-poms and cheer before returning to the Title screen!
 
 - **Secret Mission & Stage Select Screen:**
   - On the Title Screen, press **both triggers simultaneously (`LT + RT` / `L2 + R2`)** or press **`Tab` on keyboard** to unlock the secret Mission & Stage Select matrix.
-  - Choose between all 4 Missions and jump directly to any sub-board (1, 2, 3, or the Beatitudes Bonus Stage).
+  - Choose between all 5 Missions and jump directly to any sub-board or the Golgotha Summit climax arena.
 
 - **Dual-Function SELECT Button:**
   - **In-Game (Instant Exit):** Pressing `SELECT` on your controller (or `C` / `5` on keyboard) immediately ends the current stage and returns to the Title Screen.
@@ -62,10 +74,10 @@
 
 ### 📥 Downloads
 
-- 🎮 **Windows (Latest v4.0 - Capcom Arcade Edition):**
-  - [Download `Nazarene-v4.0-windows-x64.zip`](https://github.com/andarazoroflove/Nazarene/releases/download/4.0/Nazarene-v4.0-windows-x64.zip) *(Full bundle: 16-bit Capcom edition, Classic 8-bit edition, and high-res sprite assets)*
-  - [Direct `Nazarene.exe`](https://github.com/andarazoroflove/Nazarene/releases/download/4.0/Nazarene.exe) *(16-Bit Capcom Arcade Edition)*
-  - [Direct `NazareneClassic.exe`](https://github.com/andarazoroflove/Nazarene/releases/download/4.0/NazareneClassic.exe) *(Original 8-Bit Retro Edition)*
+- 🎮 **Windows (Latest v5.0 - Capcom Arcade Edition):**
+  - [Download `Nazarene-v5.0-windows-x64.zip`](https://github.com/andarazoroflove/Nazarene/releases/download/5.0/Nazarene-v5.0-windows-x64.zip) *(Full bundle: 16-bit Capcom edition, Classic 8-bit edition, and high-res sprite assets)*
+  - [Direct `Nazarene.exe`](https://github.com/andarazoroflove/Nazarene/releases/download/5.0/Nazarene.exe) *(16-Bit Capcom Arcade Edition)*
+  - [Direct `NazareneClassic.exe`](https://github.com/andarazoroflove/Nazarene/releases/download/5.0/NazareneClassic.exe) *(Original 8-Bit Retro Edition)*
 - 🕹️ **Game Boy Advance:**
   - [Download `Nazarene-padded.zip` (SuperCard)](https://github.com/andarazoroflove/Nazarene/releases/download/1.0gba/Nazarene-padded.zip) or [Direct `Nazarene.gba`](https://github.com/andarazoroflove/Nazarene/releases/download/1.0gba/Nazarene.gba)
 

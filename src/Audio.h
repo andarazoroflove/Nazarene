@@ -37,6 +37,10 @@ enum SoundEffect {
     SFX_WATER_SPLASH,
     SFX_FASCES_STRIKE,
     SFX_PILATE_JUDGMENT,
+    SFX_DEVIL_LAUGH,
+    SFX_SKEE_BALL_ROLL,
+    SFX_SKEE_BALL_SCORE,
+    SFX_RAINBOW_CHIME,
     SFX_COUNT
 };
 
@@ -49,6 +53,7 @@ public:
     static void SetMusicEnabled(bool enabled);
     static bool IsMusicEnabled();
     static void StopAllMusic();
+    static void PlaySkeeBallMusic();
 
 private:
     static Sound s_sounds[SFX_COUNT];
@@ -56,6 +61,8 @@ private:
     static Sound s_stageMusicM2;
     static Sound s_stageMusicM3;
     static Sound s_stageMusicM4;
+    static Sound s_stageMusicM5;
+    static Sound s_skeeBallMusic;
     static Sound s_bonusMusic;
     static Sound s_bossMusic;
     static Sound s_evilCloneMusic;
@@ -71,6 +78,8 @@ private:
     static Wave GenerateStage2MusicWave();
     static Wave GenerateStage3MusicWave();
     static Wave GenerateStage4MusicWave();
+    static Wave GenerateStage5MusicWave();
+    static Wave GenerateSkeeBallMusicWave();
     static Wave GenerateBonusMusicWave();
     static Wave GenerateBossMusicWave();
     static Wave GenerateEvilCloneMusicWave();

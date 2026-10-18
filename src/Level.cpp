@@ -84,6 +84,14 @@ void Level::Reset(int stageId) {
         m_arenaMinX = 1460.0f;
         m_arenaMaxX = 1860.0f;
         BuildPraetoriumThrone();
+    } else if (m_stageId == 13) {
+        // Stage 13: Golgotha Summit (The Final Conflict - Single Board)
+        m_arenaGateX = 0.0f;
+        m_arenaMinX = 20.0f;
+        m_arenaMaxX = 460.0f;
+        m_arenaUnlocked = true;
+        m_arenaLockedDown = true;
+        BuildGolgothaSummit();
     } else {
         m_arenaGateX = ARENA_GATE_X;
         m_arenaMinX = ARENA_MIN_X;
@@ -634,6 +642,8 @@ void Level::Draw(float cameraX) {
                 pickupSpr = SPR_CAESAR_SEAL;
             } else if (m_stageId == 12) {
                 pickupSpr = SPR_PILATE_EWER;
+            } else if (m_stageId == 13) {
+                pickupSpr = SPR_HOLY_GRAIL;
             }
             GraphicsManager::DrawSprite(pickupSpr, b.position.x, b.position.y + floatY);
 
@@ -1780,6 +1790,58 @@ void Level::BuildPraetoriumThrone() {
         for (int ty = 0; ty <= 11; ++ty) {
             m_tilemap[ty][backWallX] = TILE_GATE_FRAME;
         }
+    }
+}
+
+void Level::BuildGolgothaSummit() {
+    // 1. Initialize tilemap with air
+    for (int y = 0; y < LEVEL_TILES_Y; ++y) {
+        for (int x = 0; x < LEVEL_TILES_X; ++x) {
+            m_tilemap[y][x] = TILE_AIR;
+        }
+    }
+
+    // 2. Basalt & Crag Surface Floor
+    for (int x = 0; x < LEVEL_TILES_X; ++x) {
+        m_tilemap[12][x] = TILE_SUMMIT_ROCK_SURFACE;
+        m_tilemap[13][x] = TILE_SUMMIT_ROCK_SUB;
+    }
+
+    auto AddSummitLedge = [this](int startTileX, int endTileX, int tileY) {
+        float x = startTileX * TILE_SIZE;
+        float y = tileY * TILE_SIZE;
+        float w = (endTileX - startTileX + 1) * TILE_SIZE;
+        m_oneWayPlatforms.push_back({ { x, y, w, 6.0f } });
+        for (int tx = startTileX; tx <= endTileX; ++tx) {
+            m_tilemap[tileY][tx] = TILE_SUMMIT_CRAG_LEDGE;
+        }
+    };
+
+    // Summit Arena (Tiles 0 to 30, Width = 480px, Arena bounds: 20 to 460)
+    // Left Crag Ledge (Tier 1: Y = 9)
+    AddSummitLedge(4, 9, 9);
+    // Right Crag Ledge (Tier 1: Y = 9)
+    AddSummitLedge(19, 24, 9);
+    // Center High Skull Altar (Tier 2: Y = 6)
+    AddSummitLedge(11, 17, 6);
+
+    // Weathered skull rocks and iron braziers on the summit
+    m_tilemap[11][2] = TILE_SUMMIT_BRAZIER;
+    m_tilemap[11][10] = TILE_SUMMIT_SKULL_ROCK;
+    m_tilemap[11][18] = TILE_SUMMIT_SKULL_ROCK;
+    m_tilemap[11][26] = TILE_SUMMIT_BRAZIER;
+
+    // Sacred Relics on the summit (Bonus pickups)
+    m_baskets.push_back({ { 6.0f * TILE_SIZE, 8.0f * TILE_SIZE }, false, 0.0f, 1 });
+    m_baskets.push_back({ { 14.0f * TILE_SIZE, 5.0f * TILE_SIZE }, false, 0.0f, 2 });
+    m_baskets.push_back({ { 21.0f * TILE_SIZE, 8.0f * TILE_SIZE }, false, 0.0f, 1 });
+    m_baskets.push_back({ { 25.0f * TILE_SIZE, 11.0f * TILE_SIZE }, false, 0.0f, 0 });
+    m_basketsCollected = TOTAL_BASKETS; // Arena immediately unlocked for the boss rush!
+
+    // Left and right arena boundary invisible walls
+    for (int ty = 0; ty <= 11; ++ty) {
+        m_tilemap[ty][0] = TILE_GATE_FRAME;
+        m_tilemap[ty][29] = TILE_GATE_FRAME;
     }
 }
 

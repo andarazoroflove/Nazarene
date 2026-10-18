@@ -7,6 +7,7 @@
 #include "Player.h"
 #include "Enemies.h"
 #include "BonusStage.h"
+#include "Mission5Graphics.h"
 #include "Shaders.h"
 #include <cmath>
 #include <cstdio>
@@ -19,7 +20,10 @@ enum class GameState {
     GAMEPLAY,
     BONUS_STAGE,
     GAMEOVER,
-    VICTORY
+    VICTORY,
+    MERCY_DIALOGUE,
+    CRUCIFIXION_CUTSCENE,
+    SKEE_BALL_HEAVEN
 };
 
 enum class SecretSelectStep {
@@ -103,11 +107,27 @@ int main() {
     float celestialFadeAlpha = 0.0f;
     float rainbowAlpha = 0.0f;
 
+    // Mission 5: Golgotha Summit Climax tracking
+    int m5BossStep = 0; // 0 = Green Clone, 1 = Devil, 2 = God/Mercy, 3 = Hallucination Stars, 4 = Pilate Battle
+    bool m5DevilSpawned = false;
+    bool m5PilateSpawned = false;
+    float m5MercyTimer = 0.0f;
+    int m5MercyChoice = 1; // 0 = Accept Mercy, 1 = Refuse False Mercy
+    float m5CrucifixionTimer = 0.0f;
+    float m5HallucinationTimer = 0.0f;
+    float m5SkeeBallTimer = 0.0f;
+    float m5SkeeBallFadeBlack = 0.0f;
+    int m5SkeeBallScore = 0;
+    int m5SkeeBallTickets = 0;
+    int m5SkeeBallRolls = 0;
+    float m5RollBallTimer = 0.0f;
+
     auto GetCurrentStageId = [&]() {
         if (missionNumber == 1) return currentArea;
         if (missionNumber == 2) return 3 + currentArea;
         if (missionNumber == 3) return 6 + currentArea;
-        return 9 + currentArea;
+        if (missionNumber == 4) return 9 + currentArea;
+        return 13; // Mission 5 is Stage 13!
     };
 
     auto StartMission = [&](int mNum, int aNum) {
@@ -126,8 +146,8 @@ int main() {
         arenaSetupDone = false;
         finishHimTriggered = false;
         finishHimBannerTimer = 0.0f;
-        cloudCoverage = 0.0f;
-        lightningTimer = 3.5f;
+        cloudCoverage = (stageId == 13) ? 1.0f : 0.0f;
+        lightningTimer = (stageId == 13) ? 2.2f : 3.5f;
         lightningFlashTimer = 0.0f;
         ascensionSequenceTimer = 0.0f;
         ascensionStarted = false;
@@ -135,6 +155,20 @@ int main() {
         divineBeamIntensity = 0.0f;
         celestialFadeAlpha = 0.0f;
         rainbowAlpha = 0.0f;
+
+        m5BossStep = 0;
+        m5DevilSpawned = false;
+        m5PilateSpawned = false;
+        m5MercyTimer = 0.0f;
+        m5MercyChoice = 1;
+        m5CrucifixionTimer = 0.0f;
+        m5HallucinationTimer = 0.0f;
+        m5SkeeBallTimer = 0.0f;
+        m5SkeeBallFadeBlack = 0.0f;
+        m5SkeeBallScore = 0;
+        m5SkeeBallTickets = 0;
+        m5SkeeBallRolls = 0;
+        m5RollBallTimer = 0.0f;
     };
 
     auto ResetGame = [&](bool fullReset) {
@@ -223,14 +257,33 @@ int main() {
                         break;
                     }
 
-                    // 2x2 Mission Grid navigation:
-                    // [0: MISSION I]    [1: MISSION II]
-                    // [2: MISSION III]  [3: MISSION IV]
-                    if (input.leftPressed || input.rightPressed) {
-                        secretMissionIndex ^= 1; // Toggle column: 0 <-> 1, 2 <-> 3
+                    // 5-Mission Grid navigation:
+                    // Row 0: [0: MISSION I]    [1: MISSION II]
+                    // Row 1: [2: MISSION III]  [3: MISSION IV]
+                    // Row 2: [4: MISSION V (Wide Card)]
+                    if (input.leftPressed) {
+                        if (secretMissionIndex == 1) secretMissionIndex = 0;
+                        else if (secretMissionIndex == 0) secretMissionIndex = 1;
+                        else if (secretMissionIndex == 3) secretMissionIndex = 2;
+                        else if (secretMissionIndex == 2) secretMissionIndex = 3;
                         AudioManager::PlaySfx(SFX_COIN_RICOCHET);
-                    } else if (input.upPressed || input.downPressed) {
-                        secretMissionIndex ^= 2; // Toggle row: 0 <-> 2, 1 <-> 3
+                    } else if (input.rightPressed) {
+                        if (secretMissionIndex == 0) secretMissionIndex = 1;
+                        else if (secretMissionIndex == 1) secretMissionIndex = 0;
+                        else if (secretMissionIndex == 2) secretMissionIndex = 3;
+                        else if (secretMissionIndex == 3) secretMissionIndex = 2;
+                        AudioManager::PlaySfx(SFX_COIN_RICOCHET);
+                    } else if (input.upPressed) {
+                        if (secretMissionIndex == 4) secretMissionIndex = 2;
+                        else if (secretMissionIndex == 2) secretMissionIndex = 0;
+                        else if (secretMissionIndex == 3) secretMissionIndex = 1;
+                        else if (secretMissionIndex == 0 || secretMissionIndex == 1) secretMissionIndex = 4;
+                        AudioManager::PlaySfx(SFX_COIN_RICOCHET);
+                    } else if (input.downPressed) {
+                        if (secretMissionIndex == 0) secretMissionIndex = 2;
+                        else if (secretMissionIndex == 1) secretMissionIndex = 3;
+                        else if (secretMissionIndex == 2 || secretMissionIndex == 3) secretMissionIndex = 4;
+                        else if (secretMissionIndex == 4) secretMissionIndex = 0;
                         AudioManager::PlaySfx(SFX_COIN_RICOCHET);
                     }
 
@@ -255,7 +308,7 @@ int main() {
                         break;
                     }
 
-                    int maxStages = (secretMissionIndex == 0) ? 4 : 3;
+                    int maxStages = (secretMissionIndex == 4) ? 1 : ((secretMissionIndex == 0) ? 4 : 3);
 
                     // Navigate sub-boards 1, 2, 3 (and Beatitudes bonus for M1)
                     if (input.leftPressed || input.upPressed) {
@@ -358,9 +411,9 @@ int main() {
                     level.UnlockArena();
                 }
 
-                // Stage 3, Stage 6, Stage 9, & Stage 12: As soon as player finds the boss / approaches gate, clouds of heaven roll in!
-                if (currentStage == 3 || currentStage == 6 || currentStage == 9 || currentStage == 12) {
-                    if (player.GetPosition().x >= (level.GetArenaGateX() - 100.0f) || level.IsArenaLockedDown()) {
+                // Stage 3, 6, 9, 12, & 13: As soon as player finds the boss / approaches gate, clouds of heaven roll in!
+                if (currentStage == 3 || currentStage == 6 || currentStage == 9 || currentStage == 12 || currentStage == 13) {
+                    if (currentStage == 13 || player.GetPosition().x >= (level.GetArenaGateX() - 100.0f) || level.IsArenaLockedDown()) {
                         cloudCoverage = std::min(1.0f, cloudCoverage + 0.65f * dt);
                     }
                 }
@@ -369,16 +422,70 @@ int main() {
                 // Jesus starts on the LEFT side of the boss fight:
                 if (level.IsArenaLockedDown() && !arenaSetupDone) {
                     arenaSetupDone = true;
-                    player.SetPosition({ level.GetArenaMinX() + 24.0f, GROUND_Y - 30.0f });
-                    player.SetFacingLeft(false); // Face right towards Boss
+                    if (currentStage == 13) {
+                        player.SetPosition({ 80.0f, GROUND_Y - 30.0f });
+                        player.SetFacingLeft(false);
+                        if (boss) {
+                            boss->SetPosition({ 380.0f, GROUND_Y - 32.0f });
+                            boss->SetFacingLeft(true);
+                            boss->StartArenaCombat();
+                        }
+                        camera.target.x = 0.0f;
+                    } else {
+                        player.SetPosition({ level.GetArenaMinX() + 24.0f, GROUND_Y - 30.0f });
+                        player.SetFacingLeft(false); // Face right towards Boss
 
-                    // Boss is positioned on the right side of the arena:
-                    if (boss) {
-                        boss->SetPosition({ level.GetArenaMaxX() - 60.0f, GROUND_Y - 48.0f });
-                        boss->SetFacingLeft(true); // Face left towards Jesus
-                        boss->StartArenaCombat();
+                        // Boss is positioned on the right side of the arena:
+                        if (boss) {
+                            boss->SetPosition({ level.GetArenaMaxX() - 60.0f, GROUND_Y - 48.0f });
+                            boss->SetFacingLeft(true); // Face left towards Jesus
+                            boss->StartArenaCombat();
+                        }
+                        camera.target.x = level.GetArenaMinX() - 10.0f;
                     }
-                    camera.target.x = level.GetArenaMinX() - 10.0f;
+                }
+
+                // Stage 13 Golgotha Summit Boss Gauntlet Progression:
+                // 1. Green Clone -> 2. The Devil -> 3. False Mercy -> 4. Hallucination Pilate
+                if (currentStage == 13) {
+                    if (m5BossStep == 0) {
+                        if (boss && boss->GetType() == EnemyType::BOSS_MISSION5_CLONE_GREEN && (boss->IsDefeated() || boss->IsWitheredDead())) {
+                            m5BossStep = 1;
+                            enemyManager.ClearAllEnemies();
+                            enemyManager.SpawnBossDirect(EnemyType::BOSS_DEVIL, Vector2{ 380.0f, GROUND_Y - 36.0f }, 40.0f, 440.0f);
+                            Enemy* dev = enemyManager.GetBoss();
+                            if (dev) {
+                                dev->SetFacingLeft(true);
+                                dev->StartArenaCombat();
+                            }
+                            finishHimTriggered = false;
+                            finishHimBannerTimer = 0.0f;
+                            AudioManager::PlaySfx(SFX_DEVIL_LAUGH);
+                            AudioManager::PlaySfx(SFX_THUNDER);
+                        }
+                    } else if (m5BossStep == 1) {
+                        if (boss && boss->GetType() == EnemyType::BOSS_DEVIL && boss->IsDefeated()) {
+                            m5BossStep = 2;
+                            enemyManager.ClearAllEnemies();
+                            gameState = GameState::MERCY_DIALOGUE;
+                            m5MercyTimer = 0.0f;
+                            m5MercyChoice = 1;
+                            cloudsPartAmount = 0.0f;
+                            divineBeamIntensity = 0.0f;
+                            rainbowAlpha = 0.0f;
+                            finishHimTriggered = false;
+                            finishHimBannerTimer = 0.0f;
+                            AudioManager::StopAllMusic();
+                            AudioManager::PlaySfx(SFX_RAINBOW_CHIME);
+                            AudioManager::PlaySfx(SFX_ANGEL_CHOIR);
+                        }
+                    } else if (m5BossStep == 3) {
+                        m5HallucinationTimer -= dt;
+                        if (m5HallucinationTimer <= 0.0f) {
+                            m5BossStep = 4;
+                            AudioManager::PlaySfx(SFX_DING_DING);
+                        }
+                    }
                 }
 
                 // Check "FINISH HIM" trigger: when Boss is down to 1 HP pip ("one square")
@@ -390,7 +497,7 @@ int main() {
                 }
 
                 // Update storm clouds and lightning
-                if (finishHimTriggered || ((currentStage == 3 || currentStage == 6 || currentStage == 9 || currentStage == 12) && cloudCoverage > 0.0f)) {
+                if (finishHimTriggered || ((currentStage == 3 || currentStage == 6 || currentStage == 9 || currentStage == 12 || currentStage == 13) && cloudCoverage > 0.0f)) {
                     if (finishHimTriggered) {
                         cloudCoverage = std::min(1.0f, cloudCoverage + 0.85f * dt);
                     }
@@ -420,7 +527,7 @@ int main() {
                         cloudsPartAmount = std::min(1.0f, cloudsPartAmount + 0.75f * dt);
                         divineBeamIntensity = std::min(1.0f, divineBeamIntensity + 0.85f * dt);
 
-                        if (currentStage == 3 || currentStage == 6 || currentStage == 9 || currentStage == 12) {
+                        if (currentStage == 3 || currentStage == 6 || currentStage == 9 || currentStage == 12 || currentStage == 13) {
                             rainbowAlpha = std::min(1.0f, rainbowAlpha + 0.80f * dt);
                         }
 
@@ -428,8 +535,8 @@ int main() {
                             ascensionStarted = true;
                             AudioManager::PlaySfx(SFX_HOLY_BEAM);
                             AudioManager::PlaySfx(SFX_ANGEL_CHOIR);
-                            // In Stage 3, Stage 6, Stage 9, & Stage 12, Jesus ascends diagonally towards opposite side of screen!
-                            bool diagonal = (currentStage == 3 || currentStage == 6 || currentStage == 9 || currentStage == 12);
+                            // In Stage 3, 6, 9, 12, & 13, Jesus ascends diagonally towards opposite side of screen!
+                            bool diagonal = (currentStage == 3 || currentStage == 6 || currentStage == 9 || currentStage == 12 || currentStage == 13);
                             bool toRight = (player.GetPosition().x < level.GetArenaMinX() + (level.GetArenaMaxX() - level.GetArenaMinX()) * 0.5f);
                             player.StartAscension(diagonal, toRight);
                         }
@@ -504,7 +611,7 @@ int main() {
                                     gameState = GameState::MISSION_MAP;
                                     missionMapTimer = 0.0f;
                                 }
-                            } else {
+                            } else if (missionNumber == 4) {
                                 // Mission 4: The Trial and Judgment before Pontius Pilate
                                 if (currentArea == 1) {
                                     area1Cleared = true;
@@ -517,11 +624,25 @@ int main() {
                                     gameState = GameState::MISSION_MAP;
                                     missionMapTimer = 0.0f;
                                 } else {
-                                    // Stage 12 cleared! Pontius Pilate defeated and remorseful at the Bema!
-                                    area3Cleared = true;
-                                    gameState = GameState::VICTORY;
-                                    victoryTimer = 0.0f;
+                                    // Stage 12 cleared! Advance to Mission 5: Golgotha Summit!
+                                    missionNumber = 5;
+                                    currentArea = 1;
+                                    area1Cleared = false;
+                                    area2Cleared = false;
+                                    area3Cleared = false;
+                                    gameState = GameState::MISSION_MAP;
+                                    missionMapTimer = 0.0f;
                                 }
+                            } else {
+                                // Mission 5 (Stage 13) Golgotha Summit Victory -> Skee-Ball in Heaven!
+                                gameState = GameState::SKEE_BALL_HEAVEN;
+                                m5SkeeBallTimer = 0.0f;
+                                m5SkeeBallScore = 0;
+                                m5SkeeBallTickets = 0;
+                                m5SkeeBallRolls = 0;
+                                m5RollBallTimer = 0.0f;
+                                m5SkeeBallFadeBlack = 0.0f;
+                                AudioManager::PlaySkeeBallMusic();
                             }
                         }
                     }
@@ -639,15 +760,92 @@ int main() {
                 }
                 break;
             }
+
+            case GameState::MERCY_DIALOGUE: {
+                m5MercyTimer += dt;
+                cloudsPartAmount = std::min(1.0f, cloudsPartAmount + 0.4f * dt);
+                divineBeamIntensity = std::min(1.0f, divineBeamIntensity + 0.5f * dt);
+                rainbowAlpha = std::min(1.0f, rainbowAlpha + 0.6f * dt);
+
+                if (m5MercyTimer >= 1.2f) {
+                    if (input.upPressed || input.downPressed || input.leftPressed || input.rightPressed) {
+                        m5MercyChoice = 1 - m5MercyChoice;
+                        AudioManager::PlaySfx(SFX_COIN_RICOCHET);
+                    }
+
+                    bool confirm = input.startPressed || input.attackPressed || (input.jumpPressed && !input.cancelPressed);
+                    if (confirm) {
+                        if (m5MercyChoice == 0) {
+                            // Jesus agrees: God morphs into Pilate and crucifies him -> Game Over
+                            gameState = GameState::CRUCIFIXION_CUTSCENE;
+                            m5CrucifixionTimer = 0.0f;
+                            AudioManager::PlaySfx(SFX_DEVIL_LAUGH);
+                            AudioManager::PlaySfx(SFX_THUNDER);
+                        } else {
+                            // Jesus disagrees: Refuses false mercy!
+                            // Jesus has been hallucinating (stars around his head appear when Pilate morphs and suddenly clear for the fight)
+                            gameState = GameState::GAMEPLAY;
+                            m5BossStep = 3;
+                            m5HallucinationTimer = 2.0f;
+                            enemyManager.ClearAllEnemies();
+                            enemyManager.SpawnBossDirect(EnemyType::BOSS_PONTIUS_PILATE, Vector2{ 380.0f, GROUND_Y - 32.0f }, 40.0f, 440.0f);
+                            Enemy* newPilate = enemyManager.GetBoss();
+                            if (newPilate) {
+                                newPilate->SetFacingLeft(true);
+                                newPilate->StartArenaCombat();
+                            }
+                            AudioManager::PlaySfx(SFX_CLONE_TELEPORT);
+                            AudioManager::PlaySfx(SFX_PILATE_JUDGMENT);
+                            AudioManager::PlaySfx(SFX_DING_DING);
+                        }
+                    }
+                }
+                break;
+            }
+
+            case GameState::CRUCIFIXION_CUTSCENE: {
+                m5CrucifixionTimer += dt;
+                if (m5CrucifixionTimer >= 6.5f || (m5CrucifixionTimer >= 2.0f && (input.startPressed || input.attackPressed || input.jumpPressed))) {
+                    gameState = GameState::GAMEOVER;
+                    continueCountdown = 9.9f;
+                }
+                break;
+            }
+
+            case GameState::SKEE_BALL_HEAVEN: {
+                m5SkeeBallTimer += dt;
+                m5RollBallTimer += dt;
+
+                // Roll a ball into the 100 ring every 1.8s
+                if (m5RollBallTimer >= 1.8f) {
+                    m5RollBallTimer = 0.0f;
+                    m5SkeeBallScore += 100;
+                    m5SkeeBallTickets += 10;
+                    m5SkeeBallRolls++;
+                    AudioManager::PlaySfx(SFX_SKEE_BALL_ROLL);
+                    AudioManager::PlaySfx(SFX_SKEE_BALL_SCORE);
+                    AudioManager::PlaySfx(SFX_CROWD_CHEER);
+                }
+
+                if (m5SkeeBallTimer >= 12.0f || (m5SkeeBallTimer >= 3.0f && (input.startPressed || input.attackPressed || input.jumpPressed))) {
+                    m5SkeeBallFadeBlack += dt * 0.9f;
+                    if (m5SkeeBallFadeBlack >= 1.0f) {
+                        AudioManager::StopAllMusic();
+                        ResetGame(true);
+                        gameState = GameState::TITLE;
+                    }
+                }
+                break;
+            }
         }
 
         // Audio System Update
         bool inArena = level.IsArenaLockedDown();
         bool bossWithering = (enemyManager.GetBoss() && enemyManager.GetBoss()->IsWithering());
         int curStage = GetCurrentStageId();
-        if (!bossWithering && !ascensionStarted && gameState != GameState::SECRET_SELECT) {
+        if (!bossWithering && !ascensionStarted && gameState != GameState::SECRET_SELECT && gameState != GameState::MERCY_DIALOGUE && gameState != GameState::CRUCIFIXION_CUTSCENE && gameState != GameState::SKEE_BALL_HEAVEN) {
             AudioManager::Update(inArena, gameState == GameState::GAMEOVER, gameState == GameState::VICTORY, curStage, gameState == GameState::BONUS_STAGE);
-        } else if (gameState == GameState::SECRET_SELECT) {
+        } else if (gameState == GameState::SECRET_SELECT || gameState == GameState::MERCY_DIALOGUE || gameState == GameState::CRUCIFIXION_CUTSCENE) {
             AudioManager::StopAllMusic();
         }
 
@@ -727,6 +925,44 @@ int main() {
         } else if (gameState == GameState::BONUS_STAGE) {
             // Sega Shinobi-Style 30-Second Bonus Stage: Feeding the 5,000 on the Mount of Beatitudes
             bonusStage.Draw();
+        } else if (gameState == GameState::MERCY_DIALOGUE) {
+            // Mount Calvary with rainbow bridge and descending Almighty
+            GraphicsManager::DrawParallaxBackground(0.0f, static_cast<float>(GetTime()), 13);
+            Mission5Graphics::DrawRainbowBridge(rainbowAlpha, static_cast<float>(GetTime()));
+
+            // Divine beam & parted clouds
+            float beamX = 260.0f;
+            GraphicsManager::DrawDivineAscensionBeam(beamX, divineBeamIntensity, cloudsPartAmount, static_cast<float>(GetTime()));
+
+            // Draw God descending on rainbow bridge
+            float descendProgress = std::min(1.0f, m5MercyTimer / 1.8f);
+            float godX = 280.0f - (1.0f - descendProgress) * 40.0f;
+            float godY = 55.0f + descendProgress * 65.0f;
+            Mission5Graphics::DrawGodDescend(Vector2{ godX, godY }, static_cast<float>(GetTime()));
+
+            // Draw Jesus standing on the summit facing God
+            GraphicsManager::DrawDropShadow(120.0f + 14.0f, GROUND_Y - 2.0f, 22.0f, 5.0f);
+            GraphicsManager::DrawSprite(SPR_PLAYER_IDLE, 120.0f, GROUND_Y - 32.0f, false);
+
+            // Draw Dialogue & Choice
+            if (m5MercyTimer >= 1.2f) {
+                Mission5Graphics::DrawMercyDialogue(m5MercyChoice == 0, static_cast<float>(GetTime()));
+            }
+        } else if (gameState == GameState::CRUCIFIXION_CUTSCENE) {
+            float fade = std::min(1.0f, m5CrucifixionTimer / 3.0f);
+            Mission5Graphics::DrawCrucifixionScene(static_cast<float>(GetTime()), fade);
+        } else if (gameState == GameState::SKEE_BALL_HEAVEN) {
+            Mission5Graphics::DrawHeavenSkeeBallScene(
+                static_cast<float>(GetTime()),
+                m5SkeeBallScore,
+                m5RollBallTimer / 1.8f,
+                m5SkeeBallRolls,
+                (m5RollBallTimer >= 1.6f || m5RollBallTimer < 0.25f),
+                m5SkeeBallTickets
+            );
+            if (m5SkeeBallFadeBlack > 0.0f) {
+                DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, ColorAlpha(BLACK, m5SkeeBallFadeBlack));
+            }
         } else {
             int curStage = GetCurrentStageId();
 
@@ -756,6 +992,26 @@ int main() {
             enemyManager.Draw();
             player.Draw();
             EndMode2D();
+
+            // Stage 13 Atmospheric Rain
+            if (curStage == 13 && m5BossStep != 2) {
+                Mission5Graphics::DrawRain(static_cast<float>(GetTime()), 1.0f);
+            }
+
+            // Stage 13 Hallucination Stars
+            if (curStage == 13 && m5BossStep == 3) {
+                float sx = player.GetPosition().x - camera.target.x + 14.0f;
+                float sy = player.GetPosition().y + 4.0f;
+                float clearProg = 1.0f - std::max(0.0f, m5HallucinationTimer / 2.0f);
+                Mission5Graphics::DrawHallucinationStars(Vector2{ sx, sy }, static_cast<float>(GetTime()), clearProg);
+            }
+
+            // Stage 13 Angels descending & singing while Jesus ascends
+            if (curStage == 13 && ascensionStarted) {
+                float sx = player.GetPosition().x - camera.target.x + 14.0f;
+                float sy = player.GetPosition().y;
+                Mission5Graphics::DrawAscendingAngels(Vector2{ sx, sy }, ascensionSequenceTimer);
+            }
 
             // 3. Divine Wrath Screen Flash Overlay
             float flashAlpha = player.GetScreenFlashAlpha();
@@ -809,6 +1065,11 @@ int main() {
                     else if (curStage == 10) bossName = "PREFECT QUINTUS";
                     else if (curStage == 11) bossName = "ADVOCATE TERTULLUS";
                     else if (curStage == 12) bossName = "PONTIUS PILATE";
+                    else if (curStage == 13) {
+                        if (m5BossStep == 0) bossName = "CHRISTUS TENEBRIS";
+                        else if (m5BossStep == 1) bossName = "THE DEVIL";
+                        else bossName = "PILATE (HALLUCINATION)";
+                    }
 
                     DrawText(bossName, bx + 6, by + 2, 10, COLOR_GOLD_BRIGHT);
 
@@ -851,6 +1112,7 @@ int main() {
                 else if (curStage == 10) msg = "COLLECT ALL 4 IMPERIAL SCROLLS TO UNLOCK BARRICADE!";
                 else if (curStage == 11) msg = "COLLECT ALL 4 CAESAR SEALS TO UNLOCK TRIBUNAL GATE!";
                 else if (curStage == 12) msg = "COLLECT ALL 4 GOLDEN EWERS TO UNLOCK PRAETORIUM THRONE!";
+                else if (curStage == 13) msg = "DEFEAT THE ADVERSARIES UPON GOLGOTHA!";
 
                 int mw = MeasureText(msg, 10);
                 DrawRectangle((VIRTUAL_WIDTH - mw) / 2 - 6, 40, mw + 12, 16, Color{ 20, 15, 25, 230 });
@@ -954,35 +1216,42 @@ int main() {
             // 8. Victory Screen
             if (gameState == GameState::VICTORY) {
                 DrawRectangle(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT, Color{ 12, 22, 16, 230 });
-                const char* vicTitle = (missionNumber == 4) ? "THE TRIAL ENDED - PILATE'S JUDGMENT OVERCOME!" :
-                                       ((missionNumber == 3) ? "THE LAST SUPPER RESTORED!" : "CAMPAIGN VICTORY!");
+                const char* vicTitle = (missionNumber == 5) ? "GOLGOTHA CONQUERED - ASCENSION ATTAINED!" :
+                                       ((missionNumber == 4) ? "THE TRIAL ENDED - PILATE'S JUDGMENT OVERCOME!" :
+                                       ((missionNumber == 3) ? "THE LAST SUPPER RESTORED!" : "CAMPAIGN VICTORY!"));
                 int vw = MeasureText(vicTitle, 16);
                 DrawText(vicTitle, (VIRTUAL_WIDTH - vw) / 2, 40, 16, COLOR_ROMAN_GOLD);
 
-                const char* vicSub1 = (missionNumber == 4) ?
+                const char* vicSub1 = (missionNumber == 5) ?
+                    "DEATH IS SWALLOWED UP IN VICTORY - THE POWERS OF DARKNESS BROKEN!" :
+                    ((missionNumber == 4) ?
                     "PILATE WASHES HIS HANDS IN REMORSE - 'WHAT IS TRUTH?' ANSWERED!" :
                     ((missionNumber == 3) ?
                     "JUDAS REPENTS - THE 30 PIECES OF SILVER SCATTERED" :
-                    "GETHSEMANE CONQUERED - THE EVIL CLONE OVERCOME!");
+                    "GETHSEMANE CONQUERED - THE EVIL CLONE OVERCOME!"));
                 DrawText(vicSub1, (VIRTUAL_WIDTH - MeasureText(vicSub1, 10)) / 2, 68, 10, COLOR_ROBE_WHITE);
 
-                const char* vicSub2 = (missionNumber == 4) ?
+                const char* vicSub2 = (missionNumber == 5) ?
+                    "THE HEAVENS OPEN - CHERUBIM AND SERAPHIM SING TRIUMPHANT HOSANNAS!" :
+                    ((missionNumber == 4) ?
                     "THE INNOCENT LAMB ASCENDS TRIUMPHANT OVER EMPIRES AND POWERS" :
                     ((missionNumber == 3) ?
                     "THIS IS MY BODY, GIVEN FOR YOU - DO THIS IN REMEMBRANCE" :
-                    "THE NAZARENE'S DIVINE MISSION IS FULFILLED");
+                    "THE NAZARENE'S DIVINE MISSION IS FULFILLED"));
                 DrawText(vicSub2, (VIRTUAL_WIDTH - MeasureText(vicSub2, 10)) / 2, 88, 10, COLOR_GOLD_BRIGHT);
 
-                const char* vicSub3 = (missionNumber == 4) ?
+                const char* vicSub3 = (missionNumber == 5) ?
+                    "I AM THE RESURRECTION AND THE LIFE - TIME FOR SKEE-BALL IN GLORY!" :
+                    ((missionNumber == 4) ?
                     "MY KINGDOM IS NOT OF THIS WORLD - GLORY FOREVERMORE!" :
                     ((missionNumber == 3) ?
-                    "PEACE UNTO ALL NATIONS - LOVE CONQUERS ALL" : nullptr);
+                    "PEACE UNTO ALL NATIONS - LOVE CONQUERS ALL" : nullptr));
                 if (vicSub3) {
                     DrawText(vicSub3, (VIRTUAL_WIDTH - MeasureText(vicSub3, 10)) / 2, 106, 10, COLOR_ROMAN_STONE);
                 }
 
                 char vicScore[48];
-                int bonusPts = (missionNumber == 4) ? 150000 : ((missionNumber == 3) ? 100000 : 50000);
+                int bonusPts = (missionNumber == 5) ? 250000 : ((missionNumber == 4) ? 150000 : ((missionNumber == 3) ? 100000 : 50000));
                 snprintf(vicScore, sizeof(vicScore), "FINAL SCORE: %06d", player.GetScore() + bonusPts);
                 DrawText(vicScore, (VIRTUAL_WIDTH - MeasureText(vicScore, 10)) / 2, 130, 10, COLOR_ROMAN_GOLD);
 

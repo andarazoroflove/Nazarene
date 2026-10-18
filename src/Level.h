@@ -79,5 +79,6 @@ private:
     void BuildViaDolorosa();
     void BuildTheGabbathaCourt();
     void BuildPraetoriumThrone();
+    void BuildGolgothaSummit();
 };
 

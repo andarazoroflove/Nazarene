@@ -32,7 +32,21 @@ enum class EnemyType {
     IMPERIAL_LICTOR,
     BOSS_PREFECT_QUINTUS,
     BOSS_ADVOCATE_TERTULLUS,
-    BOSS_PONTIUS_PILATE
+    BOSS_PONTIUS_PILATE,
+    // Mission 5:
+    BOSS_MISSION5_CLONE_GREEN,
+    BOSS_DEVIL
+};
+
+enum class DevilState {
+    IDLE,
+    APPROACH,
+    TRIDENT_THRUST,
+    TAIL_WHIP_WINDUP,
+    TAIL_WHIP_STRIKE,
+    FIRE_SURGE,
+    RECOVERY,
+    DEFEATED
 };
 
 enum class PilateState {
@@ -212,20 +226,25 @@ public:
                m_type == EnemyType::BOSS_TEMPLE_COMMANDER ||
                m_type == EnemyType::BOSS_TRIBUNAL_PRAETOR ||
                m_type == EnemyType::BOSS_EVIL_CLONE ||
+               m_type == EnemyType::BOSS_MISSION5_CLONE_GREEN ||
                m_type == EnemyType::BOSS_BARABBAS ||
                m_type == EnemyType::BOSS_CAIAPHAS ||
                m_type == EnemyType::BOSS_JUDAS ||
                m_type == EnemyType::BOSS_PREFECT_QUINTUS ||
                m_type == EnemyType::BOSS_ADVOCATE_TERTULLUS ||
-               m_type == EnemyType::BOSS_PONTIUS_PILATE;
+               m_type == EnemyType::BOSS_PONTIUS_PILATE ||
+               m_type == EnemyType::BOSS_DEVIL;
     }
     bool IsDefeated() const {
         if (IsBoss()) {
             if (m_type == EnemyType::BOSS_PONTIUS_PILATE) {
                 return m_hp <= 0 && (m_pilateState == PilateState::DEFEATED_REDEEMED || m_pilateState == PilateState::KNEEL_REMORSE || m_pilateState == PilateState::WASH_HANDS_CELESTIAL);
             }
-            if (m_type == EnemyType::BOSS_EVIL_CLONE) {
+            if (m_type == EnemyType::BOSS_EVIL_CLONE || m_type == EnemyType::BOSS_MISSION5_CLONE_GREEN) {
                 return m_hp <= 0 && (m_cloneState == CloneState::DEAD_WITHERED || m_cloneState == CloneState::KNEEL);
+            }
+            if (m_type == EnemyType::BOSS_DEVIL) {
+                return m_hp <= 0 && (m_devilState == DevilState::DEFEATED);
             }
             if (m_type == EnemyType::BOSS_JUDAS) {
                 return m_hp <= 0 && (m_judasState == JudasState::DEAD_WITHERED || m_judasState == JudasState::KNEEL);
@@ -239,8 +258,11 @@ public:
         if (m_type == EnemyType::BOSS_PONTIUS_PILATE) {
             return m_hp <= 0 || m_pilateState == PilateState::KNEEL_REMORSE || m_pilateState == PilateState::WASH_HANDS_CELESTIAL || m_pilateState == PilateState::DEFEATED_REDEEMED;
         }
-        if (m_type == EnemyType::BOSS_EVIL_CLONE) {
+        if (m_type == EnemyType::BOSS_EVIL_CLONE || m_type == EnemyType::BOSS_MISSION5_CLONE_GREEN) {
             return m_hp <= 0 || m_cloneState == CloneState::KNEEL || m_cloneState == CloneState::WITHERING || m_cloneState == CloneState::DEAD_WITHERED;
+        }
+        if (m_type == EnemyType::BOSS_DEVIL) {
+            return m_hp <= 0 || m_devilState == DevilState::DEFEATED;
         }
         if (m_type == EnemyType::BOSS_JUDAS) {
             return m_hp <= 0 || m_judasState == JudasState::KNEEL || m_judasState == JudasState::WITHERING || m_judasState == JudasState::DEAD_WITHERED;
@@ -252,8 +274,11 @@ public:
         if (m_type == EnemyType::BOSS_PONTIUS_PILATE) {
             return m_pilateState == PilateState::KNEEL_REMORSE || m_pilateState == PilateState::WASH_HANDS_CELESTIAL || m_pilateState == PilateState::DEFEATED_REDEEMED;
         }
-        if (m_type == EnemyType::BOSS_EVIL_CLONE) {
+        if (m_type == EnemyType::BOSS_EVIL_CLONE || m_type == EnemyType::BOSS_MISSION5_CLONE_GREEN) {
             return m_cloneState == CloneState::KNEEL || m_cloneState == CloneState::WITHERING || m_cloneState == CloneState::DEAD_WITHERED;
+        }
+        if (m_type == EnemyType::BOSS_DEVIL) {
+            return m_devilState == DevilState::DEFEATED;
         }
         if (m_type == EnemyType::BOSS_JUDAS) {
             return m_judasState == JudasState::KNEEL || m_judasState == JudasState::WITHERING || m_judasState == JudasState::DEAD_WITHERED;
@@ -265,8 +290,11 @@ public:
         if (m_type == EnemyType::BOSS_PONTIUS_PILATE) {
             return m_pilateState == PilateState::DEFEATED_REDEEMED;
         }
-        if (m_type == EnemyType::BOSS_EVIL_CLONE) {
+        if (m_type == EnemyType::BOSS_EVIL_CLONE || m_type == EnemyType::BOSS_MISSION5_CLONE_GREEN) {
             return m_cloneState == CloneState::DEAD_WITHERED;
+        }
+        if (m_type == EnemyType::BOSS_DEVIL) {
+            return m_devilState == DevilState::DEFEATED;
         }
         if (m_type == EnemyType::BOSS_JUDAS) {
             return m_judasState == JudasState::DEAD_WITHERED;
@@ -294,6 +322,7 @@ public:
     CloneState GetCloneState() const { return m_cloneState; }
     JudasState GetJudasState() const { return m_judasState; }
     PilateState GetPilateState() const { return m_pilateState; }
+    DevilState GetDevilState() const { return m_devilState; }
     bool IsPilateMirageActive() const { return m_mirageTimer > 0.0f; }
     Vector2 GetPilateMirage1() const { return m_pilateMirage1; }
     Vector2 GetPilateMirage2() const { return m_pilateMirage2; }
@@ -304,9 +333,11 @@ public:
         m_cloneState = CloneState::IDLE;
         m_judasState = JudasState::IDLE;
         m_pilateState = PilateState::IDLE;
+        m_devilState = DevilState::IDLE;
         m_whipTimer = 0.0f;
         m_stateTimer = 0.0f;
         m_pilateTimer = 0.0f;
+        m_devilTimer = 0.0f;
         m_attackHitboxActive = false;
     }
 
@@ -518,6 +549,11 @@ protected:
     bool m_lictorSwinging = false;
     float m_signiferRallyTimer = 0.0f;
 
+    // Mission 5: Devil specific
+    DevilState m_devilState = DevilState::IDLE;
+    float m_devilTimer = 0.0f;
+    int m_devilAttackPattern = 0;
+
     // Boss specific
     BossPhase m_bossPhase;
     BossWhipState m_whipState;
@@ -534,6 +570,8 @@ public:
     EnemyManager();
     void Reset(int stageId = 1);
     void SpawnStageEnemies(int stageId = 1);
+    void SpawnBossDirect(EnemyType type, Vector2 pos, float minX, float maxX);
+    void ClearAllEnemies();
     void Update(float dt, const Vector2& playerPos, Level& level, bool screenFrozen, bool triggerWrathWipe);
     void Draw();
 

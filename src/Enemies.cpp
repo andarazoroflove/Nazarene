@@ -199,6 +199,24 @@ Enemy::Enemy(EnemyType type, Vector2 pos, float patrolMinX, float patrolMaxX)
             m_pilateState = PilateState::IDLE;
             m_facingLeft = true;
             break;
+        case EnemyType::BOSS_MISSION5_CLONE_GREEN:
+            m_maxHp = BOSS_MAX_HP;
+            m_hp = BOSS_MAX_HP;
+            m_velocity = { 0.0f, 0.0f };
+            m_bossPhase = BossPhase::PHASE_2_ARENA;
+            m_cloneState = CloneState::IDLE;
+            m_cloneActionTimer = 0.0f;
+            m_facingLeft = true;
+            break;
+        case EnemyType::BOSS_DEVIL:
+            m_maxHp = 14;
+            m_hp = 14;
+            m_velocity = { 0.0f, 0.0f };
+            m_bossPhase = BossPhase::PHASE_2_ARENA;
+            m_devilState = DevilState::IDLE;
+            m_devilTimer = 0.0f;
+            m_facingLeft = true;
+            break;
     }
 }
 
@@ -227,10 +245,13 @@ Rectangle Enemy::GetHurtbox() const {
         case EnemyType::CORRUPTED_PRIEST:
             return { m_position.x + 4.0f, m_position.y + 4.0f, 18.0f, 26.0f };
         case EnemyType::BOSS_EVIL_CLONE:
+        case EnemyType::BOSS_MISSION5_CLONE_GREEN:
             if (m_cloneState == CloneState::THROW_CROUCH) {
                 return { m_position.x + 4.0f, m_position.y + 12.0f, 20.0f, 18.0f };
             }
             return { m_position.x + 4.0f, m_position.y + 4.0f, 20.0f, 26.0f };
+        case EnemyType::BOSS_DEVIL:
+            return { m_position.x + 4.0f, m_position.y + 4.0f, 24.0f, 32.0f };
         case EnemyType::MONEY_CHANGER:
             return { m_position.x + 4.0f, m_position.y + 4.0f, 16.0f, 26.0f };
         case EnemyType::LEVITE_ENFORCER:
@@ -286,8 +307,8 @@ bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
         }
     }
 
-    // 2b. Evil Genius Clone Logic ("Christus Tenebris")
-    if (m_type == EnemyType::BOSS_EVIL_CLONE) {
+    // 2b. Evil Genius Clone Logic ("Christus Tenebris" & Green Clone)
+    if (m_type == EnemyType::BOSS_EVIL_CLONE || m_type == EnemyType::BOSS_MISSION5_CLONE_GREEN) {
         if (m_cloneState == CloneState::KNEEL || m_cloneState == CloneState::WITHERING || m_cloneState == CloneState::DEAD_WITHERED) {
             return true;
         }
@@ -374,6 +395,27 @@ bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
         }
     }
 
+    // 2h. The Devil (Mount Calvary Boss 2)
+    if (m_type == EnemyType::BOSS_DEVIL) {
+        if (m_devilState == DevilState::DEFEATED) {
+            return true;
+        }
+
+        // Vulnerable during tail whip windup/strike, fire surge, jump headshot, from behind, or melee/beam
+        bool isVulnerable = (m_devilState == DevilState::TAIL_WHIP_WINDUP) ||
+                            (m_devilState == DevilState::TAIL_WHIP_STRIKE) ||
+                            (m_devilState == DevilState::FIRE_SURGE) ||
+                            (m_devilState == DevilState::TRIDENT_THRUST) ||
+                            isHighHit ||
+                            hitFromBehind ||
+                            (damage >= 4);
+
+        if (!isVulnerable) {
+            AudioManager::PlaySfx(SFX_SHIELD_DEFLECT);
+            return true;
+        }
+    }
+
     // 3. Archer Ducking Protection against standard mid-level shots
     if (m_type == EnemyType::ARCHER && m_isDucking) {
         if (!isHighHit) {
@@ -394,10 +436,12 @@ bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
             m_cloneState = CloneState::KNEEL;
             m_judasState = JudasState::KNEEL;
             m_pilateState = PilateState::KNEEL_REMORSE;
+            m_devilState = DevilState::DEFEATED;
             m_whipTimer = 0.0f;
             m_witherTimer = 0.0f;
             m_judasTimer = 0.0f;
             m_pilateTimer = 0.0f;
+            m_devilTimer = 0.0f;
             m_mirageTimer = 0.0f;
             m_attackHitboxActive = false;
             if (m_type == EnemyType::BOSS_JUDAS) {
@@ -406,6 +450,9 @@ bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
             if (m_type == EnemyType::BOSS_PONTIUS_PILATE) {
                 AudioManager::PlaySfx(SFX_WATER_SPLASH);
                 AudioManager::PlaySfx(SFX_ANGEL_CHOIR);
+            }
+            if (m_type == EnemyType::BOSS_DEVIL) {
+                AudioManager::PlaySfx(SFX_DEVIL_LAUGH);
             }
             AudioManager::PlaySfx(SFX_ENEMY_DEFEAT);
         }
@@ -1185,6 +1232,7 @@ void Enemy::Update(float dt, const Vector2& playerPos, Level& level) {
             break;
         }
 
+        case EnemyType::BOSS_MISSION5_CLONE_GREEN:
         case EnemyType::BOSS_EVIL_CLONE: {
             m_facingLeft = (playerPos.x < m_position.x);
 
@@ -1340,6 +1388,125 @@ void Enemy::Update(float dt, const Vector2& playerPos, Level& level) {
 
                 default:
                     m_cloneState = CloneState::IDLE;
+                    break;
+            }
+            break;
+        }
+
+        case EnemyType::BOSS_DEVIL: {
+            if (m_devilState == DevilState::DEFEATED) {
+                m_attackHitboxActive = false;
+                m_witherTimer += dt;
+                if (m_witherTimer >= 2.0f) {
+                    m_active = false;
+                }
+                break;
+            }
+
+            m_facingLeft = (playerPos.x < m_position.x);
+            float dist = fabsf(playerPos.x - m_position.x);
+
+            switch (m_devilState) {
+                case DevilState::IDLE: {
+                    m_attackHitboxActive = false;
+                    if (dist > 75.0f) {
+                        float dir = m_facingLeft ? -1.0f : 1.0f;
+                        m_position.x += dir * 45.0f * dt;
+                    } else if (dist < 38.0f) {
+                        float dir = m_facingLeft ? 1.0f : -1.0f;
+                        m_position.x += dir * 32.0f * dt;
+                    }
+
+                    if (m_position.x < level.GetArenaMinX() + 16.0f) m_position.x = level.GetArenaMinX() + 16.0f;
+                    if (m_position.x > level.GetArenaMaxX() - 35.0f) m_position.x = level.GetArenaMaxX() - 35.0f;
+
+                    if (m_animTimer >= 0.20f) {
+                        m_animTimer = 0.0f;
+                        m_animFrame = (m_animFrame + 1) % 2;
+                    }
+
+                    m_devilTimer += dt;
+                    if (m_devilTimer >= 0.80f) {
+                        m_devilTimer = 0.0f;
+                        m_devilAttackPattern = (m_devilAttackPattern + 1) % 4;
+
+                        if (m_devilAttackPattern == 0) {
+                            m_devilState = DevilState::TRIDENT_THRUST;
+                            AudioManager::PlaySfx(SFX_MELEE_STRIKE);
+                        } else if (m_devilAttackPattern == 1) {
+                            m_devilState = DevilState::TAIL_WHIP_WINDUP;
+                        } else if (m_devilAttackPattern == 2) {
+                            m_devilState = DevilState::FIRE_SURGE;
+                        } else {
+                            m_devilState = DevilState::TAIL_WHIP_WINDUP;
+                        }
+                    }
+                    break;
+                }
+
+                case DevilState::TRIDENT_THRUST: {
+                    m_devilTimer += dt;
+                    if (m_devilTimer <= 0.30f) {
+                        m_attackHitboxActive = true;
+                        float tx = m_facingLeft ? (m_position.x - 24.0f) : (m_position.x + 20.0f);
+                        m_attackHitbox = { tx, m_position.y + 10.0f, 28.0f, 20.0f };
+                    } else {
+                        m_attackHitboxActive = false;
+                        if (m_devilTimer >= 0.50f) {
+                            m_devilState = DevilState::IDLE;
+                            m_devilTimer = 0.0f;
+                        }
+                    }
+                    break;
+                }
+
+                case DevilState::TAIL_WHIP_WINDUP: {
+                    m_attackHitboxActive = false;
+                    m_devilTimer += dt;
+                    if (m_devilTimer >= 0.35f) {
+                        m_devilState = DevilState::TAIL_WHIP_STRIKE;
+                        m_devilTimer = 0.0f;
+                        AudioManager::PlaySfx(SFX_WHIP_CRACK);
+                    }
+                    break;
+                }
+
+                case DevilState::TAIL_WHIP_STRIKE: {
+                    m_devilTimer += dt;
+                    if (m_devilTimer <= 0.28f) {
+                        m_attackHitboxActive = true;
+                        float wx = m_facingLeft ? (m_position.x - 52.0f) : (m_position.x + 16.0f);
+                        m_attackHitbox = { wx, m_position.y + 14.0f, 56.0f, 16.0f };
+                    } else {
+                        m_attackHitboxActive = false;
+                        if (m_devilTimer >= 0.45f) {
+                            m_devilState = DevilState::IDLE;
+                            m_devilTimer = 0.0f;
+                        }
+                    }
+                    break;
+                }
+
+                case DevilState::FIRE_SURGE: {
+                    m_devilTimer += dt;
+                    if (m_devilTimer >= 0.15f && !m_justFiredDark) {
+                        m_justFiredDark = true;
+                        m_darkProjPos = { m_facingLeft ? (m_position.x - 8.0f) : (m_position.x + 24.0f), m_position.y + 14.0f };
+                        m_darkProjVelX = m_facingLeft ? -220.0f : 220.0f;
+                        m_darkProjVelY = 0.0f;
+                        m_darkProjIsSpike = false;
+                        AudioManager::PlaySfx(SFX_TORCH_SWING);
+                    }
+                    if (m_devilTimer >= 0.45f) {
+                        m_devilState = DevilState::IDLE;
+                        m_devilTimer = 0.0f;
+                        m_justFiredDark = false;
+                    }
+                    break;
+                }
+
+                default:
+                    m_devilState = DevilState::IDLE;
                     break;
             }
             break;
@@ -2476,6 +2643,113 @@ void Enemy::Draw() {
             break;
         }
 
+        case EnemyType::BOSS_MISSION5_CLONE_GREEN: {
+            if (m_cloneState == CloneState::DEAD_WITHERED) return;
+
+            SpriteId spr = SPR_CLONE_GREEN_IDLE;
+            if (m_cloneState == CloneState::IDLE) {
+                spr = (m_animFrame == 0 ? SPR_CLONE_GREEN_WALK_0 : SPR_CLONE_GREEN_IDLE);
+            } else if (m_cloneState == CloneState::THROW_STAND || m_cloneState == CloneState::THROW_CROUCH) {
+                spr = SPR_CLONE_GREEN_ATTACK;
+            } else if (m_cloneState == CloneState::JUMP_LEAP) {
+                spr = SPR_CLONE_GREEN_WALK_0;
+            } else if (m_cloneState == CloneState::CHANNEL_WRATH) {
+                spr = SPR_CLONE_GREEN_ATTACK;
+            } else if (m_cloneState == CloneState::MELEE_STRIKE) {
+                spr = SPR_CLONE_GREEN_ATTACK;
+            } else if (m_cloneState == CloneState::KNEEL || m_cloneState == CloneState::WITHERING) {
+                spr = SPR_CLONE_GREEN_KNEEL;
+            }
+
+            if (hurtFlash && m_cloneState != CloneState::KNEEL && m_cloneState != CloneState::WITHERING) {
+                spr = SPR_CLONE_GREEN_HURT;
+            }
+
+            // Drop shadow
+            if (m_cloneState != CloneState::JUMP_LEAP && m_cloneState != CloneState::WITHERING) {
+                GraphicsManager::DrawDropShadow(m_position.x + 14.0f, m_position.y + 31.0f, 22.0f, 5.0f);
+            }
+
+            // Glowing Emerald Hellfire Aura around Green Clone
+            if (m_cloneState != CloneState::WITHERING && m_cloneState != CloneState::KNEEL) {
+                float pulse = 0.5f + 0.5f * sinf(static_cast<float>(GetTime()) * 14.0f);
+                Color auraCol = ColorAlpha(Color{ 40, 255, 90, 255 }, 0.35f + pulse * 0.35f);
+                DrawRectangleLines(static_cast<int>(m_position.x + 1.0f), static_cast<int>(m_position.y + 1.0f), 26, 30, auraCol);
+                GraphicsManager::DrawSpark(m_position.x + 14.0f + 10.0f * sinf(static_cast<float>(GetTime()) * 8.0f), m_position.y + 6.0f, 2.5f, Color{ 140, 255, 170, 240 });
+            }
+
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+
+            // Channeling Wrath emerald flame ring
+            if (m_cloneState == CloneState::CHANNEL_WRATH) {
+                float pulseR = 14.0f + 14.0f * sinf(static_cast<float>(GetTime()) * 18.0f);
+                DrawCircleLines(static_cast<int>(m_position.x + 14.0f), static_cast<int>(m_position.y + 16.0f), fabsf(pulseR), Color{ 50, 255, 100, 240 });
+                GraphicsManager::DrawSpark(m_position.x + 14.0f, m_position.y + 10.0f, 3.5f, Color{ 200, 255, 210, 255 });
+            }
+
+            if (m_cloneState == CloneState::MELEE_STRIKE && m_attackHitboxActive) {
+                float mx = m_facingLeft ? m_position.x - 8.0f : m_position.x + 26.0f;
+                DrawCircleLines(static_cast<int>(mx), static_cast<int>(m_position.y + 14.0f), 15.0f, Color{ 40, 240, 90, 250 });
+            }
+            break;
+        }
+
+        case EnemyType::BOSS_DEVIL: {
+            if (m_devilState == DevilState::DEFEATED && m_witherTimer >= 1.9f) return;
+
+            SpriteId spr = SPR_DEVIL_IDLE;
+            if (m_devilState == DevilState::IDLE) {
+                spr = (m_animFrame == 0 ? SPR_DEVIL_WALK_0 : SPR_DEVIL_IDLE);
+            } else if (m_devilState == DevilState::TRIDENT_THRUST || m_devilState == DevilState::FIRE_SURGE) {
+                spr = SPR_DEVIL_ATTACK;
+            } else if (m_devilState == DevilState::TAIL_WHIP_WINDUP || m_devilState == DevilState::TAIL_WHIP_STRIKE) {
+                spr = SPR_DEVIL_TAIL_WHIP;
+            } else if (m_devilState == DevilState::DEFEATED) {
+                spr = SPR_DEVIL_DIE;
+            }
+
+            if (hurtFlash && m_devilState != DevilState::DEFEATED) {
+                spr = SPR_DEVIL_HURT;
+            }
+
+            if (m_devilState != DevilState::DEFEATED) {
+                GraphicsManager::DrawDropShadow(m_position.x + 16.0f, m_position.y + 35.0f, 26.0f, 6.0f);
+            }
+
+            // Devil Hellfire Aura
+            if (m_devilState != DevilState::DEFEATED) {
+                float pulse = 0.5f + 0.5f * sinf(static_cast<float>(GetTime()) * 10.0f);
+                Color fireCol = ColorAlpha(Color{ 230, 40, 20, 255 }, 0.25f + pulse * 0.25f);
+                DrawRectangleLines(static_cast<int>(m_position.x + 2.0f), static_cast<int>(m_position.y + 2.0f), 28, 34, fireCol);
+                GraphicsManager::DrawSpark(m_position.x + 16.0f + 12.0f * sinf(static_cast<float>(GetTime()) * 6.0f), m_position.y + 4.0f, 2.5f, Color{ 255, 140, 40, 230 });
+            }
+
+            GraphicsManager::DrawSprite(spr, m_position.x, m_position.y, m_facingLeft);
+
+            // Secret Tail Whip Attack visual slash streak
+            if (m_devilState == DevilState::TAIL_WHIP_STRIKE && m_attackHitboxActive) {
+                float wx1 = m_facingLeft ? (m_position.x + 4.0f) : (m_position.x + 24.0f);
+                float wx2 = m_facingLeft ? (m_position.x - 50.0f) : (m_position.x + 70.0f);
+                DrawLineEx({ wx1, m_position.y + 22.0f }, { wx2, m_position.y + 22.0f }, 4.0f, Color{ 240, 30, 20, 240 });
+                DrawLineEx({ wx1, m_position.y + 20.0f }, { wx2, m_position.y + 20.0f }, 2.0f, Color{ 255, 200, 50, 255 });
+                GraphicsManager::DrawSpark(wx2, m_position.y + 21.0f, 4.0f, Color{ 255, 230, 100, 255 });
+            }
+
+            // Trident thrust gleam
+            if (m_devilState == DevilState::TRIDENT_THRUST && m_attackHitboxActive) {
+                float tx = m_facingLeft ? (m_position.x - 20.0f) : (m_position.x + 36.0f);
+                GraphicsManager::DrawSpark(tx, m_position.y + 14.0f, 3.5f, Color{ 255, 210, 60, 255 });
+            }
+
+            // Defeat explosion embers
+            if (m_devilState == DevilState::DEFEATED) {
+                float emberT = m_witherTimer * 5.0f;
+                DrawCircle(static_cast<int>(m_position.x + 16.0f), static_cast<int>(m_position.y + 20.0f), 6.0f + emberT * 8.0f, ColorAlpha(Color{ 255, 60, 20, 200 }, 1.0f - m_witherTimer * 0.5f));
+                GraphicsManager::DrawSpark(m_position.x + 16.0f, m_position.y + 12.0f, 5.0f, Color{ 255, 220, 80, 255 });
+            }
+            break;
+        }
+
         case EnemyType::MONEY_CHANGER: {
             SpriteId spr = m_moneyChangerAttacking ? SPR_MONEY_CHANGER_ATTACK : (m_animFrame == 0 ? SPR_MONEY_CHANGER_WALK_0 : SPR_MONEY_CHANGER_WALK_1);
             if (hurtFlash) spr = SPR_MONEY_CHANGER_HURT;
@@ -2740,12 +3014,44 @@ void EnemyManager::Reset(int stageId) {
     SpawnStageEnemies(stageId);
 }
 
+void EnemyManager::SpawnBossDirect(EnemyType type, Vector2 pos, float minX, float maxX) {
+    m_enemies.emplace_back(type, pos, minX, maxX);
+}
+
+void EnemyManager::ClearAllEnemies() {
+    m_enemies.clear();
+    m_arrows.clear();
+    m_daggers.clear();
+    m_darkProjectiles.clear();
+    m_silverCoins.clear();
+    m_bloodShockwaves.clear();
+    m_lightningStrikes.clear();
+    m_waterDroplets.clear();
+    m_stylusBlades.clear();
+    m_shoutWaves.clear();
+}
+
 void EnemyManager::SpawnStageEnemies(int stageId) {
     m_enemies.clear();
     m_arrows.clear();
     m_daggers.clear();
+    m_darkProjectiles.clear();
+    m_silverCoins.clear();
+    m_bloodShockwaves.clear();
+    m_lightningStrikes.clear();
+    m_waterDroplets.clear();
+    m_stylusBlades.clear();
+    m_shoutWaves.clear();
 
-    if (stageId == 2) {
+    if (stageId == 13) {
+        // =========================================================================
+        // STAGE 13: GOLGOTHA SUMMIT / MOUNT CALVARY (Single-board Climax Boss Arena)
+        // 1. Evil Clone Jesus (Glowing Green Emerald Hellfire)
+        // 2. The Devil (Secret demon tail whip attack)
+        // 3. Hallucination Pilate (Disagreement with false mercy)
+        // =========================================================================
+        m_enemies.emplace_back(EnemyType::BOSS_MISSION5_CLONE_GREEN, Vector2{ 360.0f, GROUND_Y - 32.0f }, 40.0f, 440.0f);
+    } else if (stageId == 2) {
         // =========================================================================
         // STAGE 2: INSIDE THE TEMPLE OF JERUSALEM
         // Features Sicarii Shadow Assassins crawling from columns/walls and hopping

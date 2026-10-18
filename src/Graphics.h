@@ -234,6 +234,28 @@ enum SpriteId {
     SPR_CAESAR_SEAL,
     SPR_PILATE_EWER,
 
+    // Mission 5: Golgotha Summit & The Final Climax
+    SPR_CLONE_GREEN_IDLE,
+    SPR_CLONE_GREEN_WALK_0,
+    SPR_CLONE_GREEN_ATTACK,
+    SPR_CLONE_GREEN_HURT,
+    SPR_CLONE_GREEN_KNEEL,
+
+    SPR_DEVIL_IDLE,
+    SPR_DEVIL_WALK_0,
+    SPR_DEVIL_ATTACK,
+    SPR_DEVIL_TAIL_WHIP,
+    SPR_DEVIL_HURT,
+    SPR_DEVIL_DIE,
+
+    SPR_GOD_DESCEND,
+    SPR_ANGEL_SING_0,
+    SPR_ANGEL_SING_1,
+
+    SPR_SKEEBALL_JESUS,
+    SPR_ANGEL_CHEER_0,
+    SPR_ANGEL_CHEER_1,
+
     // Projectiles & Items
     SPR_NAIL,
     SPR_ARROW,
@@ -382,6 +404,13 @@ enum TileId {
     TILE_THRONE_CANDELABRA,
     TILE_THRONE_DAIS_STEP,
 
+    // Stage 13: Mount Golgotha Summit Tiles
+    TILE_SUMMIT_ROCK_SURFACE,
+    TILE_SUMMIT_ROCK_SUB,
+    TILE_SUMMIT_CRAG_LEDGE,
+    TILE_SUMMIT_SKULL_ROCK,
+    TILE_SUMMIT_BRAZIER,
+
     TILE_TOTAL_COUNT
 };
 
@@ -471,6 +500,10 @@ private:
     static Texture2D s_bgCourtBasilica;
     static Texture2D s_bgThroneSky;
     static Texture2D s_bgThronePalace;
+
+    // Mission 5 Parallax Layers
+    static Texture2D s_bgSummitSky;
+    static Texture2D s_bgSummitMount;
 
     // Map screen texture
     static Texture2D s_texMissionMap;

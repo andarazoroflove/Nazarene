@@ -718,3 +718,4 @@ create_mission2_extra()
 create_jesus_basket_sprites()
 
 print("All extra boss frames generated successfully!")
+

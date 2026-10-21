@@ -329,15 +329,20 @@ public:
 
     void StartArenaCombat() {
         m_bossPhase = BossPhase::PHASE_2_ARENA;
+        m_hp = m_maxHp; // Fully restore/initialize boss health for the true arena showdown!
+        m_hurtTimer = 0.0f;
+        m_active = true;
         m_whipState = BossWhipState::IDLE;
         m_cloneState = CloneState::IDLE;
         m_judasState = JudasState::IDLE;
         m_pilateState = PilateState::IDLE;
         m_devilState = DevilState::IDLE;
         m_whipTimer = 0.0f;
-        m_stateTimer = 0.0f;
+        m_witherTimer = 0.0f;
+        m_judasTimer = 0.0f;
         m_pilateTimer = 0.0f;
         m_devilTimer = 0.0f;
+        m_stateTimer = 0.0f;
         m_attackHitboxActive = false;
     }
 
@@ -605,6 +610,8 @@ private:
     std::vector<StylusBlade> m_stylusBlades;
     std::vector<ShoutWave> m_shoutWaves;
     std::vector<DeathParticle> m_particles;
+    int m_stageId = 1;
+    float m_reinforcementTimer = 0.0f;
 
     void SpawnExplosion(Vector2 pos, Color mainColor);
     void SpawnSpark(Vector2 pos, Color sparkColor);

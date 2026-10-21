@@ -286,7 +286,31 @@ Rectangle Enemy::GetAttackHitbox() const {
 }
 
 bool Enemy::OnHit(int damage, bool hitFromBehind, bool isHighHit) {
-    if (m_hurtTimer > 0.0f || m_hp <= 0) return true;
+    if (m_hurtTimer > 0.0f) return true;
+    if (m_hp <= 0) {
+        // Safety: If boss is active in arena with 0 hp, trigger defeat immediately
+        if (IsBoss() && m_bossPhase == BossPhase::PHASE_2_ARENA) {
+            m_whipState = BossWhipState::KNEEL;
+            m_cloneState = CloneState::KNEEL;
+            m_judasState = JudasState::KNEEL;
+            m_pilateState = PilateState::KNEEL_REMORSE;
+            m_devilState = DevilState::DEFEATED;
+            m_attackHitboxActive = false;
+            AudioManager::PlaySfx(SFX_ENEMY_DEFEAT);
+        }
+        return true;
+    }
+
+    // Phase 1 Gate approach protection: Boss cannot be killed outside the arena
+    if (m_bossPhase == BossPhase::PHASE_1_GATE) {
+        AudioManager::PlaySfx(SFX_BOSS_HURT);
+        m_hurtTimer = 0.28f;
+        // Boss retreats to the arena immediately when struck at the gate!
+        m_whipState = BossWhipState::PHASE1_WALK_OFF;
+        m_facingLeft = false;
+        m_attackHitboxActive = false;
+        return false;
+    }
 
     // 1. Heavy Legionary Shield Logic
     if (m_type == EnemyType::HEAVY_LEGIONARY) {
@@ -514,6 +538,14 @@ void Enemy::Update(float dt, const Vector2& playerPos, Level& level) {
         case EnemyType::ARCHER: {
             // Face the player
             m_facingLeft = (playerPos.x < m_position.x);
+
+            float distToPlayer = fabsf(playerPos.x - m_position.x);
+            // Don't fire if player is far off-screen (> 340 px away)
+            if (distToPlayer > 340.0f) {
+                m_isFiring = false;
+                m_isDucking = true;
+                break;
+            }
 
             m_stateTimer -= dt;
             if (m_isDucking) {
@@ -2316,7 +2348,7 @@ void Enemy::Update(float dt, const Vector2& playerPos, Level& level) {
 }
 
 void Enemy::Draw() {
-    if (m_hp <= 0 && m_type != EnemyType::BOSS_GLADIATOR) return;
+    if (m_hp <= 0 && !IsBoss()) return;
     if (m_whipState == BossWhipState::EXITED) return;
 
     bool hurtFlash = (m_hurtTimer > 0.0f);
@@ -3000,6 +3032,8 @@ EnemyManager::EnemyManager() {
 }
 
 void EnemyManager::Reset(int stageId) {
+    m_stageId = stageId;
+    m_reinforcementTimer = 0.0f;
     m_enemies.clear();
     m_arrows.clear();
     m_daggers.clear();
@@ -3283,30 +3317,51 @@ void EnemyManager::SpawnStageEnemies(int stageId) {
         m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1500.0f, GROUND_Y - 32.0f }, 1440.0f, 1540.0f);
         m_enemies.emplace_back(EnemyType::BOSS_PONTIUS_PILATE, Vector2{ 1660.0f, GROUND_Y - 32.0f }, 1480.0f, 1840.0f);
     } else {
-        // STAGE 1: JERUSALEM OUTSKIRTS & CITADEL APPROACH
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 130.0f, GROUND_Y - 30.0f }, 80.0f, 190.0f);
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 230.0f, GROUND_Y - 30.0f }, 170.0f, 290.0f);
-        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 340.0f, GROUND_Y - 32.0f }, 280.0f, 400.0f);
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 420.0f, UPPER_TIER_Y - 30.0f }, 390.0f, 520.0f);
-        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 530.0f, UPPER_TIER_Y - 30.0f }, 530.0f, 530.0f);
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 580.0f, GROUND_Y - 30.0f }, 520.0f, 640.0f);
-        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 680.0f, GROUND_Y - 32.0f }, 620.0f, 750.0f);
-        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 720.0f, UPPER_TIER_Y - 30.0f }, 720.0f, 720.0f);
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 820.0f, GROUND_Y - 30.0f }, 760.0f, 880.0f);
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 910.0f, GROUND_Y - 30.0f }, 850.0f, 970.0f);
-        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1010.0f, GROUND_Y - 32.0f }, 950.0f, 1070.0f);
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1080.0f, UPPER_TIER_Y - 30.0f }, 1040.0f, 1150.0f);
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1180.0f, UPPER_TIER_Y - 30.0f }, 1100.0f, 1240.0f);
-        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1240.0f, UPPER_TIER_Y - 30.0f }, 1240.0f, 1240.0f);
-        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1280.0f, GROUND_Y - 32.0f }, 1220.0f, 1360.0f);
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1340.0f, GROUND_Y - 30.0f }, 1280.0f, 1400.0f);
-        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1380.0f, UPPER_TIER_Y - 30.0f }, 1380.0f, 1380.0f);
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1480.0f, GROUND_Y - 30.0f }, 1420.0f, 1540.0f);
-        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1580.0f, GROUND_Y - 32.0f }, 1520.0f, 1640.0f);
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1680.0f, GROUND_Y - 30.0f }, 1620.0f, 1780.0f);
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1760.0f, UPPER_TIER_Y - 30.0f }, 1720.0f, 1840.0f);
-        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1880.0f, GROUND_Y - 32.0f }, 1840.0f, 1940.0f);
-        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 2000.0f, UPPER_TIER_Y - 30.0f }, 2000.0f, 2000.0f);
+        // STAGE 1: JERUSALEM OUTSKIRTS & CITADEL APPROACH (36 Initial Encounter Positions)
+        // Screen 1 (x: 0 - 400)
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 130.0f, GROUND_Y - 30.0f }, 70.0f, 210.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 200.0f, GROUND_Y - 30.0f }, 150.0f, 280.0f);
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 260.0f, 48.0f }, 200.0f, 340.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 340.0f, GROUND_Y - 32.0f }, 280.0f, 420.0f);
+
+        // Screen 2 (x: 400 - 800)
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 420.0f, UPPER_TIER_Y - 30.0f }, 380.0f, 520.0f);
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 500.0f, UPPER_TIER_Y - 30.0f }, 500.0f, 500.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 560.0f, GROUND_Y - 30.0f }, 480.0f, 630.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 620.0f, GROUND_Y - 30.0f }, 540.0f, 700.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 680.0f, GROUND_Y - 32.0f }, 620.0f, 760.0f);
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 740.0f, UPPER_TIER_Y - 30.0f }, 740.0f, 740.0f);
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 790.0f, 48.0f }, 730.0f, 860.0f);
+
+        // Screen 3 (x: 800 - 1200)
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 830.0f, GROUND_Y - 30.0f }, 770.0f, 910.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 890.0f, GROUND_Y - 30.0f }, 830.0f, 960.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 970.0f, GROUND_Y - 32.0f }, 910.0f, 1050.0f);
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1020.0f, UPPER_TIER_Y - 30.0f }, 1020.0f, 1020.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1080.0f, UPPER_TIER_Y - 30.0f }, 1030.0f, 1160.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1140.0f, UPPER_TIER_Y - 30.0f }, 1080.0f, 1220.0f);
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 1180.0f, 48.0f }, 1120.0f, 1250.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1220.0f, GROUND_Y - 32.0f }, 1160.0f, 1300.0f);
+
+        // Screen 4 (x: 1200 - 1600)
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1260.0f, UPPER_TIER_Y - 30.0f }, 1260.0f, 1260.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1310.0f, GROUND_Y - 30.0f }, 1250.0f, 1380.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1370.0f, GROUND_Y - 30.0f }, 1310.0f, 1440.0f);
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1410.0f, UPPER_TIER_Y - 30.0f }, 1410.0f, 1410.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1460.0f, GROUND_Y - 32.0f }, 1400.0f, 1530.0f);
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 1510.0f, 48.0f }, 1450.0f, 1580.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1560.0f, GROUND_Y - 30.0f }, 1500.0f, 1630.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1620.0f, GROUND_Y - 32.0f }, 1560.0f, 1700.0f);
+
+        // Screen 5 (x: 1600 - 2000 - Citadel Gate)
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1670.0f, GROUND_Y - 30.0f }, 1610.0f, 1750.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1730.0f, GROUND_Y - 30.0f }, 1670.0f, 1810.0f);
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1770.0f, UPPER_TIER_Y - 30.0f }, 1770.0f, 1770.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1820.0f, UPPER_TIER_Y - 30.0f }, 1760.0f, 1890.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1870.0f, GROUND_Y - 32.0f }, 1810.0f, 1950.0f);
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 1920.0f, 48.0f }, 1860.0f, 1980.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1960.0f, GROUND_Y - 30.0f }, 1910.0f, 2030.0f);
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 2010.0f, UPPER_TIER_Y - 30.0f }, 2010.0f, 2010.0f);
         m_enemies.emplace_back(EnemyType::BOSS_GLADIATOR, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
     }
 }
@@ -3573,6 +3628,85 @@ void EnemyManager::Update(float dt, const Vector2& playerPos, Level& level, bool
         }
     }
     m_shoutWaves.erase(std::remove_if(m_shoutWaves.begin(), m_shoutWaves.end(), [](const ShoutWave& w) { return !w.active; }), m_shoutWaves.end());
+
+    // 13. Dynamic Arcade Enemy Reinforcements (Keep screen full of action!)
+    if (m_stageId != 13 && !level.IsArenaLockedDown() && playerPos.x < level.GetArenaGateX() - 80.0f) {
+        int nearbyCount = 0;
+        for (const auto& enemy : m_enemies) {
+            if (enemy.IsActive() && !enemy.IsDefeated() && !enemy.IsBoss()) {
+                float dx = fabsf(enemy.GetPosition().x - playerPos.x);
+                if (dx < 260.0f) {
+                    nearbyCount++;
+                }
+            }
+        }
+
+        m_reinforcementTimer += dt;
+        if (nearbyCount < 3 && m_reinforcementTimer >= 2.8f) {
+            m_reinforcementTimer = 0.0f;
+            bool spawnAhead = (rand() % 100 < 65);
+            float spawnX = spawnAhead ? (playerPos.x + 250.0f) : (playerPos.x - 220.0f);
+            if (spawnX < 40.0f) spawnX = 40.0f;
+            if (spawnX > level.GetArenaGateX() - 60.0f) spawnX = level.GetArenaGateX() - 60.0f;
+
+            EnemyType spawnType = EnemyType::PATROL_GUARD;
+            float spawnY = GROUND_Y - 30.0f;
+            float patrolMinX = spawnX - 80.0f;
+            float patrolMaxX = spawnX + 80.0f;
+
+            if (m_stageId == 1) {
+                int r = rand() % 3;
+                if (r == 0) {
+                    spawnType = EnemyType::PATROL_GUARD;
+                } else if (r == 1) {
+                    spawnType = EnemyType::HEAVY_LEGIONARY;
+                    spawnY = GROUND_Y - 32.0f;
+                } else {
+                    spawnType = EnemyType::SICARII_ASSASSIN;
+                    spawnY = 48.0f;
+                }
+            } else if (m_stageId == 2) {
+                int r = rand() % 3;
+                if (r == 0) spawnType = EnemyType::PATROL_GUARD;
+                else if (r == 1) { spawnType = EnemyType::HEAVY_LEGIONARY; spawnY = GROUND_Y - 32.0f; }
+                else { spawnType = EnemyType::SICARII_ASSASSIN; spawnY = 48.0f; }
+            } else if (m_stageId == 3) {
+                int r = rand() % 3;
+                if (r == 0) { spawnType = EnemyType::HEAVY_LEGIONARY; spawnY = GROUND_Y - 32.0f; }
+                else if (r == 1) spawnType = EnemyType::PATROL_GUARD;
+                else { spawnType = EnemyType::SICARII_ASSASSIN; spawnY = 48.0f; }
+            } else if (m_stageId == 4) {
+                spawnType = (rand() % 2 == 0) ? EnemyType::TORMENTOR_GUARD : EnemyType::HEAVY_LEGIONARY;
+                if (spawnType == EnemyType::HEAVY_LEGIONARY) spawnY = GROUND_Y - 32.0f;
+            } else if (m_stageId == 5 || m_stageId == 6) {
+                int r = rand() % 3;
+                if (r == 0) spawnType = EnemyType::CORRUPTED_PRIEST;
+                else if (r == 1) { spawnType = EnemyType::HEAVY_LEGIONARY; spawnY = GROUND_Y - 32.0f; }
+                else spawnType = EnemyType::GARDEN_THORN_SICARII;
+            } else if (m_stageId == 7) {
+                spawnType = (rand() % 2 == 0) ? EnemyType::MONEY_CHANGER : EnemyType::PATROL_GUARD;
+            } else if (m_stageId == 8 || m_stageId == 9) {
+                spawnType = (rand() % 2 == 0) ? EnemyType::LEVITE_ENFORCER : EnemyType::CORRUPTED_PRIEST;
+                if (spawnType == EnemyType::LEVITE_ENFORCER) spawnY = GROUND_Y - 32.0f;
+            } else if (m_stageId >= 10 && m_stageId <= 12) {
+                int r = rand() % 3;
+                if (r == 0) spawnType = EnemyType::SIGNIFER_GUARD;
+                else if (r == 1) { spawnType = EnemyType::PRAETORIAN_GUARD; spawnY = GROUND_Y - 32.0f; }
+                else spawnType = EnemyType::IMPERIAL_LICTOR;
+            }
+
+            m_enemies.emplace_back(spawnType, Vector2{ spawnX, spawnY }, patrolMinX, patrolMaxX);
+        }
+    }
+
+    // 14. Clean up defeated non-boss enemies
+    m_enemies.erase(
+        std::remove_if(m_enemies.begin(), m_enemies.end(), [&](const Enemy& e) {
+            if (e.IsBoss()) return false;
+            return e.GetHp() <= 0 || !e.IsActive();
+        }),
+        m_enemies.end()
+    );
 }
 
 void EnemyManager::CheckPlayerAttacks(Player& player) {

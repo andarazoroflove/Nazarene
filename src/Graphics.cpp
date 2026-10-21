@@ -3820,14 +3820,18 @@ void GraphicsManager::Init() {
         s_bgSummitMount
     );
 
-    // Load Title Splash Screen (from file or embedded bytes)
+    // Load Title Splash Screen (prefer PNG for native ARM64 & desktop support)
     Image splashImg{};
-    if (FileExists("assets/title.jpg")) {
+    if (FileExists("assets/title.png")) {
+        splashImg = LoadImage("assets/title.png");
+    } else if (FileExists("title.png")) {
+        splashImg = LoadImage("title.png");
+    } else if (FileExists("assets/title.jpg")) {
         splashImg = LoadImage("assets/title.jpg");
     } else if (FileExists("title.jpg")) {
         splashImg = LoadImage("title.jpg");
     } else {
-        splashImg = LoadImageFromMemory(".jpg", TITLE_IMAGE_DATA, TITLE_IMAGE_SIZE);
+        splashImg = LoadImageFromMemory(".png", TITLE_IMAGE_PNG_DATA, TITLE_IMAGE_PNG_SIZE);
     }
 
     if (splashImg.data != nullptr) {
@@ -3886,10 +3890,21 @@ void GraphicsManager::Close() {
 }
 
 void GraphicsManager::DrawTitleSplash(int destWidth, int destHeight) {
-    if (s_texTitleSplash.id == 0) return;
-    Rectangle src = { 0, 0, (float)s_texTitleSplash.width, (float)s_texTitleSplash.height };
-    Rectangle dst = { 0, 0, (float)destWidth, (float)destHeight };
-    DrawTexturePro(s_texTitleSplash, src, dst, { 0, 0 }, 0.0f, WHITE);
+    if (s_texTitleSplash.id > 0) {
+        Rectangle src = { 0, 0, (float)s_texTitleSplash.width, (float)s_texTitleSplash.height };
+        Rectangle dst = { 0, 0, (float)destWidth, (float)destHeight };
+        DrawTexturePro(s_texTitleSplash, src, dst, { 0, 0 }, 0.0f, WHITE);
+    } else {
+        // Procedural arcade title screen fallback if image texture unavailable
+        DrawRectangleGradientV(0, 0, destWidth, destHeight, Color{ 14, 10, 26, 255 }, Color{ 36, 18, 48, 255 });
+        const char* title1 = "THE NAZARENE";
+        const char* title2 = "WAY OF THE CROSS";
+        int t1w = MeasureText(title1, 24);
+        int t2w = MeasureText(title2, 14);
+        DrawText(title1, (destWidth - t1w) / 2 + 2, 52, 24, Color{ 20, 5, 5, 255 });
+        DrawText(title1, (destWidth - t1w) / 2, 50, 24, COLOR_ROMAN_GOLD);
+        DrawText(title2, (destWidth - t2w) / 2, 82, 14, Color{ 255, 235, 190, 255 });
+    }
 }
 
 void GraphicsManager::DrawMissionMap(int missionNumber, int currentArea, bool a1Cleared, bool a2Cleared, bool a3Cleared, float time) {

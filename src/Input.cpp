@@ -86,23 +86,34 @@ void InputHandler::Update(InputState& outState) {
         if (stickY > DEADZONE)  gpDown = true;
 
         // --- Action Buttons ---
-        // Jump: Button A (Right Face Down) OR Button B (Right Face Right) for generic / Japanese layout
-        if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) ||
-            IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
+        // Anbernic RG-353V / Handheld Layout:
+        // A Button (Face Right) = Shoot / Attack
+        // B Button (Face Down)  = Jump
+        // X Button (Face Up)    = Divine Wrath
+        // Y Button (Face Left)  = DOES NOTHING
+
+        // Jump: Button B (Right Face Down on Nintendo/Anbernic)
+        if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
             gpJumpPressed = true;
         }
-        if (IsGamepadButtonDown(pad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) ||
-            IsGamepadButtonDown(pad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
+        if (IsGamepadButtonDown(pad, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)) {
             gpJumpDown = true;
         }
 
-        // Attack: Button X (Right Face Left) OR Right Bumper / Right Trigger
-        if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_RIGHT_FACE_LEFT) ||
+        // Shoot / Attack: Button A (Right Face Right on Nintendo/Anbernic) OR Right Bumper / Right Trigger
+        // On desktop platforms, also allow Face Left (Xbox X button)
+        if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT) ||
+#ifndef __linux__
+            IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_RIGHT_FACE_LEFT) ||
+#endif
             IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_RIGHT_TRIGGER_1) ||
             IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_RIGHT_TRIGGER_2)) {
             gpAttackPressed = true;
         }
-        if (IsGamepadButtonDown(pad, GAMEPAD_BUTTON_RIGHT_FACE_LEFT) ||
+        if (IsGamepadButtonDown(pad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT) ||
+#ifndef __linux__
+            IsGamepadButtonDown(pad, GAMEPAD_BUTTON_RIGHT_FACE_LEFT) ||
+#endif
             IsGamepadButtonDown(pad, GAMEPAD_BUTTON_RIGHT_TRIGGER_1) ||
             IsGamepadButtonDown(pad, GAMEPAD_BUTTON_RIGHT_TRIGGER_2)) {
             gpAttackDown = true;
@@ -111,7 +122,7 @@ void InputHandler::Update(InputState& outState) {
             gpAttackDown = true;
         }
 
-        // Divine Wrath: Button Y (Right Face Up) OR Left Bumper / Left Trigger
+        // Divine Wrath: Button X (Right Face Up on Nintendo/Anbernic) OR Left Bumper / Left Trigger
         if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_RIGHT_FACE_UP) ||
             IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_TRIGGER_1) ||
             IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_TRIGGER_2)) {
@@ -121,11 +132,13 @@ void InputHandler::Update(InputState& outState) {
             gpWrathPressed = true;
         }
 
+        // Button Y (Right Face Left on Nintendo/Anbernic): DOES NOTHING!
+
         if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_LEFT))  gpLeftPressed = true;
         if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) gpRightPressed = true;
 
-        // Cancel / Back: Button B (Right Face Right)
-        if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT)) {
+        // Cancel / Back: SELECT button or Menu Back
+        if (IsGamepadButtonPressed(pad, GAMEPAD_BUTTON_MIDDLE_LEFT)) {
             gpCancelPressed = true;
         }
 

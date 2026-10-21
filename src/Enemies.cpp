@@ -3044,422 +3044,269 @@ void EnemyManager::SpawnStageEnemies(int stageId) {
     m_shoutWaves.clear();
 
     if (stageId == 13) {
-        // =========================================================================
         // STAGE 13: GOLGOTHA SUMMIT / MOUNT CALVARY (Single-board Climax Boss Arena)
-        // 1. Evil Clone Jesus (Glowing Green Emerald Hellfire)
-        // 2. The Devil (Secret demon tail whip attack)
-        // 3. Hallucination Pilate (Disagreement with false mercy)
-        // =========================================================================
         m_enemies.emplace_back(EnemyType::BOSS_MISSION5_CLONE_GREEN, Vector2{ 360.0f, GROUND_Y - 32.0f }, 40.0f, 440.0f);
     } else if (stageId == 2) {
-        // =========================================================================
         // STAGE 2: INSIDE THE TEMPLE OF JERUSALEM
-        // Features Sicarii Shadow Assassins crawling from columns/walls and hopping
-        // across 2-level stacked platforms (TEMPLE_TIER_1_Y and TEMPLE_TIER_2_Y)
-        // =========================================================================
-
-        // 1. Sicarii Assassin on Entrance Pillar (Clings to column, crawls down)
-        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 220.0f, 48.0f }, 150.0f, 320.0f);
-
-        // 2. Heavy Temple Guard (Patrols ground floor before Tier 1 Balcony)
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 180.0f, 48.0f }, 120.0f, 260.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 260.0f, GROUND_Y - 30.0f }, 200.0f, 320.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 380.0f, GROUND_Y - 32.0f }, 320.0f, 440.0f);
-
-        // 3. High Gallery Archer (Standing on Tier 2 Gallery at Y = 96)
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 460.0f, TEMPLE_TIER_2_Y - 30.0f }, 460.0f, 460.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 500.0f, TEMPLE_TIER_1_Y - 30.0f }, 450.0f, 560.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 560.0f, TEMPLE_TIER_2_Y - 30.0f }, 560.0f, 560.0f);
-
-        // 4. Sicarii Assassin on Column between Balconies (Crawls down to Tier 1)
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 680.0f, 52.0f }, 620.0f, 760.0f);
         m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 780.0f, 52.0f }, 720.0f, 880.0f);
-
-        // 5. Tier 1 Mezzanine Guard
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 840.0f, GROUND_Y - 30.0f }, 780.0f, 900.0f);
         m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 920.0f, TEMPLE_TIER_1_Y - 30.0f }, 860.0f, 980.0f);
-
-        // 6. Heavy Temple Guard (Patrolling near Sacred Censer #2)
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1020.0f, TEMPLE_TIER_2_Y - 30.0f }, 1020.0f, 1020.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1120.0f, GROUND_Y - 32.0f }, 1060.0f, 1180.0f);
-
-        // 7. Sicarii Shadow Assassin on High Column (Hops between Tier 2 and Tier 1)
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1200.0f, TEMPLE_TIER_1_Y - 30.0f }, 1140.0f, 1260.0f);
         m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 1320.0f, 48.0f }, 1260.0f, 1420.0f);
-
-        // 8. Tier 2 Gallery Archer (Guarding high incense altar)
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1420.0f, GROUND_Y - 32.0f }, 1360.0f, 1480.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1500.0f, TEMPLE_TIER_2_Y - 30.0f }, 1500.0f, 1500.0f);
-
-        // 9. Tier 1 Mezzanine Guard
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1600.0f, TEMPLE_TIER_1_Y - 30.0f }, 1540.0f, 1660.0f);
         m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1680.0f, TEMPLE_TIER_1_Y - 30.0f }, 1620.0f, 1740.0f);
-
-        // 10. Heavy Temple Guard at the Inner Veil Archway
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 1780.0f, 48.0f }, 1720.0f, 1860.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1880.0f, GROUND_Y - 32.0f }, 1820.0f, 1940.0f);
-
-        // 11. Stage 2 Boss: Commander Malchus (High Priest's Guard Commander)
         m_enemies.emplace_back(EnemyType::BOSS_TEMPLE_COMMANDER, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
     } else if (stageId == 3) {
-        // =========================================================================
-        // STAGE 3: GOLGOTHA / ROMAN FORTRESS ANTONIA (Shorter, intense ascent)
-        // =========================================================================
-        // 1. Heavy Legionary at the base of the rocky ascent
-        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 200.0f, GROUND_Y - 32.0f }, 140.0f, 260.0f);
-
-        // 2. Sicarii Shadow Assassin on first high rock pillar
+        // STAGE 3: GOLGOTHA / ROMAN FORTRESS ANTONIA
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 160.0f, GROUND_Y - 32.0f }, 100.0f, 220.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 230.0f, GROUND_Y - 30.0f }, 170.0f, 290.0f);
         m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 300.0f, 48.0f }, 240.0f, 380.0f);
-
-        // 3. Heavy Legionary patrolling below siege ramp
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 390.0f, TEMPLE_TIER_2_Y - 30.0f }, 390.0f, 390.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 490.0f, GROUND_Y - 32.0f }, 430.0f, 550.0f);
-
-        // 4. Archer on high siege ramp battlement
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 540.0f, TEMPLE_TIER_1_Y - 30.0f }, 490.0f, 600.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 580.0f, TEMPLE_TIER_2_Y - 30.0f }, 580.0f, 580.0f);
-
-        // 5. Sicarii Shadow Assassin leaping across crags
         m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 700.0f, 48.0f }, 640.0f, 780.0f);
-
-        // 6. Sicarii Shadow Assassin on high citadel pillar
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 760.0f, GROUND_Y - 32.0f }, 700.0f, 820.0f);
         m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 850.0f, 48.0f }, 800.0f, 920.0f);
-
-        // 7. Patrol Guard on citadel mezzanine approach
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 890.0f, TEMPLE_TIER_2_Y - 30.0f }, 890.0f, 890.0f);
         m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 930.0f, TEMPLE_TIER_1_Y - 30.0f }, 870.0f, 990.0f);
-
-        // 8. Heavy Legionary guarding the Antonia Iron Portcullis
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 990.0f, GROUND_Y - 30.0f }, 940.0f, 1050.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1040.0f, GROUND_Y - 32.0f }, 980.0f, 1080.0f);
-
-        // 9. Stage 3 Final Boss: Supreme Legatus / Tribunal Praetor Longinus in the Summit Arena
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 1120.0f, 48.0f }, 1060.0f, 1200.0f);
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1190.0f, TEMPLE_TIER_2_Y - 30.0f }, 1190.0f, 1190.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1280.0f, GROUND_Y - 32.0f }, 1220.0f, 1340.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1360.0f, GROUND_Y - 30.0f }, 1300.0f, 1420.0f);
         m_enemies.emplace_back(EnemyType::BOSS_TRIBUNAL_PRAETOR, Vector2{ 1460.0f, GROUND_Y - 48.0f }, 1160.0f, 1500.0f);
     } else if (stageId == 4) {
-        // =========================================================================
-        // STAGE 4: VALLEY OF THE KIDRON (Dark Ravine & Moonlight Footbridges)
-        // =========================================================================
-        // 1. Starting Tormentor Guard on ravine floor
-        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 180.0f, GROUND_Y - 30.0f }, 110.0f, 240.0f);
-
-        // 2. Heavy Legionary patrolling beneath footbridge 1
+        // STAGE 4: VALLEY OF THE KIDRON
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 160.0f, GROUND_Y - 30.0f }, 100.0f, 220.0f);
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 250.0f, GROUND_Y - 30.0f }, 190.0f, 310.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 340.0f, GROUND_Y - 32.0f }, 280.0f, 400.0f);
-
-        // 3. Archer on high suspended footbridge over chasm
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 420.0f, 7.0f * TILE_SIZE - 30.0f }, 420.0f, 420.0f);
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 480.0f, 48.0f }, 420.0f, 560.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 540.0f, 7.0f * TILE_SIZE - 30.0f }, 540.0f, 540.0f);
-
-        // 4. Tormentor Guard on chasm floor
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 620.0f, GROUND_Y - 30.0f }, 560.0f, 680.0f);
         m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 720.0f, GROUND_Y - 30.0f }, 660.0f, 780.0f);
-
-        // 5. Sicarii Assassin on high rock tomb ledge
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 800.0f, GROUND_Y - 32.0f }, 740.0f, 860.0f);
         m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 880.0f, 48.0f }, 820.0f, 960.0f);
-
-        // 6. Heavy Legionary guarding lower path
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 960.0f, 6.0f * TILE_SIZE - 30.0f }, 960.0f, 960.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1060.0f, GROUND_Y - 32.0f }, 1000.0f, 1140.0f);
-
-        // 7. Tormentor Guard near gate approach
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 1160.0f, GROUND_Y - 30.0f }, 1100.0f, 1220.0f);
         m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 1280.0f, GROUND_Y - 30.0f }, 1220.0f, 1360.0f);
-
-        // 8. Archer on rock parapet
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 1380.0f, 48.0f }, 1320.0f, 1460.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1500.0f, 6.0f * TILE_SIZE - 30.0f }, 1500.0f, 1500.0f);
-
-        // 9. Heavy Legionary before Ravine Portcullis
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 1620.0f, GROUND_Y - 30.0f }, 1560.0f, 1680.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1740.0f, GROUND_Y - 32.0f }, 1680.0f, 1820.0f);
-
-        // 10. Tormentor Guard guarding portcullis
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1850.0f, 7.0f * TILE_SIZE - 30.0f }, 1850.0f, 1850.0f);
         m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 1960.0f, GROUND_Y - 30.0f }, 1900.0f, 2040.0f);
-
-        // 11. Stage 4 Boss: Tormentor Decurion Brutus in Ravine Arena
         m_enemies.emplace_back(EnemyType::BOSS_GLADIATOR, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
     } else if (stageId == 5) {
-        // =========================================================================
-        // STAGE 5: ROYAL CYPRESS HEDGE MAZE (Labyrinth & Marble Terraces)
-        // =========================================================================
-        // 1. Thorn Sicarii crouching atop hedge arch
-        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 220.0f, 7.0f * TILE_SIZE - 28.0f }, 160.0f, 280.0f);
-
-        // 2. Heavy Legionary patrolling marble promenade
+        // STAGE 5: ROYAL CYPRESS HEDGE MAZE
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 180.0f, 7.0f * TILE_SIZE - 28.0f }, 120.0f, 240.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 280.0f, GROUND_Y - 32.0f }, 220.0f, 340.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 380.0f, GROUND_Y - 32.0f }, 320.0f, 440.0f);
-
-        // 3. Corrupted Priest casting dark orbs by marble fountain
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 480.0f, GROUND_Y - 30.0f }, 420.0f, 540.0f);
         m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 560.0f, GROUND_Y - 30.0f }, 500.0f, 620.0f);
-
-        // 4. Thorn Sicarii ambushing from high Tier 2 hedge
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 660.0f, 6.0f * TILE_SIZE - 28.0f }, 600.0f, 720.0f);
         m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 760.0f, 6.0f * TILE_SIZE - 28.0f }, 700.0f, 820.0f);
-
-        // 5. Archer atop cypress terrace
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 840.0f, GROUND_Y - 32.0f }, 780.0f, 900.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 920.0f, 6.0f * TILE_SIZE - 30.0f }, 920.0f, 920.0f);
-
-        // 6. Heavy Legionary near fountain
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1020.0f, GROUND_Y - 30.0f }, 960.0f, 1080.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1120.0f, GROUND_Y - 32.0f }, 1060.0f, 1180.0f);
-
-        // 7. Corrupted Priest casting from urn alcove
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 1220.0f, 7.0f * TILE_SIZE - 28.0f }, 1160.0f, 1280.0f);
         m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1340.0f, GROUND_Y - 30.0f }, 1280.0f, 1400.0f);
-
-        // 8. Thorn Sicarii atop labyrinth wall
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1440.0f, GROUND_Y - 32.0f }, 1380.0f, 1500.0f);
         m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 1520.0f, 6.0f * TILE_SIZE - 28.0f }, 1460.0f, 1580.0f);
-
-        // 9. Heavy Legionary before maze gate
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1620.0f, 6.0f * TILE_SIZE - 30.0f }, 1620.0f, 1620.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1740.0f, GROUND_Y - 32.0f }, 1680.0f, 1800.0f);
-
-        // 10. Corrupted Priest guarding high plaza
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 1850.0f, 7.0f * TILE_SIZE - 28.0f }, 1800.0f, 1920.0f);
         m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1960.0f, GROUND_Y - 30.0f }, 1900.0f, 2020.0f);
-
-        // 11. Stage 5 Boss: High Inquisitor Malchus in the Marble Plaza Arena
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 2020.0f, GROUND_Y - 32.0f }, 1960.0f, 2060.0f);
         m_enemies.emplace_back(EnemyType::BOSS_TEMPLE_COMMANDER, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
     } else if (stageId == 6) {
-        // =========================================================================
-        // STAGE 6: THE GARDEN OF GETHSEMANE (Sacred Olive Grove & Stone of Agony)
-        // =========================================================================
-        // 1. Thorn Sicarii crouching on first olive tree branch
-        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 220.0f, 8.0f * TILE_SIZE - 28.0f }, 160.0f, 280.0f);
-
-        // 2. Tormentor Guard walking through nocturnal grove
+        // STAGE 6: THE GARDEN OF GETHSEMANE
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 180.0f, 8.0f * TILE_SIZE - 28.0f }, 120.0f, 240.0f);
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 280.0f, GROUND_Y - 30.0f }, 220.0f, 340.0f);
         m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 380.0f, GROUND_Y - 30.0f }, 320.0f, 440.0f);
-
-        // 3. Corrupted Priest casting dark orbs from stone terrace
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 460.0f, GROUND_Y - 30.0f }, 400.0f, 520.0f);
         m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 540.0f, 9.0f * TILE_SIZE - 30.0f }, 480.0f, 600.0f);
-
-        // 4. Thorn Sicarii on high olive branch canopy
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 640.0f, 7.0f * TILE_SIZE - 28.0f }, 580.0f, 700.0f);
         m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 720.0f, 7.0f * TILE_SIZE - 28.0f }, 660.0f, 780.0f);
-
-        // 5. Heavy Legionary guarding mossy stone path
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 820.0f, GROUND_Y - 30.0f }, 760.0f, 880.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 920.0f, GROUND_Y - 32.0f }, 860.0f, 980.0f);
-
-        // 6. Tormentor Guard with torch before sanctuary gate
+        m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 1020.0f, 8.0f * TILE_SIZE - 28.0f }, 960.0f, 1080.0f);
         m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 1140.0f, GROUND_Y - 30.0f }, 1080.0f, 1200.0f);
-
-        // 7. Corrupted Priest at sanctuary arch
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1240.0f, GROUND_Y - 30.0f }, 1180.0f, 1300.0f);
         m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1340.0f, GROUND_Y - 30.0f }, 1280.0f, 1400.0f);
-
-        // 8. Thorn Sicarii on lantern terrace
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1420.0f, GROUND_Y - 32.0f }, 1360.0f, 1480.0f);
         m_enemies.emplace_back(EnemyType::GARDEN_THORN_SICARII, Vector2{ 1500.0f, 8.0f * TILE_SIZE - 28.0f }, 1440.0f, 1560.0f);
-
-        // 9. FINAL BOSS: Christus Tenebris (Evil Genius Clone of Jesus)
-        // Fighting under the ancient Gethsemane Olive Tree and Stone of Agony Altar!
+        m_enemies.emplace_back(EnemyType::TORMENTOR_GUARD, Vector2{ 1620.0f, GROUND_Y - 30.0f }, 1560.0f, 1680.0f);
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1740.0f, GROUND_Y - 30.0f }, 1680.0f, 1800.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1820.0f, GROUND_Y - 32.0f }, 1760.0f, 1880.0f);
         m_enemies.emplace_back(EnemyType::BOSS_EVIL_CLONE, Vector2{ 1920.0f, GROUND_Y - 32.0f }, 1640.0f, 2000.0f);
     } else if (stageId == 7) {
-        // =========================================================================
-        // STAGE 7: SILOAM BAZAAR & AQUEDUCTS (Siloam Market Stalls & Bandit Redoubt)
-        // =========================================================================
-        // 1. Money Changer swinging balance-scale flail
-        m_enemies.emplace_back(EnemyType::MONEY_CHANGER, Vector2{ 220.0f, GROUND_Y - 30.0f }, 150.0f, 280.0f);
-
-        // 2. Patrol Guard near spice stall
+        // STAGE 7: SILOAM BAZAAR & AQUEDUCTS
+        m_enemies.emplace_back(EnemyType::MONEY_CHANGER, Vector2{ 160.0f, GROUND_Y - 30.0f }, 100.0f, 220.0f);
+        m_enemies.emplace_back(EnemyType::MONEY_CHANGER, Vector2{ 240.0f, GROUND_Y - 30.0f }, 180.0f, 300.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 340.0f, GROUND_Y - 30.0f }, 280.0f, 400.0f);
         m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 420.0f, GROUND_Y - 30.0f }, 360.0f, 480.0f);
-
-        // 3. Archer on high awning platform
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 500.0f, 6.0f * TILE_SIZE - 30.0f }, 500.0f, 500.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 600.0f, 6.0f * TILE_SIZE - 30.0f }, 600.0f, 600.0f);
-
-        // 4. Sicarii Assassin on high aqueduct awning
         m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 720.0f, 48.0f }, 660.0f, 800.0f);
-
-        // 5. Money Changer guarding pottery square
+        m_enemies.emplace_back(EnemyType::MONEY_CHANGER, Vector2{ 820.0f, GROUND_Y - 30.0f }, 760.0f, 880.0f);
         m_enemies.emplace_back(EnemyType::MONEY_CHANGER, Vector2{ 920.0f, GROUND_Y - 30.0f }, 860.0f, 980.0f);
-
-        // 6. Heavy Legionary patrolling middle bazaar
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1020.0f, GROUND_Y - 32.0f }, 960.0f, 1080.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1140.0f, GROUND_Y - 32.0f }, 1080.0f, 1200.0f);
-
-        // 7. Money Changer at spice depot
+        m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 1260.0f, 48.0f }, 1200.0f, 1340.0f);
         m_enemies.emplace_back(EnemyType::MONEY_CHANGER, Vector2{ 1380.0f, GROUND_Y - 30.0f }, 1320.0f, 1440.0f);
-
-        // 8. Sicarii Assassin ambushing from upper aqueduct
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1460.0f, GROUND_Y - 30.0f }, 1400.0f, 1520.0f);
         m_enemies.emplace_back(EnemyType::SICARII_ASSASSIN, Vector2{ 1540.0f, 48.0f }, 1480.0f, 1620.0f);
-
-        // 9. Archer on high stone terrace
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1640.0f, 7.0f * TILE_SIZE - 30.0f }, 1640.0f, 1640.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1720.0f, 7.0f * TILE_SIZE - 30.0f }, 1720.0f, 1720.0f);
-
-        // 10. Heavy Legionary guarding bandit hideout entrance
+        m_enemies.emplace_back(EnemyType::MONEY_CHANGER, Vector2{ 1840.0f, GROUND_Y - 30.0f }, 1780.0f, 1900.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1960.0f, GROUND_Y - 32.0f }, 1900.0f, 2020.0f);
-
-        // 11. Stage 7 Boss: Barabbas the Zealot (Dual Scimitars & Ground Slam)
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 2040.0f, GROUND_Y - 30.0f }, 1980.0f, 2060.0f);
         m_enemies.emplace_back(EnemyType::BOSS_BARABBAS, Vector2{ 2280.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
     } else if (stageId == 8) {
-        // =========================================================================
-        // STAGE 8: MOUNT ZION & PALACE OF CAIAPHAS (Marble Balustrades & Council Hall)
-        // =========================================================================
-        // 1. Levite Enforcer with ceremonial poleaxe halberd
-        m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 240.0f, GROUND_Y - 32.0f }, 180.0f, 320.0f);
-
-        // 2. Heavy Legionary in outer colonnade
+        // STAGE 8: MOUNT ZION & PALACE OF CAIAPHAS
+        m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 180.0f, GROUND_Y - 32.0f }, 120.0f, 240.0f);
+        m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 260.0f, GROUND_Y - 32.0f }, 200.0f, 320.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 360.0f, GROUND_Y - 32.0f }, 300.0f, 420.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 440.0f, GROUND_Y - 32.0f }, 380.0f, 500.0f);
-
-        // 3. Archer on royal mezzanine
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 540.0f, 6.0f * TILE_SIZE - 30.0f }, 540.0f, 540.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 640.0f, 6.0f * TILE_SIZE - 30.0f }, 640.0f, 640.0f);
-
-        // 4. Corrupted Priest casting dark orbs
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 740.0f, GROUND_Y - 30.0f }, 680.0f, 800.0f);
         m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 820.0f, GROUND_Y - 30.0f }, 760.0f, 900.0f);
-
-        // 5. Levite Enforcer patrolling high council terrace
+        m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 920.0f, GROUND_Y - 32.0f }, 860.0f, 980.0f);
         m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 1020.0f, GROUND_Y - 32.0f }, 960.0f, 1100.0f);
-
-        // 6. Heavy Legionary near grand portico
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1140.0f, GROUND_Y - 32.0f }, 1080.0f, 1200.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1240.0f, GROUND_Y - 32.0f }, 1180.0f, 1300.0f);
-
-        // 7. Archer on balustrade
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1360.0f, 7.0f * TILE_SIZE - 30.0f }, 1360.0f, 1360.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1460.0f, 7.0f * TILE_SIZE - 30.0f }, 1460.0f, 1460.0f);
-
-        // 8. Corrupted Priest casting from brazier plinth
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1580.0f, GROUND_Y - 30.0f }, 1520.0f, 1640.0f);
         m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1680.0f, GROUND_Y - 30.0f }, 1620.0f, 1760.0f);
-
-        // 9. Levite Enforcer guarding judgment gate
+        m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 1800.0f, GROUND_Y - 32.0f }, 1740.0f, 1860.0f);
         m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 1960.0f, GROUND_Y - 32.0f }, 1900.0f, 2040.0f);
-
-        // 10. Stage 8 Boss: High Priest Caiaphas (Wrathful Lightning & Scepter Strike)
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 2040.0f, GROUND_Y - 32.0f }, 1980.0f, 2060.0f);
         m_enemies.emplace_back(EnemyType::BOSS_CAIAPHAS, Vector2{ 2280.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
     } else if (stageId == 9) {
-        // =========================================================================
-        // STAGE 9: THE UPPER ROOM / CENACLE (The Last Supper Sanctuary)
-        // =========================================================================
-        // 1. Levite Enforcer at entrance vestibule
-        m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 220.0f, GROUND_Y - 32.0f }, 160.0f, 280.0f);
-
-        // 2. Money Changer on timber mezzanine
+        // STAGE 9: THE UPPER ROOM / CENACLE
+        m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 160.0f, GROUND_Y - 32.0f }, 100.0f, 220.0f);
+        m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 240.0f, GROUND_Y - 32.0f }, 180.0f, 300.0f);
+        m_enemies.emplace_back(EnemyType::MONEY_CHANGER, Vector2{ 340.0f, GROUND_Y - 30.0f }, 280.0f, 400.0f);
         m_enemies.emplace_back(EnemyType::MONEY_CHANGER, Vector2{ 420.0f, GROUND_Y - 30.0f }, 360.0f, 500.0f);
-
-        // 3. Corrupted Priest by arched window
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 520.0f, GROUND_Y - 30.0f }, 460.0f, 580.0f);
         m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 620.0f, GROUND_Y - 30.0f }, 560.0f, 700.0f);
-
-        // 4. Levite Enforcer patrolling timber planks
+        m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 720.0f, GROUND_Y - 32.0f }, 660.0f, 780.0f);
         m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 820.0f, GROUND_Y - 32.0f }, 760.0f, 900.0f);
-
-        // 5. Money Changer before communion chamber
+        m_enemies.emplace_back(EnemyType::MONEY_CHANGER, Vector2{ 920.0f, GROUND_Y - 30.0f }, 860.0f, 980.0f);
         m_enemies.emplace_back(EnemyType::MONEY_CHANGER, Vector2{ 1020.0f, GROUND_Y - 30.0f }, 960.0f, 1100.0f);
-
-        // 6. Corrupted Priest guarding upper passage
+        m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1120.0f, GROUND_Y - 30.0f }, 1060.0f, 1180.0f);
         m_enemies.emplace_back(EnemyType::CORRUPTED_PRIEST, Vector2{ 1220.0f, GROUND_Y - 30.0f }, 1160.0f, 1300.0f);
-
-        // 7. Levite Enforcer before the Cenacle sanctuary gate
+        m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 1320.0f, GROUND_Y - 32.0f }, 1260.0f, 1380.0f);
         m_enemies.emplace_back(EnemyType::LEVITE_ENFORCER, Vector2{ 1380.0f, GROUND_Y - 32.0f }, 1320.0f, 1420.0f);
-
-        // 8. FINAL BOSS: Judas Iscariot (The Traitor - 30 Pieces of Silver, Shadow Dash, Remorse Defeat)
-        // Arena: 1460 to 1860, Communion Table & overhead beams
         m_enemies.emplace_back(EnemyType::BOSS_JUDAS, Vector2{ 1660.0f, GROUND_Y - 32.0f }, 1480.0f, 1840.0f);
     } else if (stageId == 10) {
-        // =========================================================================
         // STAGE 10: VIA DOLOROSA / STREETS OF JUDGMENT
-        // Escorted under Roman garrison watch; Signifers, Praetorians, Lictors
-        // =========================================================================
-        // 1. Signifer Guard on cobblestone street
-        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 220.0f, GROUND_Y - 30.0f }, 150.0f, 280.0f);
-
-        // 2. Praetorian Guard near wooden barricade
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 160.0f, GROUND_Y - 30.0f }, 100.0f, 220.0f);
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 240.0f, GROUND_Y - 30.0f }, 180.0f, 300.0f);
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 340.0f, GROUND_Y - 32.0f }, 280.0f, 400.0f);
         m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 420.0f, GROUND_Y - 32.0f }, 360.0f, 480.0f);
-
-        // 3. Archer on high wooden scaffold
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 520.0f, 6.0f * TILE_SIZE - 30.0f }, 520.0f, 520.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 600.0f, 6.0f * TILE_SIZE - 30.0f }, 600.0f, 600.0f);
-
-        // 4. Imperial Lictor swinging fasces rods
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 700.0f, GROUND_Y - 30.0f }, 640.0f, 760.0f);
         m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 780.0f, GROUND_Y - 30.0f }, 720.0f, 840.0f);
-
-        // 5. Signifer Guard rallying legionaries
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 880.0f, GROUND_Y - 30.0f }, 820.0f, 940.0f);
         m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 960.0f, GROUND_Y - 30.0f }, 900.0f, 1020.0f);
-
-        // 6. Praetorian Guard with scutum shield
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1060.0f, GROUND_Y - 32.0f }, 1000.0f, 1120.0f);
         m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1160.0f, GROUND_Y - 32.0f }, 1100.0f, 1220.0f);
-
-        // 7. Imperial Lictor at garrison barricade
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 1280.0f, GROUND_Y - 30.0f }, 1220.0f, 1340.0f);
         m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 1380.0f, GROUND_Y - 30.0f }, 1320.0f, 1440.0f);
-
-        // 8. Archer on Roman stone arch
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1480.0f, 7.0f * TILE_SIZE - 30.0f }, 1480.0f, 1480.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1560.0f, 7.0f * TILE_SIZE - 30.0f }, 1560.0f, 1560.0f);
-
-        // 9. Praetorian Guard before judgment gate
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 1660.0f, GROUND_Y - 30.0f }, 1600.0f, 1720.0f);
         m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1760.0f, GROUND_Y - 32.0f }, 1700.0f, 1820.0f);
-
-        // 10. Imperial Lictor guarding the Praetor's gate
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 1860.0f, GROUND_Y - 30.0f }, 1800.0f, 1920.0f);
         m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 1960.0f, GROUND_Y - 30.0f }, 1900.0f, 2020.0f);
-
-        // 11. Stage 10 Boss: Praetor Prefect Quintus (Shield Rush & Gladius Flurry)
         m_enemies.emplace_back(EnemyType::BOSS_PREFECT_QUINTUS, Vector2{ 2280.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
     } else if (stageId == 11) {
-        // =========================================================================
         // STAGE 11: THE GABBATHA COURT / LITHOSTROTOS TRIBUNAL
-        // Imperial Roman Courtroom, Mosaic Pavements, Eagle Pedestals
-        // =========================================================================
-        // 1. Imperial Lictor at outer basilica portico
-        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 240.0f, GROUND_Y - 30.0f }, 180.0f, 320.0f);
-
-        // 2. Praetorian Guard on mosaic floor
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 180.0f, GROUND_Y - 30.0f }, 120.0f, 240.0f);
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 260.0f, GROUND_Y - 30.0f }, 200.0f, 320.0f);
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 360.0f, GROUND_Y - 32.0f }, 300.0f, 420.0f);
         m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 440.0f, GROUND_Y - 32.0f }, 380.0f, 500.0f);
-
-        // 3. Archer on high magistrate balcony
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 540.0f, 6.0f * TILE_SIZE - 30.0f }, 540.0f, 540.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 640.0f, 6.0f * TILE_SIZE - 30.0f }, 640.0f, 640.0f);
-
-        // 4. Signifer Guard beside imperial eagle standard
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 740.0f, GROUND_Y - 30.0f }, 680.0f, 800.0f);
         m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 820.0f, GROUND_Y - 30.0f }, 760.0f, 900.0f);
-
-        // 5. Praetorian Guard patrolling magistrate terrace
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 920.0f, GROUND_Y - 32.0f }, 860.0f, 980.0f);
         m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1020.0f, GROUND_Y - 32.0f }, 960.0f, 1100.0f);
-
-        // 6. Imperial Lictor in assembly hall
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 1140.0f, GROUND_Y - 30.0f }, 1080.0f, 1200.0f);
         m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 1240.0f, GROUND_Y - 30.0f }, 1180.0f, 1300.0f);
-
-        // 7. Archer on balustrade gallery
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1360.0f, 7.0f * TILE_SIZE - 30.0f }, 1360.0f, 1360.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1460.0f, 7.0f * TILE_SIZE - 30.0f }, 1460.0f, 1460.0f);
-
-        // 8. Signifer Guard rallying court sentries
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 1580.0f, GROUND_Y - 30.0f }, 1520.0f, 1640.0f);
         m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 1680.0f, GROUND_Y - 30.0f }, 1620.0f, 1760.0f);
-
-        // 9. Praetorian Guard before tribunal gate
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1820.0f, GROUND_Y - 32.0f }, 1760.0f, 1880.0f);
         m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1960.0f, GROUND_Y - 32.0f }, 1900.0f, 2040.0f);
-
-        // 10. Stage 11 Boss: Imperial Advocate Tertullus (Sonic Shouts & Legal Decrees)
         m_enemies.emplace_back(EnemyType::BOSS_ADVOCATE_TERTULLUS, Vector2{ 2280.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
     } else if (stageId == 12) {
-        // =========================================================================
         // STAGE 12: THE PRAETORIUM THRONE ROOM & THE BEMA OF PILATE
-        // Regal Imperial Palace, Gold Columns, Purple Velvet Canopies
-        // =========================================================================
-        // 1. Elite Praetorian Guard at imperial entrance
-        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 220.0f, GROUND_Y - 32.0f }, 160.0f, 280.0f);
-
-        // 2. Imperial Lictor on vestibule dais
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 160.0f, GROUND_Y - 32.0f }, 100.0f, 220.0f);
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 240.0f, GROUND_Y - 32.0f }, 180.0f, 300.0f);
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 340.0f, GROUND_Y - 30.0f }, 280.0f, 400.0f);
         m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 420.0f, GROUND_Y - 30.0f }, 360.0f, 500.0f);
-
-        // 3. Signifer Guard with gilded eagle staff
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 520.0f, GROUND_Y - 30.0f }, 460.0f, 580.0f);
         m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 620.0f, GROUND_Y - 30.0f }, 560.0f, 700.0f);
-
-        // 4. Praetorian Guard under purple velvet canopy
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 720.0f, GROUND_Y - 32.0f }, 660.0f, 780.0f);
         m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 820.0f, GROUND_Y - 32.0f }, 760.0f, 900.0f);
-
-        // 5. Imperial Lictor before throne antechamber
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 920.0f, GROUND_Y - 30.0f }, 860.0f, 980.0f);
         m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 1020.0f, GROUND_Y - 30.0f }, 960.0f, 1100.0f);
-
-        // 6. Signifer Guard at throne approach
+        m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 1120.0f, GROUND_Y - 30.0f }, 1060.0f, 1180.0f);
         m_enemies.emplace_back(EnemyType::SIGNIFER_GUARD, Vector2{ 1220.0f, GROUND_Y - 30.0f }, 1160.0f, 1300.0f);
-
-        // 7. Elite Praetorian Guard before Praetorium Throne Gate
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1300.0f, GROUND_Y - 32.0f }, 1240.0f, 1360.0f);
         m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1380.0f, GROUND_Y - 32.0f }, 1320.0f, 1420.0f);
-
-        // 8. FINAL CAMPAIGN BOSS: Pontius Pilate (Imperial Governor of Judea)
-        // Handwashing Water Basin, Golden Stylus Judgment Decree, Mirage Teleport, Remorse Defeat!
-        // Arena: 1460 to 1860, Ivory Throne & Golden Basin
+        m_enemies.emplace_back(EnemyType::IMPERIAL_LICTOR, Vector2{ 1440.0f, GROUND_Y - 30.0f }, 1380.0f, 1480.0f);
+        m_enemies.emplace_back(EnemyType::PRAETORIAN_GUARD, Vector2{ 1500.0f, GROUND_Y - 32.0f }, 1440.0f, 1540.0f);
         m_enemies.emplace_back(EnemyType::BOSS_PONTIUS_PILATE, Vector2{ 1660.0f, GROUND_Y - 32.0f }, 1480.0f, 1840.0f);
     } else {
-        // =========================================================================
         // STAGE 1: JERUSALEM OUTSKIRTS & CITADEL APPROACH
-        // =========================================================================
-        // 1. Starting Street Grunt (Patrols open street before Crate 1)
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 150.0f, GROUND_Y - 30.0f }, 90.0f, 205.0f);
-
-        // 2. Upper Balcony Guard
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 420.0f, UPPER_TIER_Y - 30.0f }, 390.0f, 550.0f);
-
-        // 3. Auxiliary Archer on High Aqueduct
-        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 720.0f, UPPER_TIER_Y - 30.0f }, 720.0f, 720.0f);
-
-        // 4. Ground Heavy Legionary (Guarding lower path before aqueduct crate)
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 130.0f, GROUND_Y - 30.0f }, 80.0f, 190.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 230.0f, GROUND_Y - 30.0f }, 170.0f, 290.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 340.0f, GROUND_Y - 32.0f }, 280.0f, 400.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 420.0f, UPPER_TIER_Y - 30.0f }, 390.0f, 520.0f);
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 530.0f, UPPER_TIER_Y - 30.0f }, 530.0f, 530.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 580.0f, GROUND_Y - 30.0f }, 520.0f, 640.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 680.0f, GROUND_Y - 32.0f }, 620.0f, 750.0f);
-
-        // 5. Midfield Grunt Guard
-        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 880.0f, GROUND_Y - 30.0f }, 820.0f, 925.0f);
-
-        // 6. Rooftop Terrace Archer (Guarding Basket 3)
-        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1380.0f, UPPER_TIER_Y - 30.0f }, 1380.0f, 1380.0f);
-
-        // 7. Upper Tier Guard
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 720.0f, UPPER_TIER_Y - 30.0f }, 720.0f, 720.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 820.0f, GROUND_Y - 30.0f }, 760.0f, 880.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 910.0f, GROUND_Y - 30.0f }, 850.0f, 970.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1010.0f, GROUND_Y - 32.0f }, 950.0f, 1070.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1080.0f, UPPER_TIER_Y - 30.0f }, 1040.0f, 1150.0f);
         m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1180.0f, UPPER_TIER_Y - 30.0f }, 1100.0f, 1240.0f);
-
-        // 8. Ground Heavy Legionary (Market gate)
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1240.0f, UPPER_TIER_Y - 30.0f }, 1240.0f, 1240.0f);
         m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1280.0f, GROUND_Y - 32.0f }, 1220.0f, 1360.0f);
-
-        // 9. Garrison Checkpoint Guard
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1340.0f, GROUND_Y - 30.0f }, 1280.0f, 1400.0f);
+        m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 1380.0f, UPPER_TIER_Y - 30.0f }, 1380.0f, 1380.0f);
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1480.0f, GROUND_Y - 30.0f }, 1420.0f, 1540.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1580.0f, GROUND_Y - 32.0f }, 1520.0f, 1640.0f);
         m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1680.0f, GROUND_Y - 30.0f }, 1620.0f, 1780.0f);
-
-        // 10. Heavy Legionary guarding near Basket 4
-        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1880.0f, GROUND_Y - 32.0f }, 1850.0f, 1935.0f);
-
-        // 11. Rampart Archer before Arena
+        m_enemies.emplace_back(EnemyType::PATROL_GUARD, Vector2{ 1760.0f, UPPER_TIER_Y - 30.0f }, 1720.0f, 1840.0f);
+        m_enemies.emplace_back(EnemyType::HEAVY_LEGIONARY, Vector2{ 1880.0f, GROUND_Y - 32.0f }, 1840.0f, 1940.0f);
         m_enemies.emplace_back(EnemyType::ARCHER, Vector2{ 2000.0f, UPPER_TIER_Y - 30.0f }, 2000.0f, 2000.0f);
-
-        // 12. Stage 1 Boss: Centurion Brutus (Ken-Oh equivalent)
-        // Spawns before the gate (at x = 2080.0f) in Phase 1 (takes 2 whip swings, moves into arena)
         m_enemies.emplace_back(EnemyType::BOSS_GLADIATOR, Vector2{ 2080.0f, GROUND_Y - 48.0f }, ARENA_MIN_X + 20.0f, ARENA_MAX_X - 40.0f);
     }
 }

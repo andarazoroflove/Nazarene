@@ -91,10 +91,11 @@
 | Action | Keyboard | Gamepad | Anbernic RG-353V Handheld |
 | :--- | :--- | :--- | :--- |
 | **Move / Crouch** | Arrow Keys / `WASD` | D-Pad / Left Stick | D-Pad / Left Analog Stick |
-| **Jump / Super-Leap** | `Space` / `Up + Space` | Button `A` or `B` / `Up + A` | Button `B` or `A` / `Up + B` |
+| **Shoot (Spike / Melee)** | `J` or `Z` | Button `X` / `RB` / `RT` | **Button `A`** / `R1` |
+| **Jump / Super-Leap** | `Space` / `Up + Space` | Button `A` or `B` / `Up + A` | **Button `B`** / `Up + B` |
+| **Divine Wrath (Ninjutsu)**| `K` or `X` | Button `Y` / `LB` / `LT` | **Button `X`** / `L1` |
+| **Button Y** | - | - | *(Unused / No Action)* |
 | **Drop Through Ledge** | `Down + Space` | `Down + Button A` | `Down + Button B` |
-| **Attack (Melee / Spike)** | `J` or `Z` | Button `X` / `RB` / `RT` | Button `Y` or `R1` |
-| **Divine Wrath (Ninjutsu)**| `K` or `X` | Button `Y` / `LB` / `LT` | Button `X` or `L1` |
 | **Insert Coin / Start** | `C` / `Enter` | `Select` (on Title) / `Start` | `SELECT` (on Title) / `START` |
 | **Instant Level Exit** | `C` or `5` | `Select` (during gameplay) | `SELECT` (during gameplay) |
 | **Secret Mission Select** | `Tab` (on Title) | `LT + RT` / `L2 + R2` (on Title) | `L2 + R2` (both triggers on Title) |

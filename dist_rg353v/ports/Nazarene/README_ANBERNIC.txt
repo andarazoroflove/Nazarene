@@ -42,11 +42,13 @@ Option B - Two SD Card Setup (Slot 2 / TF2 - Game Card):
 3. CONTROLS ON ANBERNIC RG-353V
 --------------------------------------------------------------------------------
   D-Pad / Left Stick : Move Left/Right, Crouch (Down), Look Up (Up)
-  B Button / A Button: Jump / Somersault High Leap (Up + Jump)
-  Y Button           : Melee Slash / Throw Holy Iron Spike
+  A Button           : Shoot / Melee Slash / Throw Holy Iron Spike
+  B Button           : Jump / Somersault High Leap (Up + B)
   X Button           : Divine Wrath (Holy Ninjutsu Full-Screen Board Wipe)
+  Y Button           : (Unused / No Action)
   L1 Shoulder Button : Divine Wrath (Alternative trigger)
-  R1 Shoulder Button : Attack (Alternative trigger)
+  R1 Shoulder Button : Shoot / Attack (Alternative trigger)
+  Down + B Button    : Drop through elevated platforms / ledges
   L2 + R2 Triggers   : Secret Mission & Stage Select Menu (press both on Title)
   START Button       : Start Game / Confirm / Resurrect Continue
   SELECT Button      : Dual Function:
@@ -66,3 +68,4 @@ Option B - Two SD Card Setup (Slot 2 / TF2 - Game Card):
                False Mercy Encounter (God vs. Hallucination Pilate Duel)
              - Angelic Ascension & Heavenly Skee-Ball Epilogue!
 ================================================================================
+

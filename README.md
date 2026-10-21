@@ -67,6 +67,7 @@
 | Platform / Target | Compatibility & Details |
 | :--- | :--- |
 | **Windows Desktop** | **Windows 10 & 11 (64-bit)**<br>&bull; Standalone portable executable (`Nazarene.exe`) with **zero runtime dependencies** or external DLLs.<br>&bull; Locked 60 FPS internal 320x224 rendering with clean integer scaling up to 1280x896 or borderless fullscreen (`F11` / `Alt+Enter`).<br>&bull; Includes active hardware CRT scanline and curvature shader. |
+| **Anbernic RG-353V / Linux Handhelds** | **Rockchip RK3566 ARM64 (`aarch64`)**<br>&bull; Native ARM64 Linux ELF binary compiled against GLIBC 2.31 for 100% compatibility across **Stock Linux OS (Buildroot/ash)**, **ArkOS**, **JELOS**, **ROCKNIX**, and **AmberELEC**.<br>&bull; Direct KMSDRM / GLES2 hardware rendering running at locked 60 FPS on the 3.5" 640x480 IPS display.<br>&bull; Integrated PortMaster packaging with automatic directory resolution, `Nazarene.gptk` handheld mappings, ALSA/KMSDRM runtime libraries, and instant exit support. |
 | **Controllers & Gamepads** | **Plug & Play Support**:<br>&bull; **XInput / DirectInput**: Xbox Wireless, DualShock 4, DualSense, 8BitDo, Switch Pro, @Play arcade sticks, and generic USB gamepads.<br>&bull; Full keyboard support (Arrows / `WASD` + `Space` / `J` / `K`). |
 | **Game Boy Advance** | **Real Hardware & Emulators**:<br>&bull; Native 60 FPS Mode 4 GBA binary (`Nazarene.gba`).<br>&bull; Includes 4MB `0xFF`-padded and header-signed ROM (`Nazarene-padded.gba`) compatible with **SuperCard (SD/CF/MiniSD/Lite)**, EZ-Flash, EverDrive, and emulators (mGBA, RetroArch, VBA). |
 
@@ -74,6 +75,8 @@
 
 ### 📥 Downloads
 
+- 📱 **Anbernic RG-353V (PortMaster / Linux Handhelds - Native 60 FPS):**
+  - [Download `Nazarene-v5.0-anbernic-rg353v.zip`](https://github.com/andarazoroflove/Nazarene/releases/download/5.0/Nazarene-v5.0-anbernic-rg353v.zip) *(Drop-in ready `ports/Nazarene.sh` and `ports/Nazarene/` bundle)*
 - 🎮 **Windows (Latest v5.0 - Capcom Arcade Edition):**
   - [Download `Nazarene-v5.0-windows-x64.zip`](https://github.com/andarazoroflove/Nazarene/releases/download/5.0/Nazarene-v5.0-windows-x64.zip) *(Full bundle: 16-bit Capcom edition, Classic 8-bit edition, and high-res sprite assets)*
   - [Direct `Nazarene.exe`](https://github.com/andarazoroflove/Nazarene/releases/download/5.0/Nazarene.exe) *(16-Bit Capcom Arcade Edition)*
@@ -85,15 +88,15 @@
 
 ### 🕹️ Controls Quick Reference
 
-| Action | Keyboard | Gamepad |
-| :--- | :--- | :--- |
-| **Move / Crouch** | Arrow Keys / `WASD` | D-Pad / Left Stick |
-| **Jump / Super-Leap** | `Space` / `Up + Space` | Button `A` or `B` / `Up + A` |
-| **Drop Through Ledge** | `Down + Space` | `Down + Button A` |
-| **Attack (Melee / Spike)** | `J` or `Z` | Button `X` / `RB` / `RT` |
-| **Divine Wrath (Ninjutsu)**| `K` or `X` | Button `Y` / `LB` / `LT` |
-| **Insert Coin / Start** | `C` / `Enter` | `Select` (on Title) / `Start` |
-| **Instant Level Exit** | `C` or `5` | `Select` (during gameplay) |
-| **Secret Mission Select** | `Tab` (on Title) | `LT + RT` / `L2 + R2` (on Title) |
-| **Toggle Fullscreen** | `F11` / `Alt + Enter` | - |
-| **Toggle CRT Shader** | `F1` | - |
+| Action | Keyboard | Gamepad | Anbernic RG-353V Handheld |
+| :--- | :--- | :--- | :--- |
+| **Move / Crouch** | Arrow Keys / `WASD` | D-Pad / Left Stick | D-Pad / Left Analog Stick |
+| **Jump / Super-Leap** | `Space` / `Up + Space` | Button `A` or `B` / `Up + A` | Button `B` or `A` / `Up + B` |
+| **Drop Through Ledge** | `Down + Space` | `Down + Button A` | `Down + Button B` |
+| **Attack (Melee / Spike)** | `J` or `Z` | Button `X` / `RB` / `RT` | Button `Y` or `R1` |
+| **Divine Wrath (Ninjutsu)**| `K` or `X` | Button `Y` / `LB` / `LT` | Button `X` or `L1` |
+| **Insert Coin / Start** | `C` / `Enter` | `Select` (on Title) / `Start` | `SELECT` (on Title) / `START` |
+| **Instant Level Exit** | `C` or `5` | `Select` (during gameplay) | `SELECT` (during gameplay) |
+| **Secret Mission Select** | `Tab` (on Title) | `LT + RT` / `L2 + R2` (on Title) | `L2 + R2` (both triggers on Title) |
+| **Toggle Fullscreen** | `F11` / `Alt + Enter` | - | - |
+| **Toggle CRT Shader** | `F1` | - | - |

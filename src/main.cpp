@@ -31,13 +31,54 @@ enum class SecretSelectStep {
     STAGE_SELECT = 1
 };
 
-int main() {
+#if defined(__linux__)
+#include <csignal>
+static void CleanExitSignalHandler(int sig) {
+    (void)sig;
+    CloseWindow();
+    exit(0);
+}
+#endif
+
+int main(int argc, char* argv[]) {
+    (void)argc;
+    (void)argv;
+#if defined(__linux__)
+    std::signal(SIGINT, CleanExitSignalHandler);
+    std::signal(SIGTERM, CleanExitSignalHandler);
+#endif
+    // Set working directory to application directory (critical for Anbernic / PortMaster / Linux)
+    ChangeDirectory(GetApplicationDirectory());
+
     // 1. Initialize Raylib Window
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "The Nazarene: Way of the Cross");
     SetExitKey(KEY_NULL);
+#ifndef __linux__
     SetWindowMinSize(VIRTUAL_WIDTH * 2, VIRTUAL_HEIGHT * 2);
+#endif
     SetTargetFPS(TARGET_FPS);
+
+    // Embedded Gamepad Controller Database for Anbernic RG353V and Linux Handhelds
+    static const char* s_embeddedGamepadDb =
+        "19000000010000000100000001000000,ANBERNIC-keys,a:b0,b:b1,x:b2,y:b3,back:b8,start:b9,guide:b6,leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,platform:Linux,\n"
+        "19000000010000000001000000010000,ANBERNIC-keys,a:b0,b:b1,x:b3,y:b2,back:b8,guide:b6,start:b7,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpleft:h0.8,dpdown:h0.4,dpright:h0.2,leftx:a0,lefty:a1,lefttrigger:b9,righttrigger:b10,platform:Linux,\n"
+        "19000000010000000100000001010000,Anbernic RG353V,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b8,start:b9,guide:b10,leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7,leftstick:b11,rightstick:b12,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,\n"
+        "19000000010000000100000002010000,retrogame_joypad,platform:Linux,a:b1,b:b0,x:b2,y:b3,back:b8,start:b9,guide:b10,leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7,leftstick:b11,rightstick:b12,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,rightx:a2,righty:a3,\n"
+        "19000000010000000200000002000000,retrogame_joypad,platform:Linux,a:b0,b:b1,x:b2,y:b3,back:b8,start:b9,leftshoulder:b4,rightshoulder:b5,dpup:b10,dpdown:b11,dpleft:b12,dpright:b13,leftx:a0,lefty:a1,\n"
+        "19000000010000000100000000010000,retrogame_joypad,platform:Linux,a:b0,b:b1,x:b2,y:b3,back:b8,start:b9,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,\n"
+        "03000000091200000031000000010000,OpenSimHardware OSH PB Controller,platform:Linux,a:b0,b:b1,x:b2,y:b3,back:b8,start:b9,leftshoulder:b4,rightshoulder:b5,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,\n"
+        "19000000010000000100000000000000,GO-Advance Gamepad,platform:Linux,a:b0,b:b1,x:b2,y:b3,back:b8,start:b9,leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7,dpup:h0.1,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,leftx:a0,lefty:a1,\n"
+        "19000000010000000100000002000000,GO-Advance Gamepad (rev 1.1),platform:Linux,a:b0,b:b1,x:b2,y:b3,back:b8,start:b9,leftshoulder:b4,rightshoulder:b5,lefttrigger:b6,righttrigger:b7,dpup:b10,dpdown:b11,dpleft:b12,dpright:b13,leftx:a0,lefty:a1,\n"
+        "030000005e0400008e02000010010000,Microsoft X-Box 360 pad,platform:Linux,a:b0,b:b1,x:b2,y:b3,back:b6,start:b7,guide:b8,leftshoulder:b4,rightshoulder:b5,leftstick:b9,rightstick:b10,leftx:a0,lefty:a1,rightx:a3,righty:a4,lefttrigger:a2,righttrigger:a5,dpup:h0.1,dpright:h0.2,dpdown:h0.4,dpleft:h0.8,\n";
+    SetGamepadMappings(s_embeddedGamepadDb);
+    if (FileExists("gamecontrollerdb.txt")) {
+        char* fileMappings = LoadFileText("gamecontrollerdb.txt");
+        if (fileMappings) {
+            SetGamepadMappings(fileMappings);
+            UnloadFileText(fileMappings);
+        }
+    }
 
     // 2. Initialize Subsystems
     AudioManager::Init();

@@ -1,0 +1,39 @@
+# The Nazarene: Way of the Cross - gptokeyb Mapping for Anbernic RG-353V
+# Handheld physical button mapping to Capcom Shinobi Controls
+
+back = c
+select = c
+start = enter
+
+# Face Buttons (Anbernic layout: B = south, A = east, Y = west, X = north)
+# B / A = Jump (Space), Y = Attack (J), X = Divine Wrath (K)
+b = space
+a = space
+y = j
+x = k
+
+# Shoulders & Triggers
+# L1 = Divine Wrath (K), R1 = Attack (J)
+# L2 / R2 = Q / E (Simultaneous L2 + R2 triggers secret mission select easter egg on Title!)
+l1 = k
+r1 = j
+l2 = q
+r2 = e
+
+# D-Pad
+up = up
+down = down
+left = left
+right = right
+
+# Left Analog Stick
+left_analog_up = up
+left_analog_down = down
+left_analog_left = left
+left_analog_right = right
+
+# Deadzone
+deadzone_mode = axial
+deadzone = 4000
+deadzone_scale = 8
+deadzone_delay = 16

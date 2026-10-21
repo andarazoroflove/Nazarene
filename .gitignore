@@ -38,3 +38,7 @@ scratch/
 *.log
 *.tmp
 *.bak
+
+# Handheld distribution duplicates
+dist_rg353v/ports/Nazarene/assets/
+dist_rg353v/ports/Nazarene/title.jpg
